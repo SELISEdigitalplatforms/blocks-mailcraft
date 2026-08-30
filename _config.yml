@@ -1,0 +1,41 @@
+# GitHub Pages site config.
+# Source: branch `main`, folder `/ (root)` — see Settings -> Pages.
+#
+# GitHub Pages enables these plugins by default, and this site relies on them:
+#   jekyll-readme-index         README.md becomes the site homepage
+#   jekyll-optional-front-matter  .md files render without needing front matter
+#   jekyll-relative-links       [DOCS.md](DOCS.md) rewrites to DOCS.html
+#   jekyll-titles-from-headings page titles come from the first H1
+#
+# The look comes from `_layouts/default.html` + `assets/css/site.css`, not from
+# the theme below — it stays declared only as a fallback if the layout is ever
+# removed. Every layout link is a plain relative path, so no `baseurl` is
+# needed here: the site works the same at /blocks-mailcraft/, at a custom
+# domain, and under a local `jekyll serve`.
+
+title: MailCraft
+description: A drag-and-drop HTML email editor, packaged as a single Web Component.
+# The custom domain. `CNAME` at the repo root is what GitHub Pages actually
+# serves from; this one is for the absolute URLs in page metadata. A custom
+# domain is served from the host root, so there is no baseurl either way.
+url: https://mailcraft.seliseblocks.com
+theme: jekyll-theme-primer
+
+# Markdown files render through the site layout; `examples/vanilla.html` has no
+# front matter, so Jekyll copies it verbatim — it carries its own chrome.
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
+
+exclude:
+  - node_modules/
+  - test/
+  - coverage/
+  - .cov/
+  - build.js
+  - package.json
+  - package-lock.json
+  - AGENTS.md
+  - "*.log"

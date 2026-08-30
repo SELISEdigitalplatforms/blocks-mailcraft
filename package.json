@@ -4,7 +4,7 @@
   "description": "Framework-agnostic drag-and-drop email template editor, packaged as a zero-dependency Web Component.",
   "license": "MIT",
   "author": "SELISE Digital Platforms",
-  "homepage": "https://github.com/SELISEdigitalplatforms/blocks-mailcraft#readme",
+  "homepage": "https://mailcraft.seliseblocks.com",
   "bugs": "https://github.com/SELISEdigitalplatforms/blocks-mailcraft/issues",
   "repository": {
     "type": "git",
@@ -41,6 +41,7 @@
   "files": [
     "src",
     "dist",
+    "examples",
     "README.md",
     "DOCS.md",
     "LICENSE"

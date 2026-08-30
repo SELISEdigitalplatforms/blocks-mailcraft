@@ -1,67 +1,197 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>MailCraft Editor — vanilla JS example</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MailCraft — live demo</title>
+<meta name="description" content="A host application embedding the MailCraft email editor: host-owned theme, locale, brand colour, typography and template gallery." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230065b3'/%3E%3Crect x='7' y='9.5' width='18' height='13' rx='2.2' fill='none' stroke='white' stroke-width='2.2'/%3E%3Cpath d='M7 11.5 16 18l9-6.5' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
 <style>
   /* The host app's brand color, as a design token -- exactly where a real
-     app keeps it. The editor is pointed at it with accent="var(--brand)". */
-  :root { --brand: #0065b3; }
-  html, body { margin: 0; height: 100%; font-family: sans-serif; }
-  /* The bar below stands in for the host application's own chrome: theme and
-     language are host decisions, pushed into the editor as attributes. */
-  #host-bar { display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 14px; box-sizing: border-box; background: #111827; color: #f9fafb; font-size: 13px; }
-  #host-bar strong { font-weight: 600; letter-spacing: 0.02em; margin-right: auto; }
-  #host-bar button, #host-bar select { font: inherit; font-size: 12.5px; padding: 5px 12px; border-radius: 6px; border: 1px solid #4b5563; background: #1f2937; color: #f9fafb; cursor: pointer; }
-  #host-bar button:hover, #host-bar select:hover { border-color: #9ca3af; }
-  #host-bar input[type="color"] { width: 34px; height: 26px; padding: 0; border: 1px solid #4b5563; border-radius: 6px; background: #1f2937; cursor: pointer; }
-  mailcraft-editor { display: block; height: calc(100vh - 46px); }
+     app keeps it. The editor is pointed at it with accent="var(--brand)".
+     The rest of the tokens are this page's own chrome, mirroring the editor's
+     palette (src/render/style.js) so the demo reads as one application rather
+     than a widget dropped into a stranger's page. */
+  :root {
+    --brand: #0065b3;
+    --bg: #ffffff;
+    --surface: #f8fafc;
+    --surface-2: #f1f5f9;
+    --text: #172033;
+    --muted: #667085;
+    --faint: #98a2b3;
+    --line: rgba(15, 23, 42, 0.11);
+    --line-soft: rgba(15, 23, 42, 0.07);
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  /* One attribute drives both: the same switch that sets the editor's `theme`
+     repaints this page. Host-owned light/dark, demonstrated rather than
+     described. */
+  body[data-theme="dark"] {
+    --bg: #0b1120;
+    --surface: #111827;
+    --surface-2: #182235;
+    --text: #f1f5f9;
+    --muted: #a8b3c4;
+    --faint: #718096;
+    --line: rgba(226, 232, 240, 0.12);
+    --line-soft: rgba(226, 232, 240, 0.07);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: var(--sans); font-size: 14px; color: var(--text); background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* The editor is `display: block; height: 100%`, so a flex column is all it
+     takes to give it every pixel the chrome does not use. */
+  .app { display: flex; flex-direction: column; height: 100%; }
+  mailcraft-editor { flex: 1 1 auto; min-height: 0; }
+
+  /* ---- top bar: brand, menu, theme ------------------------------------- */
+  .topbar {
+    flex: none; display: flex; align-items: center; gap: 18px; height: 56px; padding: 0 18px;
+    background: var(--surface); border-bottom: 1px solid var(--line-soft);
+  }
+  .brand { display: flex; align-items: center; gap: 9px; text-decoration: none; color: var(--brand); }
+  .brand-name { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; color: var(--text); }
+  .tag {
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--brand); background: var(--surface-2);
+    background: color-mix(in srgb, var(--brand) 12%, transparent);
+    padding: 4px 9px; border-radius: 999px;
+  }
+  .menu { display: flex; align-items: center; gap: 2px; margin-right: auto; overflow-x: auto; scrollbar-width: none; }
+  .menu::-webkit-scrollbar { display: none; }
+  .menu a {
+    color: var(--muted); font-size: 13.5px; font-weight: 500; text-decoration: none; white-space: nowrap;
+    padding: 7px 11px; border-radius: 8px; transition: color 0.15s, background 0.15s;
+  }
+  .menu a:hover { color: var(--text); background: var(--surface-2); }
+  .topbar .end { display: flex; align-items: center; gap: 8px; flex: none; }
+
+  /* ---- control strip: what this host app owns --------------------------- */
+  .controls {
+    flex: none; display: flex; align-items: center; gap: 18px; height: 54px; padding: 0 18px;
+    background: var(--bg); border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none;
+  }
+  .controls::-webkit-scrollbar { display: none; }
+  .field { display: flex; align-items: center; gap: 8px; flex: none; }
+  .field > label {
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--faint);
+  }
+  .spacer { margin-left: auto; }
+
+  select, .btn, input[type="color"] {
+    font: inherit; font-size: 12.5px; height: 32px; color: var(--text); background: var(--surface);
+    border: 1px solid var(--line); border-radius: 8px; cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+  }
+  select { padding: 0 8px; max-width: 220px; }
+  select:hover, .btn:hover, input[type="color"]:hover { border-color: var(--brand); }
+  select:focus-visible, .btn:focus-visible, input[type="color"]:focus-visible {
+    outline: 2px solid var(--brand); outline-offset: 1px;
+  }
+  .btn { padding: 0 13px; font-weight: 600; }
+  .btn.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .btn.primary:hover { filter: brightness(1.08); }
+  input[type="color"] { width: 34px; padding: 2px; }
+
+  @media (max-width: 780px) {
+    .tag, .brand-name { display: none; }
+    .topbar, .controls { gap: 12px; padding: 0 12px; }
+  }
 </style>
 </head>
-<body>
-<div id="host-bar">
-  <strong>Host app</strong>
-  <!-- The template gallery is host UI: the editor has no Templates tab. This
-       picker sends email HTML to editor.loadTemplate() -- that's the whole
-       integration. The first template auto-loads on startup; picking another
-       loads it immediately, no separate Load step. -->
-  <label for="template-select">Template</label>
-  <select id="template-select"></select>
-  <label for="lang-select">Language</label>
-  <select id="lang-select"></select>
-  <!-- ui-font restyles the editor chrome only; email typography stays owned
-       by the document theme. "Match host app" is ui-font="inherit" -- the
-       computed family of this page (sans-serif, set on <body> below). -->
-  <label for="font-select">Font</label>
-  <select id="font-select">
-    <option value="">Default (Manrope)</option>
-    <option value="inherit">Match host app</option>
-    <option value="Georgia, 'Times New Roman', serif">Serif</option>
-    <option value="Verdana, Geneva, sans-serif">Verdana</option>
-  </select>
-  <label for="brand-input">Brand</label>
-  <input id="brand-input" type="color" value="#0065b3" />
-  <button id="theme-btn" type="button">Switch to dark</button>
-</div>
+<body data-theme="light">
+<div class="app">
 
-<!-- `theme`, `locale`, `accent` and `ui-font` are host-owned: while the `theme`
-     attribute is present the editor hides its built-in light/dark toggle,
-     `locale` selects a shipped UI translation (plus RTL for e.g. locale="ar"),
-     `accent` paints the chrome in this app's brand color, and `ui-font`
-     restyles the editor chrome only (email typography stays owned by the
-     document theme). `var(--brand)`
-     is read off this element, so pointing at a design token is enough -- a
-     literal (accent="#e11d48") or accent="inherit" (the host's CSS
-     `accent-color`) work too. The editor derives the hover shade, the color
-     of text drawn on the accent and the tinted washes from it, correcting
-     each for contrast against the light or dark chrome. -->
-<mailcraft-editor
-  id="editor"
-  variables="first_name,last_name,email,company,unsubscribe_url"
-  theme="light"
-  locale="en"
-  accent="var(--brand)"
-></mailcraft-editor>
+  <!-- The chrome below stands in for the host application's own: a product
+       header with its own navigation, and a strip of controls the host owns.
+       Theme, language, brand colour and chrome typography are host decisions,
+       pushed into the editor as attributes -- the editor never asks. -->
+  <header class="topbar">
+    <a class="brand" id="home-link" href="../README.md">
+      <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="7" fill="currentColor" />
+        <rect x="7" y="9.5" width="18" height="13" rx="2.2" fill="none" stroke="#fff" stroke-width="2.2" />
+        <path d="M7 11.5 16 18l9-6.5" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      <span class="brand-name">MailCraft</span>
+    </a>
+    <span class="tag">Live demo</span>
+
+    <!-- Menu. The documentation link is resolved at runtime (see the script at
+         the foot of the file): DOCS.md when this file is opened straight off
+         disk, DOCS.html once the same file is served from GitHub Pages. -->
+    <nav class="menu" aria-label="Primary">
+      <a id="docs-link" href="../DOCS.md">Documentation</a>
+      <a id="readme-link" href="../README.md">Overview</a>
+      <a href="https://github.com/SELISEdigitalplatforms/blocks-mailcraft" rel="noopener">GitHub</a>
+      <a href="https://www.npmjs.com/package/@seliseblocks/mailcraft" rel="noopener">npm</a>
+    </nav>
+
+    <div class="end">
+      <button id="theme-btn" class="btn" type="button">Switch to dark</button>
+    </div>
+  </header>
+
+  <div class="controls">
+    <!-- The template gallery is host UI: the editor has no Templates tab. This
+         picker sends email HTML to editor.loadTemplate() -- that's the whole
+         integration. The first template auto-loads on startup; picking another
+         loads it immediately, no separate Load step. -->
+    <div class="field">
+      <label for="template-select">Template</label>
+      <select id="template-select"></select>
+    </div>
+
+    <div class="field">
+      <label for="lang-select">Language</label>
+      <select id="lang-select"></select>
+    </div>
+
+    <!-- ui-font restyles the editor chrome only; email typography stays owned
+         by the document theme. "Match host app" is ui-font="inherit" -- the
+         computed family of this page. -->
+    <div class="field">
+      <label for="font-select">Font</label>
+      <select id="font-select">
+        <option value="">Default (Manrope)</option>
+        <option value="inherit">Match host app</option>
+        <option value="Georgia, 'Times New Roman', serif">Serif</option>
+        <option value="Verdana, Geneva, sans-serif">Verdana</option>
+      </select>
+    </div>
+
+    <div class="field spacer">
+      <label for="brand-input">Brand</label>
+      <input id="brand-input" type="color" value="#0065b3" />
+    </div>
+  </div>
+
+  <!-- `theme`, `locale`, `accent` and `ui-font` are host-owned: while the `theme`
+       attribute is present the editor hides its built-in light/dark toggle,
+       `locale` selects a shipped UI translation (plus RTL for e.g. locale="ar"),
+       `accent` paints the chrome in this app's brand color, and `ui-font`
+       restyles the editor chrome only (email typography stays owned by the
+       document theme). `var(--brand)`
+       is read off this element, so pointing at a design token is enough -- a
+       literal (accent="#e11d48") or accent="inherit" (the host's CSS
+       `accent-color`) work too. The editor derives the hover shade, the color
+       of text drawn on the accent and the tinted washes from it, correcting
+       each for contrast against the light or dark chrome. -->
+  <mailcraft-editor
+    id="editor"
+    variables="first_name,last_name,email,company,unsubscribe_url"
+    theme="light"
+    locale="en"
+    accent="var(--brand)"
+  ></mailcraft-editor>
+
+</div>
 
 <!-- Plain script (not type="module") so this file also works when opened
      directly by double-clicking it -- browsers block ES module imports from
@@ -1302,11 +1432,23 @@
     console.log('exported html length', e.detail.length);
   });
 
-  // Host-controlled theme: flip the attribute, the editor follows.
+  // ---- menu ---------------------------------------------------------------
+  // The same file is read two ways: double-clicked off disk, and served as part
+  // of the GitHub Pages site, where Jekyll has turned DOCS.md into DOCS.html.
+  // One check keeps both links live instead of picking a winner.
+  if (location.protocol !== 'file:') {
+    document.getElementById('docs-link').href = '../DOCS.html';
+    document.getElementById('readme-link').href = '../';
+    document.getElementById('home-link').href = '../';
+  }
+
+  // Host-controlled theme: flip the attribute, the editor follows -- and this
+  // page follows with it, so light/dark is one decision for the whole app.
   const themeBtn = document.getElementById('theme-btn');
   themeBtn.addEventListener('click', () => {
     const next = editor.getAttribute('theme') === 'dark' ? 'light' : 'dark';
     editor.setAttribute('theme', next);
+    document.body.dataset.theme = next;
     themeBtn.textContent = next === 'dark' ? 'Switch to light' : 'Switch to dark';
   });
 

@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+
+{%- assign is_home = false -%}
+{%- if page.url == "/" or page.url == "/index.html" -%}{%- assign is_home = true -%}{%- endif -%}
+
+<title>{% if is_home %}{{ site.title }} — {{ site.description }}{% else %}{{ page.title | default: site.title }} · {{ site.title }}{% endif %}</title>
+<meta name="description" content="{{ page.description | default: site.description }}">
+<meta property="og:title" content="{% if is_home %}{{ site.title }}{% else %}{{ page.title | default: site.title }}{% endif %}">
+<meta property="og:description" content="{{ page.description | default: site.description }}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="{{ page.url | absolute_url }}">
+<link rel="canonical" href="{{ page.url | absolute_url }}">
+
+<!-- Every page this layout serves lives at the site root, so the links here are
+     plain relative paths: correct under a project baseurl, a custom domain, or
+     a local `jekyll serve`, with nothing to configure. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230065b3'/%3E%3Cpath d='M7 11.5 16 18l9-6.5' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Crect x='7' y='9.5' width='18' height='13' rx='2.2' fill='none' stroke='white' stroke-width='2.2'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/site.css">
+<script>
+  // Applied before first paint so a stored dark preference never flashes white.
+  try {
+    var t = localStorage.getItem('mailcraft-docs-theme');
+    if (t) document.documentElement.setAttribute('data-theme', t);
+  } catch (e) { /* private mode: fall back to the OS preference */ }
+</script>
+</head>
+<body class="{% if is_home %}home{% else %}doc{% endif %}">
+
+<a class="skip" href="#content">Skip to content</a>
+
+<header class="site-header">
+  <div class="bar">
+    <a class="brand" href="./">
+      <svg class="brand-mark" width="26" height="26" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="7" fill="currentColor"/>
+        <rect x="7" y="9.5" width="18" height="13" rx="2.2" fill="none" stroke="#fff" stroke-width="2.2"/>
+        <path d="M7 11.5 16 18l9-6.5" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="brand-name">{{ site.title }}</span>
+    </a>
+
+    <nav class="nav" aria-label="Primary">
+      <a href="./">Overview</a>
+      <a href="DOCS.html">Guide</a>
+      <a href="examples/vanilla.html">Demo</a>
+      <a href="CONTRIBUTING.html">Contributing</a>
+    </nav>
+
+    <div class="bar-end">
+      <a class="ghost" href="https://www.npmjs.com/package/@seliseblocks/mailcraft" rel="noopener">npm</a>
+      <a class="ghost" href="https://github.com/SELISEdigitalplatforms/blocks-mailcraft" rel="noopener">GitHub</a>
+      <button id="theme-toggle" class="icon-btn" type="button" aria-label="Switch colour theme" title="Switch colour theme">
+        <svg class="i-sun" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.2M12 19.2v2.2M4.2 12H2M22 12h-2.2M6.3 6.3 4.8 4.8M19.2 19.2l-1.5-1.5M17.7 6.3l1.5-1.5M4.8 19.2l1.5-1.5"/></svg>
+        <svg class="i-moon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.5A8.6 8.6 0 0 1 9.5 3.5a8.6 8.6 0 1 0 11 11Z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+{% if is_home %}
+<section class="hero">
+  <div class="hero-inner">
+    <p class="eyebrow">SELISE Blocks</p>
+    <h1>{{ site.title }}</h1>
+    <p class="lede">{{ site.description }} No framework, no build step, no runtime dependencies.</p>
+    <div class="cta">
+      <a class="btn primary" href="DOCS.html">Read the guide</a>
+      <a class="btn" href="examples/vanilla.html">Open the live demo</a>
+    </div>
+    <div class="chips">
+      <span class="chip">Zero dependencies</span>
+      <span class="chip">HTML in, HTML out</span>
+      <span class="chip">31 locales</span>
+      <span class="chip">MIT</span>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<div class="shell">
+  <main id="content" class="page-body">
+    {{ content }}
+  </main>
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">On this page</p>
+    <nav id="toc-list"></nav>
+  </aside>
+</div>
+
+<footer class="site-footer">
+  <div class="foot">
+    <div>
+      <p class="foot-brand">{{ site.title }}</p>
+      <p class="foot-note">{{ site.description }}</p>
+    </div>
+    <nav class="foot-links" aria-label="Footer">
+      <a href="DOCS.html">Guide</a>
+      <a href="examples/vanilla.html">Demo</a>
+      <a href="CONTRIBUTING.html">Contributing</a>
+      <a href="SECURITY.html">Security</a>
+      <a href="CODE_OF_CONDUCT.html">Code of conduct</a>
+      <a href="https://github.com/SELISEdigitalplatforms/blocks-mailcraft" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+  <p class="copyright">MIT licensed · © SELISE Digital Platforms</p>
+</footer>
+
+<script src="assets/js/site.js"></script>
+</body>
+</html>

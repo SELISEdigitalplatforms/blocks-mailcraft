@@ -5,12 +5,18 @@
  * breadcrumb, their own Save/Send buttons -- where a second bar with a second
  * logo reads as two applications stacked on top of each other. The bar is
  * therefore configurable down to the individual control, and can be removed
- * entirely: every action on it is also an element method (`undo()`, `redo()`,
- * `exportHtml()`, `previewScreenshot()`, `openCode()`), so a host that hides
- * it is not giving the capability up, only rendering the button itself.
+ * entirely.
+ *
+ * What that costs: `undo`, `redo` and `export` have element-level equivalents
+ * (`undo()`, `redo()`, `exportHtml()`), so hiding those is only declining to
+ * render the button. `preview`, `code` and `ai` open panels that nothing in
+ * the public API opens -- a host that hides them is giving the panel up, not
+ * just the button. DOCS.md carries the same table for integrators.
  *
  * Keyboard shortcuts are unaffected by any of this -- they are bound on the
- * document, not on the bar.
+ * document, not on the bar -- so Ctrl/Cmd+Z, Shift+Ctrl/Cmd+Z and Ctrl/Cmd+E
+ * (the export dialog, and the Screenshot button inside it) work with no bar
+ * at all.
  */
 
 /** Every switchable part, in the order it appears in the bar. */

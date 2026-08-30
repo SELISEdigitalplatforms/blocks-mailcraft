@@ -2,6 +2,8 @@
 
 Drag-and-drop email editor as a Web Component. No dependencies, no framework, no build step.
 
+**[Live demo](https://mailcraft.seliseblocks.com/examples/vanilla.html)** · **[Documentation](https://mailcraft.seliseblocks.com/DOCS.html)**
+
 ```sh
 npm install @seliseblocks/mailcraft
 ```
@@ -64,9 +66,10 @@ IMPORT    import '@seliseblocks/mailcraft'   (side effect: registers the element
 ELEMENT   <mailcraft-editor id="editor"></mailcraft-editor>
 MOUNT     createEditor(target, options) -> handle   (no tag needed)
           target  = CSS selector or Element; throws if it matches nothing
-          options = html, variables, locale, dir, theme, uiFont, accent, toolbar, footer,
-                    storageProvider, storageLimits, aiProvider, iconProvider,
+          options = html, name, variables, locale, dir, theme, uiFont, accent, toolbar,
+                    footer, storageProvider, storageLimits, aiProvider, iconProvider,
                     messages, height, replace, onChange(doc), onExport(html)
+                    name = template name for `html`; read only alongside it
           handle  = the METHODS below + .element + .destroy()
           The container supplies the height; the editor fills it.
 
@@ -88,15 +91,25 @@ PROPS     .variables .toolbar .footer .uiFont .accent .messages .aiProvider .ico
 METHODS   exportHtml() importHtml(html) loadTemplate(tpl) undo() redo()
           screenshotPng() previewScreenshot() downloadScreenshot() copyScreenshot()
 
-UPLOADS   Both properties are required, or every upload is refused.
+KEYS      Bound on window, so they survive toolbar="none":
+          Esc (leave field / deselect + close), Ctrl/Cmd+Z, Shift+Ctrl/Cmd+Z,
+          Ctrl/Cmd+E (export dialog), Ctrl/Cmd+K (link, while editing),
+          Ctrl/Cmd+D (duplicate), Backspace|Delete (delete selection).
+
+UPLOADS   Limits and a provider are both required, or every upload is refused.
           editor.storageLimits   = { accept:['image/jpeg','image/png','image/gif'],
                                      maxBytes: 2*1024*1024 }
-          editor.storageProvider = { list(q), upload(file, o), folders?(), remove?(a) }
+          editor.storageProvider = { list(q), upload(file, o), folders?(), remove?(a),
+                                     limits? }
+          provider.limits is merged per key under .storageLimits, and satisfies
+          the requirement on its own. .storageProvider = null restores the demo library.
           The editor never makes a network request itself.
 
 TOOLBAR   Parts: logo status device undo redo theme ai code preview export
           Attribute = allow-list (keep these). Property = { part: false } (drop these).
-          Hiding a control never removes the capability — each is also a method.
+          none|hidden|off|false = no bar at all; all = the default.
+          Hidden undo/redo/export stay reachable — methods, plus Ctrl/Cmd+Z, +E.
+          preview, code and ai are bar-only: hiding them removes the panel.
 
 DO NOT    Do not use getContent()/setContent() — internal, shape may change.
           Do not expect a campaign/title option — there is none; <title> is "Email".
@@ -108,6 +121,6 @@ DO NOT    Do not use getContent()/setContent() — internal, shape may change.
 npm install && node build.js && npm test
 ```
 
-`examples/vanilla.html` is a complete host page — open it directly, no server needed.
+`examples/vanilla.html` is a complete host page — open it directly, no server needed. It ships in the npm package too, so it is there after an install; the [hosted copy](https://mailcraft.seliseblocks.com/examples/vanilla.html) is the same file.
 
 MIT

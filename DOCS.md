@@ -15,6 +15,7 @@
   - [Merge variables](#merge-variables)
   - [Image uploads](#image-uploads)
   - [Choosing what the top bar shows](#choosing-what-the-top-bar-shows)
+  - [Keyboard shortcuts](#keyboard-shortcuts)
   - [The footer strip](#the-footer-strip)
   - [Language, direction and theme](#language-direction-and-theme)
   - [Matching your app's typography](#matching-your-apps-typography)
@@ -100,7 +101,7 @@ Validation runs *before* the provider is called, so a rejected file never reache
 
 An editor embedded in a product that already has a header, a breadcrumb and a Save button ends up with two bars and two logos stacked on each other. So the top bar is switchable down to the individual control, and can be removed entirely.
 
-Hiding a control never removes the capability: every one is also a method on the element, so a host that renders its own bar keeps all of it. Keyboard shortcuts are bound on the document and work either way.
+Most of what the bar does survives without it. Undo, redo and export are element methods; the screenshot methods never needed the bar at all; and the keyboard shortcuts are bound at the window level, not on the bar, so `Ctrl/Cmd+Z`, `Shift+Ctrl/Cmd+Z` and `Ctrl/Cmd+E` keep working either way. Three panels are opened only from the bar, though — the live **preview** overlay, the **Code** modal and the **AI draft** panel — so dropping those parts does take them out of reach. The table under [Choosing what the top bar shows](#choosing-what-the-top-bar-shows) says which is which.
 
 ---
 
@@ -141,6 +142,7 @@ import { createEditor } from '@seliseblocks/mailcraft';
 
 const editor = createEditor('#mail', {
   html,                                  // initial content, through the importer
+  name: 'Welcome',                       // template name for that content (optional)
   variables: ['first_name', 'company'],
   locale: 'de',
   toolbar: { logo: false },
@@ -155,6 +157,19 @@ editor.destroy();    // removes it; anything else in the container is left alone
 ```
 
 `target` is a CSS selector or an element, and a target that matches nothing throws rather than failing silently. The handle forwards `exportHtml`, `importHtml`, `loadTemplate`, `undo`, `redo`, `screenshotPng`, `previewScreenshot`, `downloadScreenshot` and `copyScreenshot`.
+
+Every option, in full:
+
+| option | what it does |
+|---|---|
+| `html` | initial content, applied through the importer as an undoable edit |
+| `name` | the template name that content is loaded under — only read alongside `html`, and defaults to `''` |
+| `variables`, `locale`, `dir`, `theme`, `uiFont`, `accent` | the attributes, under their property spellings (`uiFont` is `ui-font` in markup) |
+| `toolbar`, `footer` | as documented below — objects and `false` included, since these are set as properties |
+| `storageProvider`, `storageLimits`, `aiProvider`, `iconProvider`, `messages` | the property-only options |
+| `height` | sets the *container's* height; a number is treated as `px`. Omit it and your CSS decides |
+| `replace` | empty the container first (default: append) |
+| `onChange(doc)`, `onExport(html)` | the two events, as callbacks. `destroy()` detaches them |
 
 It is a wrapper, not a second implementation — it creates the same element and sets the same attributes and properties. The only thing it adds is not having to know which options are attributes (strings) and which must be properties (objects and functions).
 
@@ -218,7 +233,7 @@ Templates are host content **and** host UI. The editor ships no catalogue and ha
 editor.loadTemplate({ name: 'Welcome', html });
 ```
 
-Applying one is a normal undoable edit with a toast, and your string is never mutated. Ready-made examples live in [`examples/templates/`](examples/templates/) with a working picker in [`examples/vanilla.html`](examples/vanilla.html) — both host-app content, not part of the package.
+Applying one is a normal undoable edit with a toast, and your string is never mutated. Ready-made examples live in [`examples/templates/`](https://github.com/SELISEdigitalplatforms/blocks-mailcraft/tree/main/examples/templates) with a working picker in [`examples/vanilla.html`](examples/vanilla.html) — both host-app content, shipped in the package for you to lift but not part of its API.
 
 ## Merge variables
 
@@ -271,6 +286,16 @@ Why the shape is what it is:
 - Without `remove`, the library's delete only drops the tile from view.
 - **`url` must still resolve after the email is sent.** A URL that expires in an hour produces mail whose images are already broken when it lands.
 
+A provider may also carry its own `limits` object, for a backend that knows its own ceilings:
+
+```js
+editor.storageProvider = { list, upload, limits: { accept: [...], maxBytes: 5e6 } };
+```
+
+The two are merged **per key**, with `editor.storageLimits` winning — so a provider can ship sane defaults and the host can still tighten one number without restating the rest. Either source satisfies the "limits are required" rule; only a file that passes the merged result reaches `upload`.
+
+Setting `editor.storageProvider = null` puts the built-in demo library back, which is what an unconfigured editor shows.
+
 ## Choosing what the top bar shows
 
 ```html
@@ -286,6 +311,42 @@ editor.toolbar = { logo: false, ai: false };   // drop these, keep the rest
 Parts: `logo`, `status`, `device`, `undo`, `redo`, `theme`, `ai`, `code`, `preview`, `export`.
 
 The **attribute names what to keep**; the **property names what to drop**. Markup has only strings to work with, and an allow-list reads better there than spelling out the seven things you did not want. Switching every part off collapses to no bar rather than an empty strip.
+
+`none` is the documented spelling for "no bar"; `hidden`, `off` and `false` are accepted as the same thing, and `toolbar="all"` is the explicit form of the default. The property takes `false` for no bar, and an object where only the keys set to `false` do anything — unlisted parts stay on.
+
+### What a hidden part costs you
+
+| part | with the bar gone |
+|---|---|
+| `undo` / `redo` | `editor.undo()`, `editor.redo()`, plus `Ctrl/Cmd+Z` and `Shift+Ctrl/Cmd+Z` |
+| `export` | `editor.exportHtml()` returns the HTML; `Ctrl/Cmd+E` still opens the export dialog, and the Screenshot button lives inside it |
+| `preview` | **bar-only** — the live desktop/mobile overlay has no method and no shortcut |
+| `code` | **bar-only** — the import/export-HTML modal. `editor.importHtml(html)` covers the import half |
+| `ai` | **bar-only** — the draft panel. `.aiProvider` is your function, so a host can call it directly |
+| `theme` | set the `theme` attribute yourself; while it is set the toggle is hidden anyway |
+| `logo`, `status`, `device` | display and view state only, nothing to lose |
+
+Screenshots are unaffected by any of this: `screenshotPng()`, `previewScreenshot()`, `downloadScreenshot()` and `copyScreenshot()` are element methods.
+
+`editor.core` reaches the rest (`core.openCode()`, `core.setState({ aiOpen: true })`, `core.setState({ previewOpen: true })`), but `EditorCore` is internal — its shape is free to change between versions. Keep `code`, `ai` or `preview` in the bar if you need them.
+
+## Keyboard shortcuts
+
+Bound at the window level while the editor is connected, so they work with any bar configuration, including none.
+
+| keys | what it does |
+|---|---|
+| `Esc` | in a field: leave the field. Otherwise: clear the selection and close any open panel |
+| `Ctrl/Cmd` + `Z` | undo |
+| `Shift` + `Ctrl/Cmd` + `Z` | redo |
+| `Ctrl/Cmd` + `E` | open the export dialog |
+| `Ctrl/Cmd` + `K` | link the selected text — only while editing text |
+| `Ctrl/Cmd` + `D` | duplicate the selected row or block |
+| `Backspace` / `Delete` | delete the selected row or block |
+
+Typing is never hijacked: inside a form field, `Ctrl/Cmd+Z` is the browser's own field undo and `Delete` deletes a character, not the block. Rich-text blocks are the exception for undo — their edits commit on blur, so document undo is what you want there. The screenshot viewer claims `Esc`, the arrow keys and `Space` while it is open.
+
+One caveat if your app binds the same keys: the handler asks whether the event came from a text field, not whether it came from inside the editor. `Ctrl/Cmd+E` anywhere on the page opens the export dialog, and `Backspace` on a non-field element elsewhere in your UI deletes the editor's selected block. An editor kept on a route of its own never notices; one sitting beside your own keyboard-driven UI might, and the fix is to `stopPropagation()` on the keydowns you own before they reach `window`.
 
 ## The footer strip
 
@@ -305,7 +366,10 @@ somewhere, or remove it:
 editor.footer = false;                                            // no strip
 editor.footer = '© 2026 Acme';                                    // your line
 editor.footer = { text: 'Acme Mail', href: 'https://acme.test' }; // ...with a link
+editor.footer = { show: false };                                  // no strip, from a config object
 ```
+
+`{ show: false }` is there for hosts that build the footer config as an object and would rather flip a flag than swap the whole value for `false`. As with the toolbar, `hidden`, `off` and `false` work in the attribute wherever `none` does.
 
 A link opens in a new tab (`rel="noopener noreferrer"`) so a click never carries
 unsaved work out of the editor; pass `target` to override. Schemes are
@@ -403,8 +467,8 @@ template, not to your app.
 | `theme` | `light` / `dark` |
 | `ui-font` | `inherit` or a CSS font-family stack |
 | `accent` | a CSS color, `var(--your-token)`, or `inherit` (the host's `accent-color`) |
-| `toolbar` | `none`, or a comma list of the parts to keep |
-| `footer` | `none`, or any string to use as the line |
+| `toolbar` | `none` (or `hidden` / `off` / `false`), `all`, or a comma list of the parts to keep |
+| `footer` | `none` (or `hidden` / `off` / `false`), or any string to use as the line |
 
 ### Properties
 
@@ -412,14 +476,14 @@ template, not to your app.
 |---|---|
 | `.variables` | string or array |
 | `.toolbar` | `false`, or `{ part: false }` |
-| `.footer` | `false`, a string, or `{ text, href, target }` |
+| `.footer` | `false`, a string, or `{ text, href, target, show }` |
 | `.uiFont` | string |
 | `.accent` | string |
 | `.messages` | `{ key: string }` |
-| `.storageProvider` | `{ list, upload, folders?, remove? }` |
-| `.storageLimits` | `{ accept, maxBytes, maxWidth?, maxHeight?, maxFilesPerDrop?, allowSvg? }` |
+| `.storageProvider` | `{ list, upload, folders?, remove?, limits? }` — `null` restores the built-in library |
+| `.storageLimits` | `{ accept, maxBytes, maxWidth?, maxHeight?, maxFilesPerDrop?, allowSvg? }`, merged over `provider.limits` per key |
 | `.aiProvider` | `async (prompt) => text` |
-| `.iconProvider` | social-icon override |
+| `.iconProvider` | `(platformKey, { label, size, color }) => Node` — social-icon override; falls back to the built-in icon when it is unset, throws, or returns a non-node |
 
 ### Package exports
 
@@ -428,9 +492,16 @@ template, not to your app.
 | `createEditor(target, options)` | mount into a container, returns a handle |
 | `isReady()` | whether the custom element is registered |
 | `MailCraftEditor` | the element class |
-| `LOCALES`, `LOCALE_TABLES`, `createTranslator` | i18n |
+| `LOCALES`, `LOCALE_TABLES`, `createTranslator` | i18n: the shipped tags, their tables, and the translator the editor uses |
+| `defineMessages(base, overrides)` | merge a shipped locale with your own overrides — the supported way to build a `.messages` value |
+| `missingKeys(locale, base)` | keys `base` has that `locale` does not translate. What a translator has left to do |
+| `EN`, `MESSAGE_KEYS` | the English table and every key in it |
+| `isRtl(tag)` | whether a locale tag is right-to-left. Metadata — `dir` is what actually flips the layout |
 | `validateFiles`, `acceptAttribute`, `sanitizeName` | upload validation, reusable outside the editor |
-| `EditorCore`, `renderDoc`, `BLOCKS`, `LAYOUTS` | internals, for building your own UI on top |
+| `limitsProblem(limits)` | what a limits object is missing, if anything — the check that refuses uploads |
+| `resolveLimits(hostLimits, providerLimits)` | the per-key merge the editor applies to the two limit sources |
+| `normalizeAsset(raw, probe)`, `ALL_FOLDER_ID` | coerce a provider's item into the library's asset shape; the id of the synthetic "all files" folder (`''`) |
+| `EditorCore`, `renderDoc`, `BLOCKS`, `GROUPS`, `LAYOUTS`, `PALETTE` | internals, for building your own UI on top |
 
 ### Methods
 
@@ -479,7 +550,7 @@ node build.js     # rebuild dist/ after any change under src/
 npm test          # storage, export, templates, toolbar, system — no DOM needed
 ```
 
-Deeper notes for contributors and coding agents live in [AGENTS.md](AGENTS.md).
+Deeper notes for contributors and coding agents live in [AGENTS.md](https://github.com/SELISEdigitalplatforms/blocks-mailcraft/blob/main/AGENTS.md).
 
 ---
 
