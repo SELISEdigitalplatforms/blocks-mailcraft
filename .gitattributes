@@ -1,6 +1,6 @@
-# The source tree arrived with mixed CRLF/LF. Normalize to LF in the repo so a
+# The source tree carries mixed CRLF/LF. Normalize to LF in the repo so a
 # public, cross-platform checkout produces the same bytes everywhere -- and so
-# exact-match edits don't fail on the newline alone.
+# exact-match edits do not fail on the newline alone.
 * text=auto eol=lf
 
 *.png binary

@@ -228,6 +228,11 @@ export const STYLE = `
 #mc [data-rte-select="1"] select:hover, #mc [data-rte-select="1"]:focus-within select { border-color: var(--ed-accent) !important; box-shadow: 0 0 0 3px var(--ed-soft); }
 #mc [data-rte-select="1"] select { background-image: none !important; padding-right: 24px !important; }
 #mc .mc-shell { border-color: var(--ed-line) !important; border-radius: 14px; grid-template-rows: 62px 1fr !important; box-shadow: 0 1px 2px rgba(15,23,42,.04), 0 16px 44px rgba(15,23,42,.10) !important; }
+
+/* The header row is pinned above with !important, so a shell built without a
+   header has to say so here too -- otherwise the canvas lands in a 62px track
+   and the editor renders into a sliver. */
+#mc .mc-shell.mc-no-header { grid-template-rows: 1fr !important; }
 /* Opaque, no backdrop-filter: the header sits over the scrolling canvas, so a
    backdrop blur re-composites every scroll frame -- visible scroll jank. */
 #mc .mc-header { padding: 0 18px !important; background: var(--ed-panel) !important; }

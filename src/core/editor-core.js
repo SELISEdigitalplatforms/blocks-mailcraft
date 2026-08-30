@@ -1,5 +1,5 @@
 import { uid } from './ids.js';
-import { mk, mkRow, GROUPS, LAYOUTS, migrateDoc, blankDoc } from './blocks.js';
+import { mk, mkRow, GROUPS, LAYOUTS, migrateDoc, normalizeDoc, blankDoc } from './blocks.js';
 import { binder, decorate, group } from './binder.js';
 import { seedAssets, KB, FOLDERS } from './assets.js';
 import { ALL_FOLDER_ID, normalizeAsset, resolveLimits, providerProblems } from './storage.js';
@@ -87,8 +87,64 @@ function docFromHtml(src) {
   return doc;
 }
 
+/**
+ * AI draft goals and tones.
+ *
+ * These are prompt text, not UI chrome: `runAi` splices the selected strings
+ * straight into the sentence it sends the provider, so they stay English here
+ * and are deliberately NOT routed through `t()` -- a translated goal would
+ * change what the model is asked for, not just what the operator reads. The
+ * goal list tracks the email jobs the shipped example templates already cover
+ * (welcome, receipt, cart, restock, referral, review, newsletter, ...) so the
+ * dropdown offers work an operator recognises rather than five generic verbs.
+ *
+ * Goals carry a `group` for the `<optgroup>` label; the first entry is the
+ * default in `state.aiGoal`.
+ */
+export const AI_GOALS = [
+  { group: 'Draft a new email', items: [
+    'Full email draft',
+    'Welcome or onboarding',
+    'Product announcement',
+    'Promotion or sale',
+    'Event or webinar invite',
+    'Newsletter intro',
+    'Abandoned cart reminder',
+    'Back in stock alert',
+    'Re-engagement nudge',
+    'Referral or reward invite',
+    'Feedback or review request',
+    'Thank you or post-purchase',
+    'Transactional notice',
+  ] },
+  { group: 'Rework existing copy', items: [
+    'Headline options',
+    'Shorten existing copy',
+    'Rewrite for clarity',
+  ] },
+];
+
+/** Flat list -- tone has no natural grouping, and twelve entries still scan in one pass. */
+export const AI_TONES = [
+  'Confident, plain',
+  'Warm and personal',
+  'Friendly and casual',
+  'Direct and minimal',
+  'Playful',
+  'Enthusiastic and bold',
+  'Urgent and time-sensitive',
+  'Premium and understated',
+  'Reassuring and calm',
+  'Apologetic and accountable',
+  'Formal',
+  'Technical and precise',
+];
+
+/** Every goal string, flattened -- the order the `<select>` presents them in. */
+export const AI_GOAL_VALUES = AI_GOALS.flatMap((g) => g.items);
+
 export class EditorCore {
-  constructor({ variables, campaign, aiProvider, iconProvider, messages, storageProvider, storageLimits } = {}) {
+  constructor({ variables, aiProvider, iconProvider, messages, storageProvider, storageLimits } = {}) {
     this.variablesRaw = variables ?? null;
     this.aiProvider = aiProvider ?? null;
     this.iconProvider = iconProvider ?? null;
@@ -116,11 +172,10 @@ export class EditorCore {
       doc: blankDoc(),
       // Empty, not a sample name: this ends up in the exported <title> and the
       // download filename, so a placeholder here ships in a host's real email.
-      campaign: campaign ?? '',
       sel: null, hover: null, tab: 'design', chrome: 'light', device: 'desktop', mode: 'rows', zoom: 1, advancedOpen: false,
       assets: seedAssets(), assetFolder: 'All files', assetQuery: '', libraryOpen: false, assetTarget: null,
       folders: null, assetCursor: null, assetsLoading: false, assetsError: null, assetsLoaded: false, uploading: 0,
-      exportOpen: false, exportCode: '', copied: false, aiOpen: false, aiGoal: 'Full email draft', aiTone: 'Confident, plain',
+      exportOpen: false, exportCode: '', copied: false, aiOpen: false, aiGoal: AI_GOAL_VALUES[0], aiTone: AI_TONES[0],
       aiBrief: '', aiBusy: false, aiResults: [], previewOpen: false, toast: null, drop: null, rowDrop: null,
       editing: null, linkDraft: null, codeOpen: false, codeSrc: '', codeLive: '', codeDirty: false, codeDevice: 'desktop',
       history: [], future: [], now: Date.now(), savedStatus: 'idle', savedAt: null, libHot: false,
@@ -205,12 +260,14 @@ export class EditorCore {
         && ((this.tabKey && localStorage.getItem(this.tabKey)) || localStorage.getItem(STORAGE_KEY));
       if (raw) {
         const s = JSON.parse(migrateTokens(raw));
-        if (s && s.doc) migrateDoc(s.doc);
+        // A draft blob is as untrusted as any other input -- it may have been
+        // written by an older build, or edited by hand in devtools.
+        if (s && s.doc) s.doc = normalizeDoc(s.doc);
         // `device` was never actually written by `persist()` below, but a
         // stale/foreign blob could still carry the retired 'dark' inbox-preview
         // value -- normalize anything that isn't 'mobile' to 'desktop' rather
         // than trust it verbatim.
-        if (s && s.doc) this.setState({ doc: s.doc, campaign: s.campaign || this.state.campaign, assets: s.assets || this.state.assets, chrome: s.chrome || 'light', device: s.device === 'mobile' ? 'mobile' : 'desktop' });
+        if (s && s.doc) this.setState({ doc: s.doc, assets: s.assets || this.state.assets, chrome: s.chrome || 'light', device: s.device === 'mobile' ? 'mobile' : 'desktop' });
       }
     } catch { /* ignore */ }
     this.sweepDrafts();
@@ -456,10 +513,10 @@ export class EditorCore {
 
   hasCountdown() { return this.state.doc.rows.some((r) => r.cols.some((c) => c.blocks.some((b) => b.type === 'countdown'))); }
 
-  persist(doc, campaign, assets, chrome) {
+  persist(doc, assets, chrome) {
     try {
       const blob = JSON.stringify({
-        doc: doc || this.state.doc, campaign: campaign || this.state.campaign,
+        doc: doc || this.state.doc,
         // With a provider the library belongs to the backend, not to this
         // draft: the files are already durable there, and writing them here
         // only risks reviving tiles for files since deleted. Without one it
@@ -824,8 +881,8 @@ export class EditorCore {
       : (typeof tpl.html === 'string' && tpl.html.trim()) ? docFromHtml(tpl.html)
       : null;
     if (!built) return;
-    const doc = JSON.parse(JSON.stringify(built));
-    migrateDoc(doc);
+    const doc = normalizeDoc(JSON.parse(JSON.stringify(built)));
+    if (!doc) return;
     this.docSetByHost = true;
     this.setState({
       doc,
@@ -1033,7 +1090,7 @@ export class EditorCore {
     // "Uploads" is a real folder only in the built-in seed set; with a provider
     // the file already sits in whichever folder the user was looking at.
     if (!this.storageProvider) patch.assetFolder = 'Uploads';
-    this.setState(patch, () => { if (!this.storageProvider) this.persist(null, null, assets); });
+    this.setState(patch, () => { if (!this.storageProvider) this.persist(null, assets); });
     this.flash(added.length === 1 ? this.t('toast.fileUploadedOne') : this.t('toast.fileUploadedMany', { count: added.length }));
   }
 
@@ -1045,7 +1102,7 @@ export class EditorCore {
       catch (e) { this.flash(this.t('storage.errDeleteFailed', { name: a.name, reason: (e && e.message) || '' })); return; }
     }
     const assets = this.state.assets.filter((x) => x.id !== a.id);
-    this.setState({ assets }, () => { if (!provider) this.persist(null, null, assets); });
+    this.setState({ assets }, () => { if (!provider) this.persist(null, assets); });
     this.flash(this.t('toast.assetDeleted', { name: a.name }));
   }
 
@@ -1086,7 +1143,7 @@ export class EditorCore {
     const blob = new Blob([this.state.exportCode], { type: 'text/html' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = (this.state.campaign || 'email').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.html';
+    a.download = 'email.html';
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1500);
   };
@@ -1133,7 +1190,7 @@ export class EditorCore {
   runAi = async () => {
     const { aiGoal, aiTone, aiBrief } = this.state;
     this.setState({ aiBusy: true, aiResults: [] });
-    const prompt = 'You write marketing email copy. Goal: ' + aiGoal + '. Tone: ' + aiTone + '. Brief: ' + (aiBrief || this.state.campaign) +
+    const prompt = 'You write marketing email copy. Goal: ' + aiGoal + '. Tone: ' + aiTone + '. Brief: ' + aiBrief +
       '. Return ONLY JSON: {"headline":"...","body":"...","cta":"..."} — body max 55 words, plain sentences, no emoji, may use {{ first_name }}.';
     let out = null;
     try {
@@ -1420,7 +1477,15 @@ export class EditorCore {
 
   // ---- host-facing API (setContent/getContent/etc. live on the element) ----
 
-  loadDoc(doc) {
+  /**
+   * `setContent`. Normalized on the way in for the same reason the HTML path
+   * is: a host's stored JSON may predate this build or have been assembled by
+   * a backend that only wrote the fields it cared about. Sparse input used to
+   * reach the renderer intact and fail later at export time.
+   */
+  loadDoc(input) {
+    const doc = normalizeDoc(input);
+    if (!doc) return;
     this.docSetByHost = true;
     this.setState({ doc, sel: null, history: this.state.history.concat(JSON.stringify(this.state.doc)), future: [] }, () => this.persist(doc));
   }

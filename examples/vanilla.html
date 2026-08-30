@@ -34,7 +34,6 @@
 <mailcraft-editor
   id="editor"
   variables="first_name,last_name,email,company,unsubscribe_url"
-  campaign="Welcome email"
   theme="light"
   locale="en"
 ></mailcraft-editor>
@@ -49,331 +48,6 @@
      works when double-clicked (fetch() is blocked on file:// pages). The same
      emails live as standalone files in templates/ to copy into your own app;
      a real host would pull the HTML from wherever it stores templates. -->
-<script type="text/x-template" data-name="The Sunday Brief">
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<title>The Sunday Brief</title>
-</head>
-<body style="margin:0; padding:0; background-color:#f1f0ec;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f0ec;">
-    <tr>
-      <td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff;">
-          <tr>
-            <td style="background-color:#1c1b18; padding:26px 32px;">
-              <h1 style="margin:0 0 6px; font-family:Georgia, 'Times New Roman', serif; font-size:26px; line-height:1.2; color:#f5f2ea;">The Sunday Brief</h1>
-              <p style="margin:0; font-family:Georgia, serif; font-size:13px; letter-spacing:0.14em; text-transform:uppercase; color:#b8b2a4;">Issue 214 &middot; Curated reads for a slow morning</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="height:5px; line-height:5px; font-size:0; background-color:#a06b2c;">&nbsp;</td>
-          </tr>
-          <tr>
-            <td align="center" style="background-color:#f6f4ee; padding:36px 40px 34px; border-bottom:1px solid #e3e0d8;">
-              <p style="margin:0 0 10px; font-family:Georgia, serif; font-size:12px; letter-spacing:0.14em; text-transform:uppercase; color:#a06b2c;">Cover story</p>
-              <h2 style="margin:0 0 12px; font-family:Georgia, 'Times New Roman', serif; font-size:28px; line-height:1.25; color:#1c1b18;">Why the best ideas arrive before nine</h2>
-              <p style="margin:0 0 18px; font-family:Georgia, serif; font-size:15px; line-height:1.65; color:#3d3a33;">Hello {{ first_name }} &mdash; this week we sat down with three writers who guard their mornings like a vault. What they cut, what they kept, and the one ritual all three share.</p>
-              <a href="https://example.com/issue-214" style="display:inline-block; background-color:#1c1b18; color:#f5f2ea; font-family:Georgia, serif; font-size:14px; font-weight:bold; text-decoration:none; padding:12px 26px; border-radius:4px;">Read the full story</a>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:26px 32px 4px;">
-              <h3 style="margin:0 0 8px; font-family:Georgia, serif; font-size:17px; color:#1c1b18;">Also worth your time</h3>
-              <p style="margin:0 0 10px; font-family:Georgia, serif; font-size:14px; line-height:1.6; color:#3d3a33;"><a href="https://example.com/reads/1" style="color:#a06b2c;">The quiet return of the personal website</a> &mdash; a ten-minute read on owning your corner of the internet.</p>
-              <p style="margin:0 0 10px; font-family:Georgia, serif; font-size:14px; line-height:1.6; color:#3d3a33;"><a href="https://example.com/reads/2" style="color:#a06b2c;">Notes on a smaller inbox</a> &mdash; what happened when we unsubscribed from everything for a month.</p>
-              <p style="margin:0 0 10px; font-family:Georgia, serif; font-size:14px; line-height:1.6; color:#3d3a33;"><a href="https://example.com/reads/3" style="color:#a06b2c;">Interview: the archivist of lost fonts</a> &mdash; rescuing typefaces from forgotten floppy disks.</p>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:24px 32px 30px;">
-              <p style="margin:0; font-family:Georgia, serif; font-size:12px; line-height:1.6; color:#8d887b;">You are reading The Sunday Brief because you subscribed at example.com.<br /><a href="{{ unsubscribe_url }}" style="color:#8d887b;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#8d887b;">Update preferences</a></p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-</script>
-<script type="text/x-template" data-name="Midnight flash sale">
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<title>Midnight flash sale</title>
-</head>
-<body style="margin:0; padding:0; background-color:#0d0d12;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0d0d12;">
-    <tr>
-      <td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#f7c948; border-radius:12px; overflow:hidden;">
-          <tr>
-            <td align="center" style="background-color:#16161d; padding:12px 20px;">
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; letter-spacing:0.24em; text-transform:uppercase; color:#f7c948;">Tonight only &middot; ends 23:59</p>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:44px 36px 10px;">
-              <h1 style="margin:0 0 14px; font-family:Arial, Helvetica, sans-serif; font-size:58px; line-height:0.95; font-weight:bold; letter-spacing:-0.02em; color:#16161d;">40% off<br />everything</h1>
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:1.6; color:#4a3d14;">No code, no minimum, no exclusions. The price you see at checkout is already cut.</p>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:30px 32px 40px;">
-              <a href="https://example.com/sale" style="display:inline-block; background-color:#16161d; color:#f7c948; font-family:Arial, Helvetica, sans-serif; font-size:16px; font-weight:bold; text-decoration:none; padding:16px 46px; border-radius:8px;">Shop the sale</a>
-            </td>
-          </tr>
-        </table>
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#16161d; border-radius:12px; margin-top:16px;">
-          <tr>
-            <td style="padding:28px 32px 6px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td width="50%" valign="top" style="padding:0 10px 0 0;">
-                    <h3 style="margin:0 0 6px; font-family:Arial, Helvetica, sans-serif; font-size:15px; color:#ffffff;">Outerwear</h3>
-                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:13px; line-height:1.55; color:#b9b9c6;">Every jacket and coat from the autumn drop, including the ones that never go on sale.</p>
-                  </td>
-                  <td width="50%" valign="top" style="padding:0 0 0 10px;">
-                    <h3 style="margin:0 0 6px; font-family:Arial, Helvetica, sans-serif; font-size:15px; color:#ffffff;">Last sizes</h3>
-                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:13px; line-height:1.55; color:#b9b9c6;">Final runs marked down a further 10% at checkout while stock lasts.</p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:22px 32px 8px;">
-              <hr style="border:none; border-top:1px solid #2a2a35; margin:0;" />
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:14px 32px 32px;">
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; line-height:1.6; color:#77778a;">Sent to {{ email }} &middot; Prices revert at midnight local time.<br /><a href="{{ unsubscribe_url }}" style="color:#77778a;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#77778a;">Preferences</a></p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-</script>
-<script type="text/x-template" data-name="Welcome to your workspace">
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<title>Welcome to your workspace</title>
-</head>
-<body style="margin:0; padding:0; background-color:#eef2f6;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef2f6;">
-    <tr>
-      <td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff; border-radius:8px;">
-          <tr>
-            <td style="height:5px; line-height:5px; font-size:0; background-color:#0065b3; border-radius:8px 8px 0 0;">&nbsp;</td>
-          </tr>
-          <tr>
-            <td style="padding:34px 36px 8px;">
-              <h1 style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:26px; line-height:1.25; color:#10243c;">Welcome aboard, {{ first_name }}</h1>
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:1.65; color:#3f5063;">Your workspace for {{ company }} is ready. Three small steps and your whole team can be working in it today.</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:24px 36px 0;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0065b3; border-radius:8px;">
-                <tr>
-                  <td align="center" style="padding:26px 30px;">
-                    <p style="margin:0 0 8px; font-family:Arial, Helvetica, sans-serif; font-size:21px; font-weight:bold; color:#ffffff;">Your workspace is live</p>
-                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:13px; letter-spacing:0.04em; color:#cfe3f7;">Unlimited projects &nbsp;&middot;&nbsp; Invite anyone &nbsp;&middot;&nbsp; Connect your tools</p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:26px 36px 4px;">
-              <h2 style="margin:0 0 14px; font-family:Arial, Helvetica, sans-serif; font-size:17px; color:#10243c;">Get set up in five minutes</h2>
-              <p style="margin:0 0 10px; font-family:Arial, Helvetica, sans-serif; font-size:14px; line-height:1.6; color:#3f5063;"><strong style="color:#0065b3;">1.</strong> &nbsp;Create your first project &mdash; a name is enough, everything else can change later.</p>
-              <p style="margin:0 0 10px; font-family:Arial, Helvetica, sans-serif; font-size:14px; line-height:1.6; color:#3f5063;"><strong style="color:#0065b3;">2.</strong> &nbsp;Invite your team &mdash; anyone with a {{ company }} email joins without approval.</p>
-              <p style="margin:0 0 10px; font-family:Arial, Helvetica, sans-serif; font-size:14px; line-height:1.6; color:#3f5063;"><strong style="color:#0065b3;">3.</strong> &nbsp;Connect your tools &mdash; two clicks each for calendar, storage and chat.</p>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:18px 36px 6px;">
-              <a href="https://example.com/getting-started" style="display:inline-block; background-color:#0065b3; color:#ffffff; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; text-decoration:none; padding:13px 34px; border-radius:6px;">Open your workspace</a>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:26px 36px 8px;">
-              <hr style="border:none; border-top:1px solid #e1e8ef; margin:0;" />
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:12px 36px 32px;">
-              <p style="margin:0 0 8px; font-family:Arial, Helvetica, sans-serif; font-size:13px; line-height:1.6; color:#3f5063;">Stuck on anything? Reply to this email &mdash; a real person reads every message, usually within the hour.</p>
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; line-height:1.6; color:#8194a7;"><a href="{{ unsubscribe_url }}" style="color:#8194a7;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#8194a7;">Notification settings</a></p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-</script>
-<script type="text/x-template" data-name="Order confirmed">
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<title>Order confirmed</title>
-</head>
-<body style="margin:0; padding:0; background-color:#f4f4f2;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f2;">
-    <tr>
-      <td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff;">
-          <tr>
-            <td style="padding:32px 36px 6px;">
-              <p style="margin:0 0 8px; font-family:Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; letter-spacing:0.16em; text-transform:uppercase; color:#2f9e44;">Order confirmed</p>
-              <h1 style="margin:0 0 10px; font-family:Arial, Helvetica, sans-serif; font-size:24px; line-height:1.25; color:#1a1a1a;">Thanks, {{ first_name }} &mdash; it&rsquo;s on its way</h1>
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:14px; line-height:1.6; color:#4a4a4a;">Order <strong>#48213</strong>, placed today. We&rsquo;ll email tracking as soon as the courier scans it &mdash; usually within one business day.</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:24px 36px 4px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e6e6e2; border-radius:6px;">
-                <tr>
-                  <td style="padding:14px 18px; border-bottom:1px solid #e6e6e2;">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                      <tr>
-                        <td style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#1a1a1a;">Field jacket &mdash; olive, M</td>
-                        <td align="right" style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#1a1a1a;">$148.00</td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:14px 18px; border-bottom:1px solid #e6e6e2;">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                      <tr>
-                        <td style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#1a1a1a;">Merino crew &mdash; charcoal, M</td>
-                        <td align="right" style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#1a1a1a;">$85.00</td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:14px 18px; background-color:#fafaf8;">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                      <tr>
-                        <td style="font-family:Arial, Helvetica, sans-serif; font-size:13px; color:#4a4a4a;">Shipping</td>
-                        <td align="right" style="font-family:Arial, Helvetica, sans-serif; font-size:13px; color:#4a4a4a;">Free</td>
-                      </tr>
-                      <tr>
-                        <td style="padding-top:6px; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; color:#1a1a1a;">Total</td>
-                        <td align="right" style="padding-top:6px; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; color:#1a1a1a;">$233.00</td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:22px 36px 6px;">
-              <a href="https://example.com/orders/48213" style="display:inline-block; background-color:#1a1a1a; color:#ffffff; font-family:Arial, Helvetica, sans-serif; font-size:14px; font-weight:bold; text-decoration:none; padding:12px 30px; border-radius:6px;">View your order</a>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:24px 36px 8px;">
-              <hr style="border:none; border-top:1px solid #e6e6e2; margin:0;" />
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:10px 36px 30px;">
-              <p style="margin:0 0 8px; font-family:Arial, Helvetica, sans-serif; font-size:13px; line-height:1.6; color:#4a4a4a;">Need a different size? Exchanges are free for 30 days &mdash; start one from the order page above.</p>
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; line-height:1.6; color:#9a9a94;">This receipt was sent to {{ email }}. <a href="{{ unsubscribe_url }}" style="color:#9a9a94;">Unsubscribe from marketing</a> &mdash; you will still receive order emails.</p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-</script>
-<script type="text/x-template" data-name="The Harvest Table">
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<title>The Harvest Table</title>
-</head>
-<body style="margin:0; padding:0; background-color:#efe9df;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#efe9df;">
-    <tr>
-      <td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff;">
-          <tr>
-            <td style="background-color:#1f2430; padding:20px 32px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="font-family:Georgia, 'Times New Roman', serif; font-size:19px; font-weight:bold; letter-spacing:0.06em; color:#f3ead9;">EMBER &amp; VINE</td>
-                  <td align="right" style="font-family:Georgia, serif; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:#c9a86a;">Twelve seats &middot; Friday</td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="background-color:#2c3342; padding:44px 40px 40px;">
-              <p style="margin:0 0 10px; font-family:Georgia, serif; font-size:12px; letter-spacing:0.2em; text-transform:uppercase; color:#c9a86a;">The Harvest Table</p>
-              <h1 style="margin:0 0 14px; font-family:Georgia, 'Times New Roman', serif; font-size:32px; line-height:1.2; color:#f3ead9;">One night. Six courses.<br />Twelve guests.</h1>
-              <p style="margin:0; font-family:Georgia, serif; font-size:15px; line-height:1.7; color:#c9c2b2;">Chef Amara&rsquo;s late-autumn menu moves from the first oyster to quince over an open flame. One seating, one long table, and the kitchen door left open.</p>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:32px 40px 8px;">
-              <a href="https://example.com/reserve" style="display:inline-block; background-color:#1f2430; color:#f3ead9; font-family:Georgia, serif; font-size:15px; text-decoration:none; padding:13px 34px; border-radius:4px;">Reserve your place</a>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:26px 40px 8px;">
-              <hr style="border:none; border-top:1px solid #e5ddcc; margin:0;" />
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:14px 40px 6px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td width="50%" valign="top" style="padding:0 12px 0 0;">
-                    <h3 style="margin:0 0 6px; font-family:Georgia, serif; font-size:15px; color:#1f2430;">Friday, 14 November</h3>
-                    <p style="margin:0; font-family:Georgia, serif; font-size:13.5px; line-height:1.6; color:#4a4536;">Doors at seven, first course at half past. Plan on three unhurried hours.</p>
-                  </td>
-                  <td width="50%" valign="top" style="padding:0 0 0 12px;">
-                    <h3 style="margin:0 0 6px; font-family:Georgia, serif; font-size:15px; color:#1f2430;">$140 per seat</h3>
-                    <p style="margin:0; font-family:Georgia, serif; font-size:13.5px; line-height:1.6; color:#4a4536;">Wine pairings offered at the table. Tell us about allergies when you book.</p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:26px 40px 30px;">
-              <p style="margin:0; font-family:Georgia, serif; font-size:11.5px; line-height:1.6; color:#9a8f78;">Ember &amp; Vine, 12 Rue des Vignes &middot; You joined this list at the restaurant.<br /><a href="{{ unsubscribe_url }}" style="color:#9a8f78;">Unsubscribe</a></p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-</script>
 <script type="text/x-template" data-name="Activate your account">
 <!doctype html>
 <html>
@@ -385,7 +59,7 @@
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef2f6;">
     <tr>
       <td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff; border-radius:10px; overflow:hidden;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff; overflow:hidden;">
           <tr>
             <td align="center" style="background-color:#0065b3; padding:22px 36px;">
               <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:17px; font-weight:bold; letter-spacing:0.08em; color:#ffffff;">{{ company }}</p>
@@ -400,7 +74,7 @@
           </tr>
           <tr>
             <td align="center" style="padding:26px 36px 8px;">
-              <a href="https://example.com/activate" style="display:inline-block; background-color:#0065b3; color:#ffffff; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; text-decoration:none; padding:14px 38px; border-radius:8px;">Activate my account</a>
+              <a href="https://example.com/activate" style="display:inline-block; background-color:#0065b3; color:#ffffff; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; text-decoration:none; padding:14px 38px; ">Activate my account</a>
             </td>
           </tr>
           <tr>
@@ -411,7 +85,7 @@
           </tr>
           <tr>
             <td style="padding:28px 36px 8px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f8fc; border-radius:8px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f8fc; ">
                 <tr>
                   <td style="padding:16px 20px; font-family:Arial, Helvetica, sans-serif; font-size:12.5px; line-height:1.65; color:#5b6d80;">This link is personal to <strong>{{ email }}</strong> and expires in 24 hours. If you didn&rsquo;t create an account with {{ company }}, you can safely ignore this email.</td>
                 </tr>
@@ -430,539 +104,6 @@
 </body>
 </html>
 </script>
-<script type="text/x-template" data-name="Reset your password">
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<title>Reset your password</title>
-</head>
-<body style="margin:0; padding:0; background-color:#eef2f6;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef2f6;">
-    <tr>
-      <td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff; border-radius:10px; overflow:hidden;">
-          <tr>
-            <td align="center" style="background-color:#0065b3; padding:22px 36px;">
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:17px; font-weight:bold; letter-spacing:0.08em; color:#ffffff;">{{ company }}</p>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:34px 36px 8px;">
-              <p style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:bold; letter-spacing:0.2em; text-transform:uppercase; color:#d97706;">Password reset</p>
-              <h1 style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:26px; line-height:1.25; color:#10243c;">Reset your password</h1>
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:1.65; color:#3f5063;">Hi {{ first_name }}, we received a request to reset the password for <strong>{{ email }}</strong>. Use the button below to choose a new one.</p>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:26px 36px 8px;">
-              <a href="https://example.com/reset" style="display:inline-block; background-color:#0065b3; color:#ffffff; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; text-decoration:none; padding:14px 38px; border-radius:8px;">Choose a new password</a>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:10px 36px 4px;">
-              <p style="margin:0 0 6px; font-family:Arial, Helvetica, sans-serif; font-size:13px; color:#8194a7;">Button not working? Paste this into your browser:</p>
-              <p style="margin:0; font-family:'Courier New', Courier, monospace; font-size:12px; line-height:1.6; color:#3f5063;"><a href="https://example.com/reset" style="color:#0065b3;">https://example.com/reset</a></p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:28px 36px 8px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f8fc; border-radius:8px;">
-                <tr>
-                  <td style="padding:16px 20px; font-family:Arial, Helvetica, sans-serif; font-size:12.5px; line-height:1.65; color:#5b6d80;">This link works once and expires in 30 minutes. If you didn&rsquo;t ask for a reset, ignore this email &mdash; your current password keeps working.</td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:24px 36px 30px;">
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; line-height:1.6; color:#8194a7;"><a href="{{ unsubscribe_url }}" style="color:#8194a7;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#8194a7;">Notification settings</a></p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-</script>
-<script type="text/x-template" data-name="Your password was changed">
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<title>Your password was changed</title>
-</head>
-<body style="margin:0; padding:0; background-color:#eef2f6;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef2f6;">
-    <tr>
-      <td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff; border-radius:10px; overflow:hidden;">
-          <tr>
-            <td align="center" style="background-color:#0065b3; padding:22px 36px;">
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:17px; font-weight:bold; letter-spacing:0.08em; color:#ffffff;">{{ company }}</p>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:34px 36px 8px;">
-              <p style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:bold; letter-spacing:0.2em; text-transform:uppercase; color:#2f9e44;">Security update</p>
-              <h1 style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:26px; line-height:1.25; color:#10243c;">Password updated</h1>
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:1.65; color:#3f5063;">Hi {{ first_name }}, your {{ company }} password was just changed. Everything went through &mdash; no action is needed.</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:26px 36px 8px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e1e8ef; border-radius:8px;">
-                <tr>
-                  <td style="padding:14px 18px; border-bottom:1px solid #e1e8ef; font-family:Arial, Helvetica, sans-serif; font-size:13px; color:#8194a7;">Account</td>
-                  <td align="right" style="padding:14px 18px; border-bottom:1px solid #e1e8ef; font-family:Arial, Helvetica, sans-serif; font-size:13px; color:#10243c;">{{ email }}</td>
-                </tr>
-                <tr>
-                  <td style="padding:14px 18px; font-family:Arial, Helvetica, sans-serif; font-size:13px; color:#8194a7;">When</td>
-                  <td align="right" style="padding:14px 18px; font-family:Arial, Helvetica, sans-serif; font-size:13px; color:#10243c;">Just now, from this account&rsquo;s session</td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:24px 36px 6px;">
-              <p style="margin:0 0 10px; font-family:Arial, Helvetica, sans-serif; font-size:14px; line-height:1.65; color:#3f5063;"><strong style="color:#10243c;">Wasn&rsquo;t you?</strong> Reset your password right away and reply to this email &mdash; our team will lock the account while we look into it.</p>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:14px 36px 8px;">
-              <a href="https://example.com/reset" style="display:inline-block; background-color:#ffffff; color:#0065b3; font-family:Arial, Helvetica, sans-serif; font-size:14px; font-weight:bold; text-decoration:none; padding:12px 32px; border-radius:8px; border:2px solid #0065b3;">Reset my password</a>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:26px 36px 30px;">
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; line-height:1.6; color:#8194a7;"><a href="{{ unsubscribe_url }}" style="color:#8194a7;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#8194a7;">Notification settings</a></p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-</script>
-<script type="text/x-template" data-name="Meet Nova launch">
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<title>Meet Nova — our biggest release yet</title>
-</head>
-<body style="margin:0; padding:0; background-color:#0b1020;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0b1020;">
-    <tr>
-      <td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#111832; border-radius:12px;">
-          <tr>
-            <td align="center" style="background-color:#0065b3; padding:34px 32px 30px; border-radius:12px 12px 0 0;">
-              <p style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; letter-spacing:0.22em; text-transform:uppercase; color:#bfdbfe;">New from {{ company }}</p>
-              <h1 style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:38px; line-height:1.1; color:#ffffff;">Meet Nova</h1>
-              <p style="margin:10px 0 0; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:1.5; color:#dbeafe;">Our biggest release yet &mdash; and it&rsquo;s already in your account.</p>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:32px 36px 6px;">
-              <h2 style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:21px; line-height:1.3; color:#ffffff;">Everything you asked for, in one update</h2>
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:14.5px; line-height:1.7; color:#aebad6;">Hi {{ first_name }} &mdash; over 4,000 of you shaped this release. Nova rebuilds the parts that slowed you down and adds the three things you asked for most.</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:24px 36px 4px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td width="33%" valign="top" align="center" style="padding:0 8px;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" style="background-color:#1c2848; border-radius:10px;"><tr><td align="center" style="padding:12px 16px; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; color:#58a8e3;">2&times;</td></tr></table>
-                    <h3 style="margin:10px 0 6px; font-family:Arial, Helvetica, sans-serif; font-size:14.5px; color:#ffffff;">Faster</h3>
-                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:12.5px; line-height:1.55; color:#8f9cbd;">A new engine under the hood &mdash; big projects open instantly.</p>
-                  </td>
-                  <td width="34%" valign="top" align="center" style="padding:0 8px;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" style="background-color:#1c2848; border-radius:10px;"><tr><td align="center" style="padding:12px 16px; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; color:#58a8e3;">Smart</td></tr></table>
-                    <h3 style="margin:10px 0 6px; font-family:Arial, Helvetica, sans-serif; font-size:14.5px; color:#ffffff;">Assist</h3>
-                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:12.5px; line-height:1.55; color:#8f9cbd;">Drafts, summaries and clean-ups, one keystroke away.</p>
-                  </td>
-                  <td width="33%" valign="top" align="center" style="padding:0 8px;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" style="background-color:#1c2848; border-radius:10px;"><tr><td align="center" style="padding:12px 16px; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; color:#58a8e3;">100%</td></tr></table>
-                    <h3 style="margin:10px 0 6px; font-family:Arial, Helvetica, sans-serif; font-size:14.5px; color:#ffffff;">Private</h3>
-                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:12.5px; line-height:1.55; color:#8f9cbd;">Your data stays yours &mdash; encrypted, never trained on.</p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:28px 36px 8px;">
-              <a href="https://example.com/nova" style="display:inline-block; background-color:#58a8e3; color:#0b1020; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; text-decoration:none; padding:14px 40px; border-radius:8px;">Try Nova today</a>
-              <p style="margin:12px 0 0; font-family:Arial, Helvetica, sans-serif; font-size:12.5px; color:#8f9cbd;">Free for every current customer &mdash; nothing to buy, nothing to migrate.</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:26px 36px 8px;">
-              <hr style="border:none; border-top:1px solid #232e52; margin:0;" />
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:14px 36px 32px;">
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; line-height:1.6; color:#68738f;">Sent to {{ email }}.<br /><a href="{{ unsubscribe_url }}" style="color:#68738f;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#68738f;">Preferences</a></p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-</script>
-<script type="text/x-template" data-name="Thank-you promo code">
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<title>A little thank-you — 20% off</title>
-</head>
-<body style="margin:0; padding:0; background-color:#fdf8f3;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fdf8f3;">
-    <tr>
-      <td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff; border-radius:12px;">
-          <tr>
-            <td align="center" style="padding:38px 36px 8px;">
-              <p style="margin:0 0 10px; font-family:Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; letter-spacing:0.2em; text-transform:uppercase; color:#c2762d;">A small thank-you</p>
-              <h1 style="margin:0 0 12px; font-family:Georgia, 'Times New Roman', serif; font-size:30px; line-height:1.2; color:#2d2a24;">Here&rsquo;s 20% off, {{ first_name }}</h1>
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:1.65; color:#5d574c;">It&rsquo;s been a year since you joined us &mdash; and that&rsquo;s worth celebrating. Here&rsquo;s a little something to mark it.</p>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:26px 36px 8px;">
-              <table role="presentation" cellpadding="0" cellspacing="0" style="border:2px dashed #d9b98a; border-radius:10px;">
-                <tr>
-                  <td align="center" style="padding:22px 46px;">
-                    <p style="margin:0 0 4px; font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:bold; letter-spacing:0.18em; text-transform:uppercase; color:#a3845c;">Your code</p>
-                    <p style="margin:0 0 8px; font-family:'Courier New', Courier, monospace; font-size:28px; font-weight:bold; letter-spacing:0.12em; color:#2d2a24;">THANKYOU20</p>
-                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:12.5px; color:#a3845c;">20% off &middot; yours until 30 September</p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:24px 36px 8px;">
-              <a href="https://example.com/shop" style="display:inline-block; background-color:#2d2a24; color:#f6efe4; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; text-decoration:none; padding:14px 40px; border-radius:8px;">Use my code</a>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:26px 36px 6px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td width="50%" valign="top" style="padding:0 10px 0 0;">
-                    <h3 style="margin:0 0 6px; font-family:Arial, Helvetica, sans-serif; font-size:14.5px; color:#2d2a24;">Works on everything</h3>
-                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:13px; line-height:1.55; color:#5d574c;">One code, whole store. Apply it at checkout and watch the total drop.</p>
-                  </td>
-                  <td width="50%" valign="top" style="padding:0 0 0 10px;">
-                    <h3 style="margin:0 0 6px; font-family:Arial, Helvetica, sans-serif; font-size:14.5px; color:#2d2a24;">Stack it with sales</h3>
-                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:13px; line-height:1.55; color:#5d574c;">Already-marked-down pieces count too &mdash; yes, really.</p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:24px 36px 8px;">
-              <hr style="border:none; border-top:1px solid #eee3d2; margin:0;" />
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:12px 36px 32px;">
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; line-height:1.6; color:#a3988a;">Sent to {{ email }} &middot; One code per order.<br /><a href="{{ unsubscribe_url }}" style="color:#a3988a;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#a3988a;">Preferences</a></p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-</script>
-<script type="text/x-template" data-name="Season finale sale">
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<title>Season finale — up to 50% off</title>
-</head>
-<body style="margin:0; padding:0; background-color:#f2f4f8;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f2f4f8;">
-    <tr>
-      <td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff; border-radius:12px; overflow:hidden;">
-          <tr>
-            <td align="center" style="background-color:#eaf1fb; padding:36px 32px 30px;">
-              <p style="margin:0 0 10px; font-family:Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; letter-spacing:0.2em; text-transform:uppercase; color:#0065b3;">Final days &middot; ends Sunday</p>
-              <h1 style="margin:0 0 10px; font-family:Arial, Helvetica, sans-serif; font-size:36px; line-height:1.1; color:#0f2c52;">Season finale</h1>
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:1.6; color:#435d80;">Up to 50% off the spring collection &mdash; once it&rsquo;s gone, it&rsquo;s gone for good.</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:28px 32px 4px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td width="50%" valign="top" style="padding:0 10px 0 0;">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0f2c52; border-radius:8px 8px 0 0;"><tr><td align="center" style="padding:28px 16px; font-family:Georgia, serif; font-size:19px; color:#dbe7f7;">Womenswear</td></tr></table>
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f6f9fd; border-radius:0 0 8px 8px;"><tr><td style="padding:14px 16px 4px;"><h3 style="margin:0 0 6px; font-family:Arial, Helvetica, sans-serif; font-size:14.5px; color:#0f2c52;">Light layers</h3><p style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:13px; line-height:1.5; color:#435d80;">Linen, silk and everything breezy.</p><p style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:16px; font-weight:bold; color:#0f2c52;">30&ndash;50% off</p></td></tr></table>
-                  </td>
-                  <td width="50%" valign="top" style="padding:0 0 0 10px;">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#33517c; border-radius:8px 8px 0 0;"><tr><td align="center" style="padding:28px 16px; font-family:Georgia, serif; font-size:19px; color:#e7eef8;">Menswear</td></tr></table>
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f6f9fd; border-radius:0 0 8px 8px;"><tr><td style="padding:14px 16px 4px;"><h3 style="margin:0 0 6px; font-family:Arial, Helvetica, sans-serif; font-size:14.5px; color:#0f2c52;">Summer tailoring</h3><p style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:13px; line-height:1.5; color:#435d80;">Suits, knits and soft shirts.</p><p style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:16px; font-weight:bold; color:#0f2c52;">Up to 40% off</p></td></tr></table>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:26px 32px 8px;">
-              <a href="https://example.com/sale" style="display:inline-block; background-color:#0065b3; color:#ffffff; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; text-decoration:none; padding:14px 42px; border-radius:8px;">Shop the sale</a>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:22px 32px 8px;">
-              <hr style="border:none; border-top:1px solid #e3eaf3; margin:0;" />
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:12px 32px 30px;">
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; line-height:1.6; color:#8194a7;">Free shipping over $75 &middot; free returns within 30 days.<br />Sent to {{ email }} &middot; <a href="{{ unsubscribe_url }}" style="color:#8194a7;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#8194a7;">Preferences</a></p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-</script>
-
-<script type="text/x-template" data-name="Your sign-in code">
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<title>Your verification code</title>
-</head>
-<body style="margin:0; padding:0; background-color:#10141c;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#10141c;">
-    <tr>
-      <td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#1a1f2b; border-radius:12px;">
-          <tr>
-            <td align="center" style="padding:36px 36px 0;">
-              <p style="margin:0 0 14px; font-family:Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; letter-spacing:0.2em; text-transform:uppercase; color:#7d8aa5;">{{ company }} &middot; sign-in code</p>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:8px 36px 10px;">
-              <h1 style="margin:0 0 10px; font-family:Arial, Helvetica, sans-serif; font-size:24px; line-height:1.3; color:#f2f5fa;">Hi {{ first_name }}, here is your code</h1>
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:14.5px; line-height:1.65; color:#a8b3c7;">Enter this one-time code to finish signing in. It works only once.</p>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:26px 36px 8px;">
-              <div style="display:inline-block; background-color:#10141c; border:1px solid #2c3446; border-radius:10px;">
-                <table role="presentation" cellpadding="0" cellspacing="0">
-                  <tr>
-                    <td align="center" style="padding:20px 44px; font-family:'Courier New', Courier, monospace; font-size:38px; font-weight:bold; letter-spacing:0.35em; color:#ffffff;">814722</td>
-                  </tr>
-                </table>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:10px 36px 8px;">
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:13px; color:#7d8aa5;">This code expires in <strong style="color:#f2f5fa;">10 minutes</strong>.</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:26px 36px 8px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#151a24; border-radius:8px;">
-                <tr>
-                  <td style="padding:16px 20px; font-family:Arial, Helvetica, sans-serif; font-size:12.5px; line-height:1.65; color:#7d8aa5;">Never share this code &mdash; not with support, not with anyone. {{ company }} will never ask for it by phone or email. If you didn&rsquo;t try to sign in, change your password right away.</td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:22px 36px 32px;">
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; line-height:1.6; color:#5d6981;">Sent to {{ email }}<br /><a href="{{ unsubscribe_url }}" style="color:#5d6981;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#5d6981;">Notification settings</a></p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-</script>
-
-<script type="text/x-template" data-name="Invoice paid">
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<title>Invoice paid — #INV-2051</title>
-</head>
-<body style="margin:0; padding:0; background-color:#f4f6f9;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f9;">
-    <tr>
-      <td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff; border-radius:10px;">
-          <tr>
-            <td style="padding:30px 36px 10px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="font-family:Arial, Helvetica, sans-serif; font-size:19px; font-weight:bold; color:#14324f;">{{ company }}</td>
-                  <td align="right" style="font-family:Arial, Helvetica, sans-serif; font-size:12px; line-height:1.5; color:#6b7c8f;">Invoice <strong style="color:#14324f;">#INV-2051</strong><br />Issued 26 August 2026</td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:18px 36px 8px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#e9f7ee; border-radius:8px;">
-                <tr>
-                  <td style="padding:14px 18px; font-family:Arial, Helvetica, sans-serif; font-size:14px; font-weight:bold; color:#1e7a3c;">&#10004; &nbsp;Paid in full &mdash; thank you, {{ first_name }}</td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:22px 36px 4px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0; border-radius:8px;">
-                <tr>
-                  <td style="padding:12px 18px; border-bottom:1px solid #e2e8f0; font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:bold; letter-spacing:0.12em; text-transform:uppercase; color:#8194a7;">Description</td>
-                  <td align="right" style="padding:12px 18px; border-bottom:1px solid #e2e8f0; font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:bold; letter-spacing:0.12em; text-transform:uppercase; color:#8194a7;">Amount</td>
-                </tr>
-                <tr>
-                  <td style="padding:14px 18px; border-bottom:1px solid #e2e8f0; font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#14324f;">Pro plan &mdash; monthly</td>
-                  <td align="right" style="padding:14px 18px; border-bottom:1px solid #e2e8f0; font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#14324f;">$49.00</td>
-                </tr>
-                <tr>
-                  <td style="padding:14px 18px; border-bottom:1px solid #e2e8f0; font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#14324f;">Extra seats &times; 2</td>
-                  <td align="right" style="padding:14px 18px; border-bottom:1px solid #e2e8f0; font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#14324f;">$24.00</td>
-                </tr>
-                <tr>
-                  <td style="padding:14px 18px; background-color:#f7fafc; font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#6b7c8f;">Tax</td>
-                  <td align="right" style="padding:14px 18px; background-color:#f7fafc; font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#6b7c8f;">$6.16</td>
-                </tr>
-                <tr>
-                  <td style="padding:14px 18px; background-color:#f7fafc; font-family:Arial, Helvetica, sans-serif; font-size:16px; font-weight:bold; color:#14324f;">Total paid</td>
-                  <td align="right" style="padding:14px 18px; background-color:#f7fafc; font-family:Arial, Helvetica, sans-serif; font-size:16px; font-weight:bold; color:#14324f;">$79.16</td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:22px 36px 6px;">
-              <a href="https://example.com/invoices/2051" style="display:inline-block; background-color:#14324f; color:#ffffff; font-family:Arial, Helvetica, sans-serif; font-size:14px; font-weight:bold; text-decoration:none; padding:12px 30px; border-radius:8px;">Download receipt (PDF)</a>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:22px 36px 8px;">
-              <hr style="border:none; border-top:1px solid #e2e8f0; margin:0;" />
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:10px 36px 30px;">
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; line-height:1.6; color:#8194a7;">Charged to Visa &bull;&bull;&bull;&bull; 4242. Questions about this invoice? Just reply to this email.<br /><a href="{{ unsubscribe_url }}" style="color:#8194a7;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#8194a7;">Notification settings</a></p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-</script>
-
-<script type="text/x-template" data-name="Your order shipped">
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<title>Your order is on its way</title>
-</head>
-<body style="margin:0; padding:0; background-color:#eef2f6;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef2f6;">
-    <tr>
-      <td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff; border-radius:10px; overflow:hidden;">
-          <tr>
-            <td align="center" style="background-color:#0065b3; padding:22px 36px;">
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:17px; font-weight:bold; letter-spacing:0.08em; color:#ffffff;">{{ company }}</p>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:34px 36px 8px;">
-              <p style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:bold; letter-spacing:0.2em; text-transform:uppercase; color:#0065b3;">Shipped &middot; Order #48213</p>
-              <h1 style="margin:0 0 10px; font-family:Arial, Helvetica, sans-serif; font-size:24px; line-height:1.3; color:#10243c;">Your order is on its way, {{ first_name }}</h1>
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:14.5px; line-height:1.65; color:#3f5063;">Order <strong>#48213</strong> left our warehouse this morning and arrives <strong>Thursday, 2 September</strong>.</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:24px 36px 8px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e1e8ef; border-radius:8px;">
-                <tr>
-                  <td style="padding:16px 18px; border-bottom:1px solid #e1e8ef;">
-                    <p style="margin:0 0 4px; font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:bold; letter-spacing:0.12em; text-transform:uppercase; color:#8194a7;">Carrier</p>
-                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#10243c;">DHL Express</p>
-                  </td>
-                  <td style="padding:16px 18px; border-bottom:1px solid #e1e8ef;">
-                    <p style="margin:0 0 4px; font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:bold; letter-spacing:0.12em; text-transform:uppercase; color:#8194a7;">Tracking number</p>
-                    <p style="margin:0; font-family:'Courier New', Courier, monospace; font-size:14px; color:#10243c;">JD014669321DE</p>
-                  </td>
-                </tr>
-                <tr>
-                  <td colspan="2" style="padding:20px 18px 18px;">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                      <tr>
-                        <td width="75%" style="height:6px; background-color:#0065b3; font-size:0; line-height:6px;">&nbsp;</td>
-                        <td width="25%" style="height:6px; background-color:#e1e8ef; font-size:0; line-height:6px;">&nbsp;</td>
-                      </tr>
-                      <tr>
-                        <td style="padding-top:8px; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; color:#0065b3;">Ordered &middot; Packed &middot; Shipped</td>
-                        <td align="right" style="padding-top:8px; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; color:#8194a7;">Out for delivery</td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:22px 36px 6px;">
-              <a href="https://example.com/track/48213" style="display:inline-block; background-color:#0065b3; color:#ffffff; font-family:Arial, Helvetica, sans-serif; font-size:14px; font-weight:bold; text-decoration:none; padding:12px 32px; border-radius:8px;">Track my parcel</a>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:22px 36px 8px;">
-              <hr style="border:none; border-top:1px solid #e1e8ef; margin:0;" />
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:10px 36px 30px;">
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; line-height:1.6; color:#8194a7;">No one home? The courier leaves a note and tries again the next working day. This update was sent to {{ email }}.<br /><a href="{{ unsubscribe_url }}" style="color:#8194a7;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#8194a7;">Notification settings</a></p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-</script>
-
 <script type="text/x-template" data-name="Back in stock">
 <!doctype html>
 <html>
@@ -974,7 +115,7 @@
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#faf7f2;">
     <tr>
       <td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff; border-radius:12px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff; ">
           <tr>
             <td align="center" style="padding:36px 36px 8px;">
               <p style="margin:0 0 10px; font-family:Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; letter-spacing:0.2em; text-transform:uppercase; color:#b85c38;">Back in stock</p>
@@ -984,10 +125,10 @@
           </tr>
           <tr>
             <td style="padding:24px 36px 4px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f6f1e9; border-radius:10px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f6f1e9; ">
                 <tr>
                   <td width="38%" valign="middle" align="center" style="padding:22px 18px;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" style="background-color:#b85c38; border-radius:10px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" style="background-color:#b85c38; ">
                       <tr>
                         <td align="center" style="padding:30px 24px;">
                           <p style="margin:0 0 4px; font-family:Georgia, serif; font-size:12px; letter-spacing:0.18em; text-transform:uppercase; color:#f3dcc9;">Terracotta</p>
@@ -1000,7 +141,7 @@
                     <h2 style="margin:0 0 6px; font-family:Georgia, serif; font-size:19px; color:#29241d;">Terracotta Trainer</h2>
                     <p style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:13.5px; line-height:1.55; color:#5d574c;">Suede and canvas, hand-finished. Your size (42) is one of 60 pairs back from restock.</p>
                     <p style="margin:0 0 14px; font-family:Arial, Helvetica, sans-serif; font-size:15px; color:#29241d;"><span style="text-decoration:line-through; color:#a3988a;">$129</span> &nbsp;<strong>$99</strong> &nbsp;<span style="font-size:12px; color:#b85c38;">restock price</span></p>
-                    <a href="https://example.com/product/terracotta-trainer" style="display:inline-block; background-color:#b85c38; color:#ffffff; font-family:Arial, Helvetica, sans-serif; font-size:13.5px; font-weight:bold; text-decoration:none; padding:11px 26px; border-radius:8px;">Grab my pair</a>
+                    <a href="https://example.com/product/terracotta-trainer" style="display:inline-block; background-color:#b85c38; color:#ffffff; font-family:Arial, Helvetica, sans-serif; font-size:13.5px; font-weight:bold; text-decoration:none; padding:11px 26px; ">Grab my pair</a>
                   </td>
                 </tr>
               </table>
@@ -1028,7 +169,6 @@
 </body>
 </html>
 </script>
-
 <script type="text/x-template" data-name="Cart left behind">
 <!doctype html>
 <html>
@@ -1040,10 +180,10 @@
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f6f6f8;">
     <tr>
       <td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff; border-radius:12px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff; ">
           <tr>
             <td align="center" style="padding:34px 36px 8px;">
-              <table role="presentation" cellpadding="0" cellspacing="0" style="background-color:#f0ecfa; border-radius:6px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" style="background-color:#f0ecfa; ">
                 <tr>
                   <td align="center" style="padding:12px 20px; font-family:Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; letter-spacing:0.16em; text-transform:uppercase; color:#7048b8;">Your bag is waiting</td>
                 </tr>
@@ -1058,10 +198,10 @@
           </tr>
           <tr>
             <td style="padding:22px 36px 4px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e7e3f2; border-radius:10px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e7e3f2; ">
                 <tr>
                   <td width="30%" valign="middle" align="center" style="padding:22px 16px;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" style="background-color:#7048b8; border-radius:10px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" style="background-color:#7048b8; ">
                       <tr>
                         <td align="center" style="padding:26px 22px;">
                           <p style="margin:0 0 4px; font-family:Georgia, serif; font-size:12px; letter-spacing:0.18em; text-transform:uppercase; color:#dddcf3;">Chestnut</p>
@@ -1084,7 +224,7 @@
           </tr>
           <tr>
             <td align="center" style="padding:22px 36px 6px;">
-              <a href="https://example.com/cart" style="display:inline-block; background-color:#7048b8; color:#ffffff; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; text-decoration:none; padding:14px 40px; border-radius:8px;">Finish my order</a>
+              <a href="https://example.com/cart" style="display:inline-block; background-color:#7048b8; color:#ffffff; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; text-decoration:none; padding:14px 40px; ">Finish my order</a>
               <p style="margin:12px 0 0; font-family:Arial, Helvetica, sans-serif; font-size:12.5px; color:#9c92b8;">Held until Friday, 18:00 &mdash; after that the bag returns to the shelf.</p>
             </td>
           </tr>
@@ -1105,7 +245,89 @@
 </body>
 </html>
 </script>
-
+<script type="text/x-template" data-name="Community giveaway">
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>You&rsquo;re in — the community giveaway</title>
+</head>
+<body style="margin:0; padding:0; background-color:#0c1226;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0c1226;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#131b36; ">
+          <tr>
+            <td align="center" style="height:10px; line-height:10px; font-size:0; padding:0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;">
+                <tr>
+                  <td width="20%" style="height:10px; background-color:#f59e0b; font-size:0; line-height:10px; ">&nbsp;</td>
+                  <td width="20%" style="height:10px; background-color:#ef4444; font-size:0; line-height:10px;">&nbsp;</td>
+                  <td width="20%" style="height:10px; background-color:#ec4899; font-size:0; line-height:10px;">&nbsp;</td>
+                  <td width="20%" style="height:10px; background-color:#8b5cf6; font-size:0; line-height:10px;">&nbsp;</td>
+                  <td width="20%" style="height:10px; background-color:#38bdf8; font-size:0; line-height:10px; ">&nbsp;</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:36px 36px 8px;">
+              <p style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; letter-spacing:0.22em; text-transform:uppercase; color:#38bdf8;">The community giveaway</p>
+              <h1 style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:34px; line-height:1.15; color:#ffffff;">One year free &mdash;<br />for you and a friend</h1>
+              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:1.65; color:#aeb8d8;">We turned five this month. To celebrate, five lucky members win a free year &mdash; and each brings a friend along. Entry takes one click, {{ first_name }}.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:26px 40px 4px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td width="50%" valign="top" style="padding:0 8px 0 0;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0c1226; ">
+                      <tr>
+                        <td style="padding:16px 18px;">
+                          <p style="margin:0 0 6px; font-family:Arial, Helvetica, sans-serif; font-size:26px; font-weight:bold; color:#f59e0b;">5</p>
+                          <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:12.5px; line-height:1.5; color:#aeb8d8;">free yearly plans up for grabs</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td width="50%" valign="top" style="padding:0 0 0 8px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0c1226; ">
+                      <tr>
+                        <td style="padding:16px 18px;">
+                          <p style="margin:0 0 6px; font-family:Arial, Helvetica, sans-serif; font-size:26px; font-weight:bold; color:#38bdf8;">+5</p>
+                          <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:12.5px; line-height:1.5; color:#aeb8d8;">friend passes each winner can gift</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:24px 36px 8px;">
+              <a href="https://example.com/giveaway" style="display:inline-block; background-color:#f59e0b; color:#0c1226; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; text-decoration:none; padding:14px 44px; ">Enter the giveaway</a>
+              <p style="margin:12px 0 0; font-family:Arial, Helvetica, sans-serif; font-size:12.5px; color:#8a94b8;">Drawn live on stream, Friday 18 September &middot; no purchase needed.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:26px 36px 8px;">
+              <hr style="border:none; border-top:1px solid #232e58; margin:0;" />
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:12px 36px 32px;">
+              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; line-height:1.6; color:#5d6788;">Sent to {{ email }} &middot; Winners notified by reply, never by DM.<br /><a href="{{ unsubscribe_url }}" style="color:#5d6788;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#5d6788;">Preferences</a></p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+</script>
 <script type="text/x-template" data-name="Frontend Futures invite">
 <!doctype html>
 <html>
@@ -1117,7 +339,7 @@
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0e0c1a;">
     <tr>
       <td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#171332; border-radius:14px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#171332; ">
           <tr>
             <td align="center" style="padding:12px 36px 0;">
               <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:bold; letter-spacing:0.24em; text-transform:uppercase; color:#8f7bd8;">{{ company }} presents</p>
@@ -1156,7 +378,7 @@
           </tr>
           <tr>
             <td align="center" style="padding:24px 36px 8px;">
-              <a href="https://example.com/events/frontend-futures" style="display:inline-block; background-color:#a48ef0; color:#171332; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; text-decoration:none; padding:14px 44px; border-radius:8px;">Reserve a seat &mdash; free</a>
+              <a href="https://example.com/events/frontend-futures" style="display:inline-block; background-color:#a48ef0; color:#171332; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; text-decoration:none; padding:14px 44px; ">Reserve a seat &mdash; free</a>
               <p style="margin:12px 0 0; font-family:Arial, Helvetica, sans-serif; font-size:12.5px; color:#8f83b8;">The Atrium, 4 Harbour Lane &middot; seats are first come, first served</p>
             </td>
           </tr>
@@ -1177,81 +399,6 @@
 </body>
 </html>
 </script>
-
-<script type="text/x-template" data-name="Rate your headphones">
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<title>How are your new headphones?</title>
-</head>
-<body style="margin:0; padding:0; background-color:#f2f4f8;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f2f4f8;">
-    <tr>
-      <td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff; border-radius:12px;">
-          <tr>
-            <td align="center" style="padding:36px 36px 10px;">
-              <p style="margin:0 0 14px; font-family:Arial, Helvetica, sans-serif; font-size:26px; letter-spacing:0.1em; color:#e6b93c;">&#9733; &#9733; &#9733; &#9733; &#9733;</p>
-              <h1 style="margin:0 0 10px; font-family:Arial, Helvetica, sans-serif; font-size:24px; line-height:1.3; color:#16233a;">Two weeks with your headphones &mdash; how is it going?</h1>
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:14.5px; line-height:1.65; color:#435d80;">Hi {{ first_name }}, a quick one: your thoughts help the next buyer decide. It takes about a minute, and we&rsquo;d really appreciate it.</p>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:22px 36px 8px;">
-              <table role="presentation" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td align="center" style="padding:0 6px;"><a href="https://example.com/review/5" style="display:block; width:52px; height:52px; background-color:#f6f9fd; border:1px solid #dbe5f2; border-radius:10px; font-family:Arial, Helvetica, sans-serif; font-size:22px; line-height:52px; text-decoration:none; color:#e6b93c;">&#9733;</a></td>
-                  <td align="center" style="padding:0 6px;"><a href="https://example.com/review/4" style="display:block; width:52px; height:52px; background-color:#f6f9fd; border:1px solid #dbe5f2; border-radius:10px; font-family:Arial, Helvetica, sans-serif; font-size:22px; line-height:52px; text-decoration:none; color:#e6b93c;">&#9733;</a></td>
-                  <td align="center" style="padding:0 6px;"><a href="https://example.com/review/3" style="display:block; width:52px; height:52px; background-color:#f6f9fd; border:1px solid #dbe5f2; border-radius:10px; font-family:Arial, Helvetica, sans-serif; font-size:22px; line-height:52px; text-decoration:none; color:#e6b93c;">&#9733;</a></td>
-                  <td align="center" style="padding:0 6px;"><a href="https://example.com/review/2" style="display:block; width:52px; height:52px; background-color:#f6f9fd; border:1px solid #dbe5f2; border-radius:10px; font-family:Arial, Helvetica, sans-serif; font-size:22px; line-height:52px; text-decoration:none; color:#e6b93c;">&#9733;</a></td>
-                  <td align="center" style="padding:0 6px;"><a href="https://example.com/review/1" style="display:block; width:52px; height:52px; background-color:#f6f9fd; border:1px solid #dbe5f2; border-radius:10px; font-family:Arial, Helvetica, sans-serif; font-size:22px; line-height:52px; text-decoration:none; color:#e6b93c;">&#9733;</a></td>
-                </tr>
-              </table>
-              <p style="margin:12px 0 0; font-family:Arial, Helvetica, sans-serif; font-size:12px; color:#8194a7;">Tap a star to start &mdash; honest beats polite.</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:26px 36px 4px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f6f9fd; border-radius:10px;">
-                <tr>
-                  <td valign="middle" width="30%" align="center" style="padding:22px 16px;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" style="background-color:#16233a; border-radius:10px;">
-                      <tr>
-                        <td align="center" style="padding:24px 20px;">
-                          <p style="margin:0 0 4px; font-family:Georgia, serif; font-size:12px; letter-spacing:0.18em; text-transform:uppercase; color:#93a7c4;">Studio</p>
-                          <p style="margin:0; font-family:Georgia, serif; font-size:18px; color:#ffffff;">MK II</p>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                  <td valign="middle" width="70%" style="padding:16px 16px 16px 4px;">
-                    <h2 style="margin:0 0 4px; font-family:Arial, Helvetica, sans-serif; font-size:15.5px; color:#16233a;">Studio Headphones MK II</h2>
-                    <p style="margin:0 0 10px; font-family:Arial, Helvetica, sans-serif; font-size:13px; color:#435d80;">Order #47190 &middot; delivered 12 August</p>
-                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:13px; line-height:1.55; color:#435d80;">Review in the next 7 days and shipping on your next order is on us &mdash; good or bad.</p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:24px 36px 8px;">
-              <hr style="border:none; border-top:1px solid #e3eaf3; margin:0;" />
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:12px 36px 32px;">
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; line-height:1.6; color:#8194a7;">Sent to {{ email }} &middot; we only ask once per order.<br /><a href="{{ unsubscribe_url }}" style="color:#8194a7;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#8194a7;">Preferences</a></p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-</script>
-
 <script type="text/x-template" data-name="Give 25 get 25">
 <!doctype html>
 <html>
@@ -1263,9 +410,9 @@
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0f1c17;">
     <tr>
       <td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#16352a; border-radius:14px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#16352a; ">
           <tr>
-            <td align="center" style="background-color:#1e7a4f; padding:30px 32px 26px; border-radius:14px 14px 0 0;">
+            <td align="center" style="background-color:#1e7a4f; padding:30px 32px 26px; ">
               <p style="margin:0 0 10px; font-family:Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; letter-spacing:0.22em; text-transform:uppercase; color:#cdeeda;">The {{ company }} referral programme</p>
               <h1 style="margin:0 0 8px; font-family:Arial, Helvetica, sans-serif; font-size:36px; line-height:1.1; color:#ffffff;">Give $25 &middot; Get $25</h1>
               <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:14.5px; line-height:1.5; color:#d9efe2;">You both win &mdash; they save on their first order, you get credit when it ships.</p>
@@ -1274,7 +421,7 @@
           <tr>
             <td align="center" style="padding:28px 36px 8px;">
               <p style="margin:0 0 8px; font-family:Arial, Helvetica, sans-serif; font-size:13px; color:#9dc3ad;">Your personal link</p>
-              <table role="presentation" cellpadding="0" cellspacing="0" style="background-color:#0f1c17; border-radius:8px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" style="background-color:#0f1c17; ">
                 <tr>
                   <td style="padding:12px 22px; font-family:'Courier New', Courier, monospace; font-size:13px; color:#e9f5ee;">example.com/r/{{ first_name }}-8f2</td>
                 </tr>
@@ -1283,7 +430,7 @@
           </tr>
           <tr>
             <td align="center" style="padding:18px 36px 8px;">
-              <a href="https://example.com/r/share" style="display:inline-block; background-color:#ffd166; color:#16352a; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; text-decoration:none; padding:14px 42px; border-radius:8px;">Share my link</a>
+              <a href="https://example.com/r/share" style="display:inline-block; background-color:#ffd166; color:#16352a; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; text-decoration:none; padding:14px 42px; ">Share my link</a>
             </td>
           </tr>
           <tr>
@@ -1323,7 +470,156 @@
 </body>
 </html>
 </script>
-
+<script type="text/x-template" data-name="Invoice paid">
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Invoice paid — #INV-2051</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f6f9;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f9;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff; ">
+          <tr>
+            <td style="padding:30px 36px 10px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="font-family:Arial, Helvetica, sans-serif; font-size:19px; font-weight:bold; color:#14324f;">{{ company }}</td>
+                  <td align="right" style="font-family:Arial, Helvetica, sans-serif; font-size:12px; line-height:1.5; color:#6b7c8f;">Invoice <strong style="color:#14324f;">#INV-2051</strong><br />Issued 26 August 2026</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:18px 36px 8px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#e9f7ee; ">
+                <tr>
+                  <td style="padding:14px 18px; font-family:Arial, Helvetica, sans-serif; font-size:14px; font-weight:bold; color:#1e7a3c;">&#10004; &nbsp;Paid in full &mdash; thank you, {{ first_name }}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:22px 36px 4px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0; ">
+                <tr>
+                  <td style="padding:12px 18px; border-bottom:1px solid #e2e8f0; font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:bold; letter-spacing:0.12em; text-transform:uppercase; color:#8194a7;">Description</td>
+                  <td align="right" style="padding:12px 18px; border-bottom:1px solid #e2e8f0; font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:bold; letter-spacing:0.12em; text-transform:uppercase; color:#8194a7;">Amount</td>
+                </tr>
+                <tr>
+                  <td style="padding:14px 18px; border-bottom:1px solid #e2e8f0; font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#14324f;">Pro plan &mdash; monthly</td>
+                  <td align="right" style="padding:14px 18px; border-bottom:1px solid #e2e8f0; font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#14324f;">$49.00</td>
+                </tr>
+                <tr>
+                  <td style="padding:14px 18px; border-bottom:1px solid #e2e8f0; font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#14324f;">Extra seats &times; 2</td>
+                  <td align="right" style="padding:14px 18px; border-bottom:1px solid #e2e8f0; font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#14324f;">$24.00</td>
+                </tr>
+                <tr>
+                  <td style="padding:14px 18px; background-color:#f7fafc; font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#6b7c8f;">Tax</td>
+                  <td align="right" style="padding:14px 18px; background-color:#f7fafc; font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#6b7c8f;">$6.16</td>
+                </tr>
+                <tr>
+                  <td style="padding:14px 18px; background-color:#f7fafc; font-family:Arial, Helvetica, sans-serif; font-size:16px; font-weight:bold; color:#14324f;">Total paid</td>
+                  <td align="right" style="padding:14px 18px; background-color:#f7fafc; font-family:Arial, Helvetica, sans-serif; font-size:16px; font-weight:bold; color:#14324f;">$79.16</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:22px 36px 6px;">
+              <a href="https://example.com/invoices/2051" style="display:inline-block; background-color:#14324f; color:#ffffff; font-family:Arial, Helvetica, sans-serif; font-size:14px; font-weight:bold; text-decoration:none; padding:12px 30px; ">Download receipt (PDF)</a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:22px 36px 8px;">
+              <hr style="border:none; border-top:1px solid #e2e8f0; margin:0;" />
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:10px 36px 30px;">
+              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; line-height:1.6; color:#8194a7;">Charged to Visa &bull;&bull;&bull;&bull; 4242. Questions about this invoice? Just reply to this email.<br /><a href="{{ unsubscribe_url }}" style="color:#8194a7;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#8194a7;">Notification settings</a></p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+</script>
+<script type="text/x-template" data-name="Meet Nova launch">
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Meet Nova — our biggest release yet</title>
+</head>
+<body style="margin:0; padding:0; background-color:#0b1020;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0b1020;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#111832; ">
+          <tr>
+            <td align="center" style="background-color:#0065b3; padding:34px 32px 30px; ">
+              <p style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; letter-spacing:0.22em; text-transform:uppercase; color:#bfdbfe;">New from {{ company }}</p>
+              <h1 style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:38px; line-height:1.1; color:#ffffff;">Meet Nova</h1>
+              <p style="margin:10px 0 0; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:1.5; color:#dbeafe;">Our biggest release yet &mdash; and it&rsquo;s already in your account.</p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:32px 36px 6px;">
+              <h2 style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:21px; line-height:1.3; color:#ffffff;">Everything you asked for, in one update</h2>
+              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:14.5px; line-height:1.7; color:#aebad6;">Hi {{ first_name }} &mdash; over 4,000 of you shaped this release. Nova rebuilds the parts that slowed you down and adds the three things you asked for most.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 36px 4px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td width="33%" valign="top" align="center" style="padding:0 8px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" style="background-color:#1c2848; "><tr><td align="center" style="padding:12px 16px; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; color:#58a8e3;">2&times;</td></tr></table>
+                    <h3 style="margin:10px 0 6px; font-family:Arial, Helvetica, sans-serif; font-size:14.5px; color:#ffffff;">Faster</h3>
+                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:12.5px; line-height:1.55; color:#8f9cbd;">A new engine under the hood &mdash; big projects open instantly.</p>
+                  </td>
+                  <td width="34%" valign="top" align="center" style="padding:0 8px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" style="background-color:#1c2848; "><tr><td align="center" style="padding:12px 16px; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; color:#58a8e3;">Smart</td></tr></table>
+                    <h3 style="margin:10px 0 6px; font-family:Arial, Helvetica, sans-serif; font-size:14.5px; color:#ffffff;">Assist</h3>
+                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:12.5px; line-height:1.55; color:#8f9cbd;">Drafts, summaries and clean-ups, one keystroke away.</p>
+                  </td>
+                  <td width="33%" valign="top" align="center" style="padding:0 8px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" style="background-color:#1c2848; "><tr><td align="center" style="padding:12px 16px; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; color:#58a8e3;">100%</td></tr></table>
+                    <h3 style="margin:10px 0 6px; font-family:Arial, Helvetica, sans-serif; font-size:14.5px; color:#ffffff;">Private</h3>
+                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:12.5px; line-height:1.55; color:#8f9cbd;">Your data stays yours &mdash; encrypted, never trained on.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:28px 36px 8px;">
+              <a href="https://example.com/nova" style="display:inline-block; background-color:#58a8e3; color:#0b1020; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; text-decoration:none; padding:14px 40px; ">Try Nova today</a>
+              <p style="margin:12px 0 0; font-family:Arial, Helvetica, sans-serif; font-size:12.5px; color:#8f9cbd;">Free for every current customer &mdash; nothing to buy, nothing to migrate.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:26px 36px 8px;">
+              <hr style="border:none; border-top:1px solid #232e52; margin:0;" />
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:14px 36px 32px;">
+              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; line-height:1.6; color:#68738f;">Sent to {{ email }}.<br /><a href="{{ unsubscribe_url }}" style="color:#68738f;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#68738f;">Preferences</a></p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+</script>
 <script type="text/x-template" data-name="Mega weekend sale">
 <!doctype html>
 <html>
@@ -1383,173 +679,79 @@
 </body>
 </html>
 </script>
-
-<script type="text/x-template" data-name="Private early access">
+<script type="text/x-template" data-name="Order confirmed">
 <!doctype html>
 <html>
 <head>
 <meta charset="utf-8" />
-<title>Private early access — the winter collection</title>
+<title>Order confirmed</title>
 </head>
-<body style="margin:0; padding:0; background-color:#faf9f7;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#faf9f7;">
+<body style="margin:0; padding:0; background-color:#f4f4f2;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f2;">
     <tr>
       <td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff; border:1px solid #e6e1d6;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff;">
           <tr>
-            <td align="center" style="padding:44px 44px 12px;">
-              <p style="margin:0 0 18px; font-family:Georgia, serif; font-size:11px; letter-spacing:0.28em; text-transform:uppercase; color:#b08d4f;">Private invitation</p>
-              <h1 style="margin:0 0 14px; font-family:Georgia, 'Times New Roman', serif; font-size:30px; line-height:1.3; font-weight:normal; color:#23201a;">Early access to the<br />winter collection</h1>
-              <table role="presentation" align="center" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+            <td style="padding:32px 36px 6px;">
+              <p style="margin:0 0 8px; font-family:Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; letter-spacing:0.16em; text-transform:uppercase; color:#2f9e44;">Order confirmed</p>
+              <h1 style="margin:0 0 10px; font-family:Arial, Helvetica, sans-serif; font-size:24px; line-height:1.25; color:#1a1a1a;">Thanks, {{ first_name }} &mdash; it&rsquo;s on its way</h1>
+              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:14px; line-height:1.6; color:#4a4a4a;">Order <strong>#48213</strong>, placed today. We&rsquo;ll email tracking as soon as the courier scans it &mdash; usually within one business day.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 36px 4px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e6e6e2; ">
                 <tr>
-                  <td style="width:36px; border-top:1px solid #b08d4f; font-size:0; line-height:0;">&nbsp;</td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:20px 56px 10px;">
-              <p style="margin:0 0 14px; font-family:Georgia, serif; font-size:15px; line-height:1.75; color:#55503f;">{{ first_name }}, before the doors open to everyone, the collection is yours &mdash; quietly, without the crowd, and with first claim on the pieces that will not last the week.</p>
-              <p style="margin:0; font-family:Georgia, serif; font-size:15px; line-height:1.75; color:#55503f;">Your access begins now and ends when the collection does: Thursday, 9am.</p>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:30px 44px 10px;">
-              <a href="https://example.com/early-access" style="display:inline-block; background-color:#ffffff; color:#b08d4f; font-family:Georgia, serif; font-size:14px; letter-spacing:0.08em; text-decoration:none; padding:13px 40px; border:1px solid #b08d4f;">Enter the early access</a>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:16px 44px 10px;">
-              <p style="margin:0; font-family:Georgia, serif; font-size:12px; font-style:italic; color:#a39c8b;">Complimentary shipping and returns, as always, on every order.</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:36px 44px 30px;">
-              <hr style="border:none; border-top:1px solid #eee9df; margin:0 0 14px;" />
-              <p style="margin:0; font-family:Georgia, serif; font-size:11px; line-height:1.7; color:#a39c8b; text-align:center;">You receive this note because you joined the private list at {{ company }}.<br />Sent to {{ email }} &middot; <a href="{{ unsubscribe_url }}" style="color:#a39c8b;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#a39c8b;">Preferences</a></p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-</script>
-
-<script type="text/x-template" data-name="Automation Week promo">
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<title>Automation Week — ship more, click less</title>
-</head>
-<body style="margin:0; padding:0; background-color:#eef0f6;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef0f6;">
-    <tr>
-      <td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff; border-radius:12px; overflow:hidden;">
-          <tr>
-            <td style="font-size:0; line-height:0;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td width="34%" style="height:8px; background-color:#6366f1; font-size:0; line-height:8px;">&nbsp;</td>
-                  <td width="33%" style="height:8px; background-color:#8b5cf6; font-size:0; line-height:8px;">&nbsp;</td>
-                  <td width="33%" style="height:8px; background-color:#ec4899; font-size:0; line-height:8px;">&nbsp;</td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:36px 36px 8px;">
-              <p style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; letter-spacing:0.2em; text-transform:uppercase; color:#6366f1;">Automation Week &middot; free virtual event</p>
-              <h1 style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:34px; line-height:1.1; color:#1e1b4b;">Ship more, click less</h1>
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:1.65; color:#4b5573;">Five days, twelve sessions, one idea: the work you repeat should not be work you do. Join {{ company }} engineers and guest teams live &mdash; or watch later.</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:24px 48px 4px;">
-              <p style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:14px; line-height:1.6; color:#4b5573;"><strong style="color:#6366f1;">&#9679;</strong> &nbsp;Build a deploy pipeline that apologises for you when it fails</p>
-              <p style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:14px; line-height:1.6; color:#4b5573;"><strong style="color:#8b5cf6;">&#9679;</strong> &nbsp;Turn 40 hours of monthly reporting into a 4-minute cron job</p>
-              <p style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:14px; line-height:1.6; color:#4b5573;"><strong style="color:#ec4899;">&#9679;</strong> &nbsp;Ask us anything: live Q&amp;A with the team that runs 9,000 automations a day</p>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:24px 36px 8px;">
-              <a href="https://example.com/automation-week" style="display:inline-block; background-color:#6366f1; color:#ffffff; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; text-decoration:none; padding:14px 42px; border-radius:8px;">Save my seat &mdash; it&rsquo;s free</a>
-              <p style="margin:12px 0 0; font-family:Arial, Helvetica, sans-serif; font-size:12.5px; color:#8189a3;">Can&rsquo;t make it live? Register anyway &mdash; every session lands in your inbox.</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:26px 36px 8px;">
-              <hr style="border:none; border-top:1px solid #e8eaf2; margin:0;" />
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:12px 36px 32px;">
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; line-height:1.6; color:#8189a3;">21&ndash;25 September &middot; online &middot; every session captioned.<br />Sent to {{ email }} &middot; <a href="{{ unsubscribe_url }}" style="color:#8189a3;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#8189a3;">Preferences</a></p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-</script>
-
-<script type="text/x-template" data-name="The colour edit">
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<title>Season highlight — the colours are in</title>
-</head>
-<body style="margin:0; padding:0; background-color:#f5f2ee;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5f2ee;">
-    <tr>
-      <td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff; border-radius:14px;">
-          <tr>
-            <td align="center" style="padding:34px 36px 10px;">
-              <p style="margin:0 0 10px; font-family:Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; letter-spacing:0.2em; text-transform:uppercase; color:#c2410c;">The highlight edit</p>
-              <h1 style="margin:0 0 10px; font-family:Arial, Helvetica, sans-serif; font-size:30px; line-height:1.2; color:#3f2d20;">Colour, back in stock</h1>
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:14.5px; line-height:1.6; color:#6b5a4a;">{{ first_name }}, the pieces that sold out in spring have returned &mdash; in the three colours you asked for most.</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:22px 28px 0;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td width="33%" valign="top" style="padding:0 6px;">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#7c2d12; border-radius:10px 10px 0 0;"><tr><td align="center" style="padding:34px 10px; font-family:Georgia, serif; font-size:20px; color:#fde6cf;">Rust</td></tr></table>
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#faf5ef; border-radius:0 0 10px 10px;"><tr><td align="center" style="padding:14px 10px 6px; font-family:Arial, Helvetica, sans-serif; font-size:13.5px; font-weight:bold; color:#3f2d20;">Knit polo</td></tr><tr><td align="center" style="padding:0 10px 14px; font-family:Arial, Helvetica, sans-serif; font-size:12.5px; color:#c2410c;">$89 &middot; 20% off</td></tr></table>
+                  <td style="padding:14px 18px; border-bottom:1px solid #e6e6e2;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#1a1a1a;">Field jacket &mdash; olive, M</td>
+                        <td align="right" style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#1a1a1a;">$148.00</td>
+                      </tr>
+                    </table>
                   </td>
-                  <td width="34%" valign="top" style="padding:0 6px;">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#15803d; border-radius:10px 10px 0 0;"><tr><td align="center" style="padding:34px 10px; font-family:Georgia, serif; font-size:20px; color:#dcfce7;">Forest</td></tr></table>
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#faf5ef; border-radius:0 0 10px 10px;"><tr><td align="center" style="padding:14px 10px 6px; font-family:Arial, Helvetica, sans-serif; font-size:13.5px; font-weight:bold; color:#3f2d20;">Field overshirt</td></tr><tr><td align="center" style="padding:0 10px 14px; font-family:Arial, Helvetica, sans-serif; font-size:12.5px; color:#c2410c;">$124 &middot; 20% off</td></tr></table>
+                </tr>
+                <tr>
+                  <td style="padding:14px 18px; border-bottom:1px solid #e6e6e2;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#1a1a1a;">Merino crew &mdash; charcoal, M</td>
+                        <td align="right" style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#1a1a1a;">$85.00</td>
+                      </tr>
+                    </table>
                   </td>
-                  <td width="33%" valign="top" style="padding:0 6px;">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#1e40af; border-radius:10px 10px 0 0;"><tr><td align="center" style="padding:34px 10px; font-family:Georgia, serif; font-size:20px; color:#dbeafe;">Cobalt</td></tr></table>
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#faf5ef; border-radius:0 0 10px 10px;"><tr><td align="center" style="padding:14px 10px 6px; font-family:Arial, Helvetica, sans-serif; font-size:13.5px; font-weight:bold; color:#3f2d20;">Merino crew</td></tr><tr><td align="center" style="padding:0 10px 14px; font-family:Arial, Helvetica, sans-serif; font-size:12.5px; color:#c2410c;">$79 &middot; 20% off</td></tr></table>
+                </tr>
+                <tr>
+                  <td style="padding:14px 18px; background-color:#fafaf8;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="font-family:Arial, Helvetica, sans-serif; font-size:13px; color:#4a4a4a;">Shipping</td>
+                        <td align="right" style="font-family:Arial, Helvetica, sans-serif; font-size:13px; color:#4a4a4a;">Free</td>
+                      </tr>
+                      <tr>
+                        <td style="padding-top:6px; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; color:#1a1a1a;">Total</td>
+                        <td align="right" style="padding-top:6px; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; color:#1a1a1a;">$233.00</td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
           <tr>
-            <td align="center" style="padding:26px 36px 8px;">
-              <a href="https://example.com/highlight-edit" style="display:inline-block; background-color:#3f2d20; color:#f5ede2; font-family:Arial, Helvetica, sans-serif; font-size:14.5px; font-weight:bold; text-decoration:none; padding:13px 40px; border-radius:8px;">Shop the edit &mdash; 20% off this week</a>
+            <td align="center" style="padding:22px 36px 6px;">
+              <a href="https://example.com/orders/48213" style="display:inline-block; background-color:#1a1a1a; color:#ffffff; font-family:Arial, Helvetica, sans-serif; font-size:14px; font-weight:bold; text-decoration:none; padding:12px 30px; ">View your order</a>
             </td>
           </tr>
           <tr>
             <td style="padding:24px 36px 8px;">
-              <hr style="border:none; border-top:1px solid #ece4d9; margin:0;" />
+              <hr style="border:none; border-top:1px solid #e6e6e2; margin:0;" />
             </td>
           </tr>
           <tr>
-            <td align="center" style="padding:12px 36px 32px;">
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; line-height:1.6; color:#a3937f;">Discount applied automatically at checkout. Sent to {{ email }}.<br /><a href="{{ unsubscribe_url }}" style="color:#a3937f;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#a3937f;">Preferences</a></p>
+            <td style="padding:10px 36px 30px;">
+              <p style="margin:0 0 8px; font-family:Arial, Helvetica, sans-serif; font-size:13px; line-height:1.6; color:#4a4a4a;">Need a different size? Exchanges are free for 30 days &mdash; start one from the order page above.</p>
+              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; line-height:1.6; color:#9a9a94;">This receipt was sent to {{ email }}. <a href="{{ unsubscribe_url }}" style="color:#9a9a94;">Unsubscribe from marketing</a> &mdash; you will still receive order emails.</p>
             </td>
           </tr>
         </table>
@@ -1559,62 +761,162 @@
 </body>
 </html>
 </script>
-
-<script type="text/x-template" data-name="Community giveaway">
+<script type="text/x-template" data-name="Rate your headphones">
 <!doctype html>
 <html>
 <head>
 <meta charset="utf-8" />
-<title>You&rsquo;re in — the community giveaway</title>
+<title>How are your new headphones?</title>
 </head>
-<body style="margin:0; padding:0; background-color:#0c1226;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0c1226;">
+<body style="margin:0; padding:0; background-color:#f2f4f8;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f2f4f8;">
     <tr>
       <td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#131b36; border-radius:14px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff; ">
           <tr>
-            <td align="center" style="height:10px; line-height:10px; font-size:0; padding:0;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;">
+            <td align="center" style="padding:36px 36px 10px;">
+              <p style="margin:0 0 14px; font-family:Arial, Helvetica, sans-serif; font-size:26px; letter-spacing:0.1em; color:#e6b93c;">&#9733; &#9733; &#9733; &#9733; &#9733;</p>
+              <h1 style="margin:0 0 10px; font-family:Arial, Helvetica, sans-serif; font-size:24px; line-height:1.3; color:#16233a;">Two weeks with your headphones &mdash; how is it going?</h1>
+              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:14.5px; line-height:1.65; color:#435d80;">Hi {{ first_name }}, a quick one: your thoughts help the next buyer decide. It takes about a minute, and we&rsquo;d really appreciate it.</p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:22px 36px 8px;">
+              <table role="presentation" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td width="20%" style="height:10px; background-color:#f59e0b; font-size:0; line-height:10px; border-radius:14px 0 0 0;">&nbsp;</td>
-                  <td width="20%" style="height:10px; background-color:#ef4444; font-size:0; line-height:10px;">&nbsp;</td>
-                  <td width="20%" style="height:10px; background-color:#ec4899; font-size:0; line-height:10px;">&nbsp;</td>
-                  <td width="20%" style="height:10px; background-color:#8b5cf6; font-size:0; line-height:10px;">&nbsp;</td>
-                  <td width="20%" style="height:10px; background-color:#38bdf8; font-size:0; line-height:10px; border-radius:0 14px 0 0;">&nbsp;</td>
+                  <td align="center" style="padding:0 6px;"><a href="https://example.com/review/5" style="display:block; width:52px; height:52px; background-color:#f6f9fd; border:1px solid #dbe5f2; font-family:Arial, Helvetica, sans-serif; font-size:22px; line-height:52px; text-decoration:none; color:#e6b93c;">&#9733;</a></td>
+                  <td align="center" style="padding:0 6px;"><a href="https://example.com/review/4" style="display:block; width:52px; height:52px; background-color:#f6f9fd; border:1px solid #dbe5f2; font-family:Arial, Helvetica, sans-serif; font-size:22px; line-height:52px; text-decoration:none; color:#e6b93c;">&#9733;</a></td>
+                  <td align="center" style="padding:0 6px;"><a href="https://example.com/review/3" style="display:block; width:52px; height:52px; background-color:#f6f9fd; border:1px solid #dbe5f2; font-family:Arial, Helvetica, sans-serif; font-size:22px; line-height:52px; text-decoration:none; color:#e6b93c;">&#9733;</a></td>
+                  <td align="center" style="padding:0 6px;"><a href="https://example.com/review/2" style="display:block; width:52px; height:52px; background-color:#f6f9fd; border:1px solid #dbe5f2; font-family:Arial, Helvetica, sans-serif; font-size:22px; line-height:52px; text-decoration:none; color:#e6b93c;">&#9733;</a></td>
+                  <td align="center" style="padding:0 6px;"><a href="https://example.com/review/1" style="display:block; width:52px; height:52px; background-color:#f6f9fd; border:1px solid #dbe5f2; font-family:Arial, Helvetica, sans-serif; font-size:22px; line-height:52px; text-decoration:none; color:#e6b93c;">&#9733;</a></td>
+                </tr>
+              </table>
+              <p style="margin:12px 0 0; font-family:Arial, Helvetica, sans-serif; font-size:12px; color:#8194a7;">Tap a star to start &mdash; honest beats polite.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:26px 36px 4px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f6f9fd; ">
+                <tr>
+                  <td valign="middle" width="30%" align="center" style="padding:22px 16px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" style="background-color:#16233a; ">
+                      <tr>
+                        <td align="center" style="padding:24px 20px;">
+                          <p style="margin:0 0 4px; font-family:Georgia, serif; font-size:12px; letter-spacing:0.18em; text-transform:uppercase; color:#93a7c4;">Studio</p>
+                          <p style="margin:0; font-family:Georgia, serif; font-size:18px; color:#ffffff;">MK II</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td valign="middle" width="70%" style="padding:16px 16px 16px 4px;">
+                    <h2 style="margin:0 0 4px; font-family:Arial, Helvetica, sans-serif; font-size:15.5px; color:#16233a;">Studio Headphones MK II</h2>
+                    <p style="margin:0 0 10px; font-family:Arial, Helvetica, sans-serif; font-size:13px; color:#435d80;">Order #47190 &middot; delivered 12 August</p>
+                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:13px; line-height:1.55; color:#435d80;">Review in the next 7 days and shipping on your next order is on us &mdash; good or bad.</p>
+                  </td>
                 </tr>
               </table>
             </td>
           </tr>
           <tr>
-            <td align="center" style="padding:36px 36px 8px;">
-              <p style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; letter-spacing:0.22em; text-transform:uppercase; color:#38bdf8;">The community giveaway</p>
-              <h1 style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:34px; line-height:1.15; color:#ffffff;">One year free &mdash;<br />for you and a friend</h1>
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:1.65; color:#aeb8d8;">We turned five this month. To celebrate, five lucky members win a free year &mdash; and each brings a friend along. Entry takes one click, {{ first_name }}.</p>
+            <td style="padding:24px 36px 8px;">
+              <hr style="border:none; border-top:1px solid #e3eaf3; margin:0;" />
             </td>
           </tr>
           <tr>
-            <td style="padding:26px 40px 4px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <td align="center" style="padding:12px 36px 32px;">
+              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; line-height:1.6; color:#8194a7;">Sent to {{ email }} &middot; we only ask once per order.<br /><a href="{{ unsubscribe_url }}" style="color:#8194a7;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#8194a7;">Preferences</a></p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+</script>
+<script type="text/x-template" data-name="Reset your password">
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Reset your password</title>
+</head>
+<body style="margin:0; padding:0; background-color:#eef2f6;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef2f6;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff; overflow:hidden;">
+          <tr>
+            <td align="center" style="background-color:#0065b3; padding:22px 36px;">
+              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:17px; font-weight:bold; letter-spacing:0.08em; color:#ffffff;">{{ company }}</p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:34px 36px 8px;">
+              <p style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:bold; letter-spacing:0.2em; text-transform:uppercase; color:#d97706;">Password reset</p>
+              <h1 style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:26px; line-height:1.25; color:#10243c;">Reset your password</h1>
+              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:1.65; color:#3f5063;">Hi {{ first_name }}, we received a request to reset the password for <strong>{{ email }}</strong>. Use the button below to choose a new one.</p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:26px 36px 8px;">
+              <a href="https://example.com/reset" style="display:inline-block; background-color:#0065b3; color:#ffffff; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; text-decoration:none; padding:14px 38px; ">Choose a new password</a>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:10px 36px 4px;">
+              <p style="margin:0 0 6px; font-family:Arial, Helvetica, sans-serif; font-size:13px; color:#8194a7;">Button not working? Paste this into your browser:</p>
+              <p style="margin:0; font-family:'Courier New', Courier, monospace; font-size:12px; line-height:1.6; color:#3f5063;"><a href="https://example.com/reset" style="color:#0065b3;">https://example.com/reset</a></p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px 36px 8px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f8fc; ">
                 <tr>
-                  <td width="50%" valign="top" style="padding:0 8px 0 0;">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0c1226; border-radius:10px;">
-                      <tr>
-                        <td style="padding:16px 18px;">
-                          <p style="margin:0 0 6px; font-family:Arial, Helvetica, sans-serif; font-size:26px; font-weight:bold; color:#f59e0b;">5</p>
-                          <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:12.5px; line-height:1.5; color:#aeb8d8;">free yearly plans up for grabs</p>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                  <td width="50%" valign="top" style="padding:0 0 0 8px;">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0c1226; border-radius:10px;">
-                      <tr>
-                        <td style="padding:16px 18px;">
-                          <p style="margin:0 0 6px; font-family:Arial, Helvetica, sans-serif; font-size:26px; font-weight:bold; color:#38bdf8;">+5</p>
-                          <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:12.5px; line-height:1.5; color:#aeb8d8;">friend passes each winner can gift</p>
-                        </td>
-                      </tr>
-                    </table>
+                  <td style="padding:16px 20px; font-family:Arial, Helvetica, sans-serif; font-size:12.5px; line-height:1.65; color:#5b6d80;">This link works once and expires in 30 minutes. If you didn&rsquo;t ask for a reset, ignore this email &mdash; your current password keeps working.</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 36px 30px;">
+              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; line-height:1.6; color:#8194a7;"><a href="{{ unsubscribe_url }}" style="color:#8194a7;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#8194a7;">Notification settings</a></p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+</script>
+<script type="text/x-template" data-name="Thank-you promo code">
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>A little thank-you — 20% off</title>
+</head>
+<body style="margin:0; padding:0; background-color:#fdf8f3;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fdf8f3;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff; ">
+          <tr>
+            <td align="center" style="padding:38px 36px 8px;">
+              <p style="margin:0 0 10px; font-family:Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; letter-spacing:0.2em; text-transform:uppercase; color:#c2762d;">A small thank-you</p>
+              <h1 style="margin:0 0 12px; font-family:Georgia, 'Times New Roman', serif; font-size:30px; line-height:1.2; color:#2d2a24;">Here&rsquo;s 20% off, {{ first_name }}</h1>
+              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:1.65; color:#5d574c;">It&rsquo;s been a year since you joined us &mdash; and that&rsquo;s worth celebrating. Here&rsquo;s a little something to mark it.</p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:26px 36px 8px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" style="border:2px dashed #d9b98a; ">
+                <tr>
+                  <td align="center" style="padding:22px 46px;">
+                    <p style="margin:0 0 4px; font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:bold; letter-spacing:0.18em; text-transform:uppercase; color:#a3845c;">Your code</p>
+                    <p style="margin:0 0 8px; font-family:'Courier New', Courier, monospace; font-size:28px; font-weight:bold; letter-spacing:0.12em; color:#2d2a24;">THANKYOU20</p>
+                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:12.5px; color:#a3845c;">20% off &middot; yours until 30 September</p>
                   </td>
                 </tr>
               </table>
@@ -1622,18 +924,33 @@
           </tr>
           <tr>
             <td align="center" style="padding:24px 36px 8px;">
-              <a href="https://example.com/giveaway" style="display:inline-block; background-color:#f59e0b; color:#0c1226; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; text-decoration:none; padding:14px 44px; border-radius:8px;">Enter the giveaway</a>
-              <p style="margin:12px 0 0; font-family:Arial, Helvetica, sans-serif; font-size:12.5px; color:#8a94b8;">Drawn live on stream, Friday 18 September &middot; no purchase needed.</p>
+              <a href="https://example.com/shop" style="display:inline-block; background-color:#2d2a24; color:#f6efe4; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; text-decoration:none; padding:14px 40px; ">Use my code</a>
             </td>
           </tr>
           <tr>
-            <td style="padding:26px 36px 8px;">
-              <hr style="border:none; border-top:1px solid #232e58; margin:0;" />
+            <td style="padding:26px 36px 6px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td width="50%" valign="top" style="padding:0 10px 0 0;">
+                    <h3 style="margin:0 0 6px; font-family:Arial, Helvetica, sans-serif; font-size:14.5px; color:#2d2a24;">Works on everything</h3>
+                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:13px; line-height:1.55; color:#5d574c;">One code, whole store. Apply it at checkout and watch the total drop.</p>
+                  </td>
+                  <td width="50%" valign="top" style="padding:0 0 0 10px;">
+                    <h3 style="margin:0 0 6px; font-family:Arial, Helvetica, sans-serif; font-size:14.5px; color:#2d2a24;">Stack it with sales</h3>
+                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:13px; line-height:1.55; color:#5d574c;">Already-marked-down pieces count too &mdash; yes, really.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 36px 8px;">
+              <hr style="border:none; border-top:1px solid #eee3d2; margin:0;" />
             </td>
           </tr>
           <tr>
             <td align="center" style="padding:12px 36px 32px;">
-              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; line-height:1.6; color:#5d6788;">Sent to {{ email }} &middot; Winners notified by reply, never by DM.<br /><a href="{{ unsubscribe_url }}" style="color:#5d6788;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#5d6788;">Preferences</a></p>
+              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; line-height:1.6; color:#a3988a;">Sent to {{ email }} &middot; One code per order.<br /><a href="{{ unsubscribe_url }}" style="color:#a3988a;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#a3988a;">Preferences</a></p>
             </td>
           </tr>
         </table>
@@ -1643,72 +960,306 @@
 </body>
 </html>
 </script>
-
-<script type="text/x-template" data-name="The Autumn Object">
+<script type="text/x-template" data-name="The Sunday Brief">
 <!doctype html>
 <html>
 <head>
 <meta charset="utf-8" />
-<title>The Autumn Object — Issue 07</title>
+<title>The Sunday Brief</title>
 </head>
-<body style="margin:0; padding:0; background-color:#edebe6;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#edebe6;">
+<body style="margin:0; padding:0; background-color:#f1f0ec;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f0ec;">
     <tr>
       <td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#f8f7f3;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff;">
           <tr>
-            <td style="padding:26px 40px 18px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <td style="background-color:#1c1b18; padding:26px 32px;">
+              <h1 style="margin:0 0 6px; font-family:Georgia, 'Times New Roman', serif; font-size:26px; line-height:1.2; color:#f5f2ea;">The Sunday Brief</h1>
+              <p style="margin:0; font-family:Georgia, serif; font-size:13px; letter-spacing:0.14em; text-transform:uppercase; color:#b8b2a4;">Issue 214 &middot; Curated reads for a slow morning</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="height:5px; line-height:5px; font-size:0; background-color:#a06b2c;">&nbsp;</td>
+          </tr>
+          <tr>
+            <td align="center" style="background-color:#f6f4ee; padding:36px 40px 34px; border-bottom:1px solid #e3e0d8;">
+              <p style="margin:0 0 10px; font-family:Georgia, serif; font-size:12px; letter-spacing:0.14em; text-transform:uppercase; color:#a06b2c;">Cover story</p>
+              <h2 style="margin:0 0 12px; font-family:Georgia, 'Times New Roman', serif; font-size:28px; line-height:1.25; color:#1c1b18;">Why the best ideas arrive before nine</h2>
+              <p style="margin:0 0 18px; font-family:Georgia, serif; font-size:15px; line-height:1.65; color:#3d3a33;">Hello {{ first_name }} &mdash; this week we sat down with three writers who guard their mornings like a vault. What they cut, what they kept, and the one ritual all three share.</p>
+              <a href="https://example.com/issue-214" style="display:inline-block; background-color:#1c1b18; color:#f5f2ea; font-family:Georgia, serif; font-size:14px; font-weight:bold; text-decoration:none; padding:12px 26px; ">Read the full story</a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:26px 32px 4px;">
+              <h3 style="margin:0 0 8px; font-family:Georgia, serif; font-size:17px; color:#1c1b18;">Also worth your time</h3>
+              <p style="margin:0 0 10px; font-family:Georgia, serif; font-size:14px; line-height:1.6; color:#3d3a33;"><a href="https://example.com/reads/1" style="color:#a06b2c;">The quiet return of the personal website</a> &mdash; a ten-minute read on owning your corner of the internet.</p>
+              <p style="margin:0 0 10px; font-family:Georgia, serif; font-size:14px; line-height:1.6; color:#3d3a33;"><a href="https://example.com/reads/2" style="color:#a06b2c;">Notes on a smaller inbox</a> &mdash; what happened when we unsubscribed from everything for a month.</p>
+              <p style="margin:0 0 10px; font-family:Georgia, serif; font-size:14px; line-height:1.6; color:#3d3a33;"><a href="https://example.com/reads/3" style="color:#a06b2c;">Interview: the archivist of lost fonts</a> &mdash; rescuing typefaces from forgotten floppy disks.</p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:24px 32px 30px;">
+              <p style="margin:0; font-family:Georgia, serif; font-size:12px; line-height:1.6; color:#8d887b;">You are reading The Sunday Brief because you subscribed at example.com.<br /><a href="{{ unsubscribe_url }}" style="color:#8d887b;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#8d887b;">Update preferences</a></p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+</script>
+<script type="text/x-template" data-name="Welcome to your workspace">
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Welcome to your workspace</title>
+</head>
+<body style="margin:0; padding:0; background-color:#eef2f6;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef2f6;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff; ">
+          <tr>
+            <td style="height:5px; line-height:5px; font-size:0; background-color:#0065b3; ">&nbsp;</td>
+          </tr>
+          <tr>
+            <td style="padding:34px 36px 8px;">
+              <h1 style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:26px; line-height:1.25; color:#10243c;">Welcome aboard, {{ first_name }}</h1>
+              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:1.65; color:#3f5063;">Your workspace for {{ company }} is ready. Three small steps and your whole team can be working in it today.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 36px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0065b3; ">
                 <tr>
-                  <td style="font-family:Georgia, 'Times New Roman', serif; font-size:22px; color:#21201c;">The Autumn Object</td>
-                  <td align="right" style="font-family:Georgia, serif; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:#8f8b80;">Issue 07 &middot; New season</td>
-                </tr>
-              </table>
-              <p style="margin:14px 0 0; border-top:3px solid #21201c; font-size:0; line-height:0;">&nbsp;</p>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:6px 40px 0;">
-              <p style="margin:0 0 14px; font-family:Georgia, 'Times New Roman', serif; font-size:34px; line-height:1.15; color:#21201c;">The coat that<br />earns its keep</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:0 40px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #d8d4c8; border-bottom:1px solid #d8d4c8;">
-                <tr>
-                  <td align="center" style="padding:12px 0; font-family:Georgia, serif; font-size:11px; letter-spacing:0.22em; text-transform:uppercase; color:#8f8b80;">Wool &middot; Waxed cotton &middot; Built for twenty winters</td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:24px 56px 6px;">
-              <p style="margin:0 0 16px; font-family:Georgia, serif; font-size:15px; line-height:1.8; color:#3f3d35;">A good coat is rarely a bargain and never a whim. This season we tracked down the makers who still cut for shape over trend &mdash; and found three under $300 that will outlive the decade.</p>
-              <p style="margin:0 0 20px; font-family:Georgia, serif; font-size:15px; line-height:1.8; color:#3f3d35;">{{ first_name }}, the full guide &mdash; with fit notes for every frame &mdash; is in Issue 07, along with the returning interview column and a farewell to fast fashion&rsquo;s loudest decade.</p>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:18px 40px 8px;">
-              <a href="https://example.com/issue-07" style="display:inline-block; background-color:#21201c; color:#f8f7f3; font-family:Georgia, serif; font-size:14px; text-decoration:none; padding:13px 36px;">Read Issue 07</a>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:24px 40px 10px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#21201c; border-radius:4px;">
-                <tr>
-                  <td align="center" style="padding:18px 24px;">
-                    <p style="margin:0 0 6px; font-family:Georgia, serif; font-size:11px; letter-spacing:0.2em; text-transform:uppercase; color:#b8b3a4;">Subscribers read free</p>
-                    <p style="margin:0 0 12px; font-family:Georgia, serif; font-size:14.5px; line-height:1.5; color:#f8f7f3;">This issue only, take <strong style="color:#e8c87a;">30% off</strong> anything in the shop with code <strong style="font-family:'Courier New', Courier, monospace; color:#e8c87a;">OBJECT30</strong></p>
-                    <a href="https://example.com/shop" style="color:#e8c87a; font-family:Georgia, serif; font-size:13px; text-decoration:underline;">Browse the shop &rarr;</a>
+                  <td align="center" style="padding:26px 30px;">
+                    <p style="margin:0 0 8px; font-family:Arial, Helvetica, sans-serif; font-size:21px; font-weight:bold; color:#ffffff;">Your workspace is live</p>
+                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:13px; letter-spacing:0.04em; color:#cfe3f7;">Unlimited projects &nbsp;&middot;&nbsp; Invite anyone &nbsp;&middot;&nbsp; Connect your tools</p>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
           <tr>
-            <td style="padding:26px 40px 30px;">
-              <p style="margin:0; border-top:1px solid #d8d4c8; font-size:0; line-height:0;">&nbsp;</p>
-              <p style="margin:12px 0 0; font-family:Georgia, serif; font-size:11px; line-height:1.7; color:#8f8b80; text-align:center;">You get The Autumn Object because you subscribed at example.com. Sent to {{ email }}.<br /><a href="{{ unsubscribe_url }}" style="color:#8f8b80;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#8f8b80;">Update preferences</a></p>
+            <td style="padding:26px 36px 4px;">
+              <h2 style="margin:0 0 14px; font-family:Arial, Helvetica, sans-serif; font-size:17px; color:#10243c;">Get set up in five minutes</h2>
+              <p style="margin:0 0 10px; font-family:Arial, Helvetica, sans-serif; font-size:14px; line-height:1.6; color:#3f5063;"><strong style="color:#0065b3;">1.</strong> &nbsp;Create your first project &mdash; a name is enough, everything else can change later.</p>
+              <p style="margin:0 0 10px; font-family:Arial, Helvetica, sans-serif; font-size:14px; line-height:1.6; color:#3f5063;"><strong style="color:#0065b3;">2.</strong> &nbsp;Invite your team &mdash; anyone with a {{ company }} email joins without approval.</p>
+              <p style="margin:0 0 10px; font-family:Arial, Helvetica, sans-serif; font-size:14px; line-height:1.6; color:#3f5063;"><strong style="color:#0065b3;">3.</strong> &nbsp;Connect your tools &mdash; two clicks each for calendar, storage and chat.</p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:18px 36px 6px;">
+              <a href="https://example.com/getting-started" style="display:inline-block; background-color:#0065b3; color:#ffffff; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; text-decoration:none; padding:13px 34px; ">Open your workspace</a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:26px 36px 8px;">
+              <hr style="border:none; border-top:1px solid #e1e8ef; margin:0;" />
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:12px 36px 32px;">
+              <p style="margin:0 0 8px; font-family:Arial, Helvetica, sans-serif; font-size:13px; line-height:1.6; color:#3f5063;">Stuck on anything? Reply to this email &mdash; a real person reads every message, usually within the hour.</p>
+              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; line-height:1.6; color:#8194a7;"><a href="{{ unsubscribe_url }}" style="color:#8194a7;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#8194a7;">Notification settings</a></p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+</script>
+<script type="text/x-template" data-name="Your order shipped">
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Your order is on its way</title>
+</head>
+<body style="margin:0; padding:0; background-color:#eef2f6;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef2f6;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff; overflow:hidden;">
+          <tr>
+            <td align="center" style="background-color:#0065b3; padding:22px 36px;">
+              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:17px; font-weight:bold; letter-spacing:0.08em; color:#ffffff;">{{ company }}</p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:34px 36px 8px;">
+              <p style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:bold; letter-spacing:0.2em; text-transform:uppercase; color:#0065b3;">Shipped &middot; Order #48213</p>
+              <h1 style="margin:0 0 10px; font-family:Arial, Helvetica, sans-serif; font-size:24px; line-height:1.3; color:#10243c;">Your order is on its way, {{ first_name }}</h1>
+              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:14.5px; line-height:1.65; color:#3f5063;">Order <strong>#48213</strong> left our warehouse this morning and arrives <strong>Thursday, 2 September</strong>.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 36px 8px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e1e8ef; ">
+                <tr>
+                  <td style="padding:16px 18px; border-bottom:1px solid #e1e8ef;">
+                    <p style="margin:0 0 4px; font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:bold; letter-spacing:0.12em; text-transform:uppercase; color:#8194a7;">Carrier</p>
+                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#10243c;">DHL Express</p>
+                  </td>
+                  <td style="padding:16px 18px; border-bottom:1px solid #e1e8ef;">
+                    <p style="margin:0 0 4px; font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:bold; letter-spacing:0.12em; text-transform:uppercase; color:#8194a7;">Tracking number</p>
+                    <p style="margin:0; font-family:'Courier New', Courier, monospace; font-size:14px; color:#10243c;">JD014669321DE</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td colspan="2" style="padding:20px 18px 18px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td width="75%" style="height:6px; background-color:#0065b3; font-size:0; line-height:6px;">&nbsp;</td>
+                        <td width="25%" style="height:6px; background-color:#e1e8ef; font-size:0; line-height:6px;">&nbsp;</td>
+                      </tr>
+                      <tr>
+                        <td style="padding-top:8px; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; color:#0065b3;">Ordered &middot; Packed &middot; Shipped</td>
+                        <td align="right" style="padding-top:8px; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; color:#8194a7;">Out for delivery</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:22px 36px 6px;">
+              <a href="https://example.com/track/48213" style="display:inline-block; background-color:#0065b3; color:#ffffff; font-family:Arial, Helvetica, sans-serif; font-size:14px; font-weight:bold; text-decoration:none; padding:12px 32px; ">Track my parcel</a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:22px 36px 8px;">
+              <hr style="border:none; border-top:1px solid #e1e8ef; margin:0;" />
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:10px 36px 30px;">
+              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; line-height:1.6; color:#8194a7;">No one home? The courier leaves a note and tries again the next working day. This update was sent to {{ email }}.<br /><a href="{{ unsubscribe_url }}" style="color:#8194a7;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#8194a7;">Notification settings</a></p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+</script>
+<script type="text/x-template" data-name="Your password was changed">
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Your password was changed</title>
+</head>
+<body style="margin:0; padding:0; background-color:#eef2f6;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef2f6;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff; overflow:hidden;">
+          <tr>
+            <td align="center" style="background-color:#0065b3; padding:22px 36px;">
+              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:17px; font-weight:bold; letter-spacing:0.08em; color:#ffffff;">{{ company }}</p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:34px 36px 8px;">
+              <p style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:bold; letter-spacing:0.2em; text-transform:uppercase; color:#2f9e44;">Security update</p>
+              <h1 style="margin:0 0 12px; font-family:Arial, Helvetica, sans-serif; font-size:26px; line-height:1.25; color:#10243c;">Password updated</h1>
+              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:1.65; color:#3f5063;">Hi {{ first_name }}, your {{ company }} password was just changed. Everything went through &mdash; no action is needed.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:26px 36px 8px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e1e8ef; ">
+                <tr>
+                  <td style="padding:14px 18px; border-bottom:1px solid #e1e8ef; font-family:Arial, Helvetica, sans-serif; font-size:13px; color:#8194a7;">Account</td>
+                  <td align="right" style="padding:14px 18px; border-bottom:1px solid #e1e8ef; font-family:Arial, Helvetica, sans-serif; font-size:13px; color:#10243c;">{{ email }}</td>
+                </tr>
+                <tr>
+                  <td style="padding:14px 18px; font-family:Arial, Helvetica, sans-serif; font-size:13px; color:#8194a7;">When</td>
+                  <td align="right" style="padding:14px 18px; font-family:Arial, Helvetica, sans-serif; font-size:13px; color:#10243c;">Just now, from this account&rsquo;s session</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 36px 6px;">
+              <p style="margin:0 0 10px; font-family:Arial, Helvetica, sans-serif; font-size:14px; line-height:1.65; color:#3f5063;"><strong style="color:#10243c;">Wasn&rsquo;t you?</strong> Reset your password right away and reply to this email &mdash; our team will lock the account while we look into it.</p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:14px 36px 8px;">
+              <a href="https://example.com/reset" style="display:inline-block; background-color:#ffffff; color:#0065b3; font-family:Arial, Helvetica, sans-serif; font-size:14px; font-weight:bold; text-decoration:none; padding:12px 32px; border:2px solid #0065b3;">Reset my password</a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:26px 36px 30px;">
+              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; line-height:1.6; color:#8194a7;"><a href="{{ unsubscribe_url }}" style="color:#8194a7;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#8194a7;">Notification settings</a></p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+</script>
+<script type="text/x-template" data-name="Your sign-in code">
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Your verification code</title>
+</head>
+<body style="margin:0; padding:0; background-color:#10141c;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#10141c;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#1a1f2b; ">
+          <tr>
+            <td align="center" style="padding:36px 36px 0;">
+              <p style="margin:0 0 14px; font-family:Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; letter-spacing:0.2em; text-transform:uppercase; color:#7d8aa5;">{{ company }} &middot; sign-in code</p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:8px 36px 10px;">
+              <h1 style="margin:0 0 10px; font-family:Arial, Helvetica, sans-serif; font-size:24px; line-height:1.3; color:#f2f5fa;">Hi {{ first_name }}, here is your code</h1>
+              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:14.5px; line-height:1.65; color:#a8b3c7;">Enter this one-time code to finish signing in. It works only once.</p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:26px 36px 8px;">
+              <div style="display:inline-block; background-color:#10141c; border:1px solid #2c3446; ">
+                <table role="presentation" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td align="center" style="padding:20px 44px; font-family:'Courier New', Courier, monospace; font-size:38px; font-weight:bold; letter-spacing:0.35em; color:#ffffff;">814722</td>
+                  </tr>
+                </table>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:10px 36px 8px;">
+              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:13px; color:#7d8aa5;">This code expires in <strong style="color:#f2f5fa;">10 minutes</strong>.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:26px 36px 8px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#151a24; ">
+                <tr>
+                  <td style="padding:16px 20px; font-family:Arial, Helvetica, sans-serif; font-size:12.5px; line-height:1.65; color:#7d8aa5;">Never share this code &mdash; not with support, not with anyone. {{ company }} will never ask for it by phone or email. If you didn&rsquo;t try to sign in, change your password right away.</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:22px 36px 32px;">
+              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; line-height:1.6; color:#5d6981;">Sent to {{ email }}<br /><a href="{{ unsubscribe_url }}" style="color:#5d6981;">Unsubscribe</a> &middot; <a href="https://example.com/preferences" style="color:#5d6981;">Notification settings</a></p>
             </td>
           </tr>
         </table>

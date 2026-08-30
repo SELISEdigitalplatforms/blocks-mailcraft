@@ -473,31 +473,29 @@ export function renderField(f) {
   }
 
   if (f.isSlider) {
-    // Drag-to-resize slider (core/binder.js `slider`): the accent bubble
-    // above the thumb and the filled left track follow every drag tick as
-    // pure DOM writes; the document commits once, on release -- committing
-    // per tick is the full-re-render-per-pixel stutter that keeps ordinary
-    // fields on steppers.
+    // Drag-to-resize slider (core/binder.js `slider`): the value stays in a
+    // stable header badge instead of riding over the thumb, where it collided
+    // with the label/track at common widths. The fill and badge still update
+    // as pure DOM writes; the document commits once, on release.
     wrap.classList.add('mc-slider-field');
     const box = el('div');
-    box.appendChild(fieldLabel(f.label));
-    const holder = el('div', { position: 'relative', padding: '17px 0 4px' });
-    const bubble = el('div', { position: 'absolute', top: '0', transform: 'translateX(-50%)', fontFamily: 'var(--ed-font)', fontSize: '11px', fontWeight: '600', color: 'var(--ed-accent)', whiteSpace: 'nowrap', pointerEvents: 'none' });
+    const head = el('div', { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' });
+    head.appendChild(fieldLabel(f.label, true));
+    const value = el('output', { minWidth: '58px', height: '25px', padding: '0 8px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--ed-line)', borderRadius: '7px', background: 'var(--ed-panel-2)', color: 'var(--ed-accent)', fontFamily: 'var(--ed-font)', fontSize: '11.5px', fontWeight: '600', whiteSpace: 'nowrap' }, { 'aria-live': 'polite' });
+    head.appendChild(value);
+    const holder = el('div', { padding: '11px 0 4px' });
     const input = el('input', { width: '100%', margin: '0', display: 'block', boxSizing: 'border-box' }, { type: 'range', min: f.min, max: f.max, step: f.step, class: 'mc-slider', 'aria-label': f.label, 'data-focus-key': `f${f.key}` });
     input.value = f.value;
     const place = () => {
       const pct = (input.value - f.min) / (f.max - f.min || 1);
-      bubble.textContent = input.value + f.unit;
-      // The thumb's center travels inside a track inset by half the 16px
-      // thumb on each side, so the bubble tracks that same inset line.
-      bubble.style.left = `calc(${pct * 100}% + ${(0.5 - pct) * 16}px)`;
+      value.textContent = input.value + f.unit;
       input.style.background = `linear-gradient(to right, var(--ed-accent) ${pct * 100}%, var(--ed-line-2) ${pct * 100}%)`;
     };
     place();
     input.addEventListener('input', place);
     input.addEventListener('change', (e) => f.onCommit(e.target.value));
-    holder.append(bubble, input);
-    box.appendChild(holder);
+    holder.appendChild(input);
+    box.append(head, holder);
     wrap.appendChild(box);
     return wrap;
   }

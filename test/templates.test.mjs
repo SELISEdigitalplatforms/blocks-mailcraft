@@ -136,5 +136,68 @@ await it('the example gallery is plain HTML files, not a script', async () => {
     'templates live as .html under examples/templates/');
 });
 
+console.log();
+console.log('Document input (JSON is normalized, never half-applied)');
+
+// A document a backend or a human would plausibly write: no ids, no theme, no
+// row props, only the block props that were actually meant. It used to reach
+// the renderer intact and fail later at export time on `theme.font`.
+const sparseDoc = () => JSON.parse(JSON.stringify({
+  rows: [{ cols: [{ blocks: [
+    { type: 'heading', props: { text: 'Hello from JSON' } },
+    { type: 'text', props: { html: 'Sent as a plain object.' } },
+  ] }] }],
+}));
+
+await it('setContent fills in a sparse document instead of half-applying it', async () => {
+  const core = new EditorCore();
+  core.flash = () => {};
+  core.loadDoc(sparseDoc());
+  const doc = core.state.doc;
+  const row = doc.rows[0];
+  const heading = row.cols[0].blocks[0];
+  assert.equal(Object.keys(doc.theme).length, 6, 'the full theme is seeded');
+  assert.equal(row.props.py, 20, 'row props come from the row defaults');
+  assert.equal(row.cols[0].span, 100, 'a column with no span gets one');
+  assert.ok(row.id && row.cols[0].id && heading.id, 'ids are generated');
+  assert.equal(heading.props.text, 'Hello from JSON', 'the caller value wins');
+  assert.equal(heading.props.level, 'h2', 'unstated block props come from the type default');
+});
+
+await it('loadTemplate normalizes the same way setContent does', async () => {
+  const a = new EditorCore(); a.flash = () => {};
+  const b = new EditorCore(); b.flash = () => {};
+  a.loadDoc(sparseDoc());
+  b.loadTemplate({ name: 'sparse', doc: sparseDoc() });
+  const strip = (d) => JSON.stringify(d, (k, v) => (k === 'id' ? 0 : v));
+  assert.equal(strip(a.state.doc), strip(b.state.doc), 'both entry points produce the same document');
+});
+
+await it('columns with no span are split evenly', async () => {
+  const core = new EditorCore(); core.flash = () => {};
+  core.loadDoc({ rows: [{ cols: [{ blocks: [] }, { blocks: [] }, { blocks: [] }] }] });
+  assert.deepEqual(core.state.doc.rows[0].cols.map((c) => c.span), [33, 33, 33]);
+});
+
+await it('a block type this build does not know is dropped, the rest survive', async () => {
+  const core = new EditorCore(); core.flash = () => {};
+  core.loadDoc({ rows: [{ cols: [{ blocks: [
+    { type: 'heading', props: { text: 'Kept' } },
+    { type: 'not-a-real-block', props: {} },
+  ] }] }] });
+  const blocks = core.state.doc.rows[0].cols[0].blocks;
+  assert.deepEqual(blocks.map((b) => b.type), ['heading']);
+  assert.equal(blocks[0].props.text, 'Kept');
+});
+
+await it('input with nothing usable in it leaves the document alone', async () => {
+  const core = new EditorCore();
+  core.flash = () => {};
+  const before = JSON.stringify(core.state.doc);
+  [null, undefined, [1, 2, 3], '{"rows":[]}', 42, {}, { rows: [] }, { rows: 'nope' }].forEach((bad) => core.loadDoc(bad));
+  core.loadTemplate({ name: 'junk', doc: { nope: true } });
+  assert.equal(JSON.stringify(core.state.doc), before, 'nothing was replaced or cleared');
+});
+
 console.log(`\n${passed} passed, ${failed} failed.`);
 if (failed) process.exit(1);

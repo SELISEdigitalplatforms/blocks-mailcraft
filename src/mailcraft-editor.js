@@ -1,4 +1,4 @@
-import { EditorCore } from './core/editor-core.js';
+import { EditorCore, AI_GOALS, AI_TONES } from './core/editor-core.js';
 import { GROUPS, LAYOUTS, DEF, PALETTE } from './core/blocks.js';
 import { KB } from './core/assets.js';
 import { acceptAttribute } from './core/storage-limits.js';
@@ -10,6 +10,7 @@ import { TOKEN } from './core/variables.js';
 import { hl, cssUrl } from './core/sanitize.js';
 import { withFocusPreserved } from './render/focus-preserve.js';
 import { captureTemplatePng } from './render/screenshot.js';
+import { resolveToolbar, toolbarKey } from './core/toolbar.js';
 import { createStoryViewer } from './render/story.js';
 import { STYLE } from './render/style.js';
 import { createTranslator, isRtl } from './core/i18n/index.js';
@@ -74,10 +75,10 @@ function tip(node, label, dir, align) {
  * near-verbatim from the original `Component` class), this file only builds
  * and re-builds DOM from it.
  *
- * Attributes: `variables`, `campaign`, `locale` (picks the shipped UI language
+ * Attributes: `variables`, `locale` (picks the shipped UI language
  * and, via `dir` defaulting, RTL), `dir`, `theme` ("light"/"dark" -- host-owned),
  * `ui-font` (a CSS font-family value; use "inherit" for the host app's font),
- * chrome; while present the built-in toggle is hidden). Properties: `.variables`, `.campaign`,
+ * chrome; while present the built-in toggle is hidden). Properties: `.variables`, `.toolbar` (which parts of the top bar are shown),
  * `.aiProvider` (optional async fn, replaces the original's `window.claude.complete`),
  * `.iconProvider` (optional social-icon override), `.storageProvider` (host-supplied
  * file storage -- see `core/storage.js`), `.storageLimits` (host-set upload ceilings,
@@ -98,17 +99,16 @@ function tip(node, label, dir, align) {
 const ElementBase = typeof HTMLElement !== 'undefined' ? HTMLElement : class {};
 
 export class MailCraftEditor extends ElementBase {
-  static get observedAttributes() { return ['variables', 'campaign', 'locale', 'dir', 'theme', 'ui-font']; }
+  static get observedAttributes() { return ['variables', 'locale', 'dir', 'theme', 'ui-font', 'toolbar']; }
 
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
-    // Created here (not connectedCallback) so `.variables`/`.campaign`/`.getContent()`
+    // Created here (not connectedCallback) so `.variables` and the document
     // work even before the element is inserted into the document -- a common pattern
     // (`document.createElement(...)`, configure, then append).
     this.core = new EditorCore({
       variables: this.hasAttribute('variables') ? this.getAttribute('variables') : undefined,
-      campaign: this.hasAttribute('campaign') ? this.getAttribute('campaign') : undefined,
     });
   }
 
@@ -116,6 +116,7 @@ export class MailCraftEditor extends ElementBase {
     this.buildShell();
     this.applyUiFont();
     this.applyDir();
+    this._toolbarKey = toolbarKey(this.toolbarConfig());
     this.core.mount(this.shadowRoot);
     // After mount() on purpose: mount restores the persisted chrome/doc, and
     // a host-supplied `theme`/`locale` must win over what was persisted.
@@ -152,11 +153,11 @@ export class MailCraftEditor extends ElementBase {
   attributeChangedCallback(name, _old, value) {
     if (!this.core) return;
     if (name === 'variables') { this.core.variablesRaw = value; this.core.emit(); }
-    if (name === 'campaign') this.core.setState({ campaign: value });
     if (name === 'locale' || name === 'dir') this.applyDir();
     if (name === 'locale') this.refreshTranslator();
     if (name === 'theme') this.applyTheme();
     if (name === 'ui-font') this.applyUiFont();
+    if (name === 'toolbar') this.applyToolbar();
   }
 
   /**
@@ -215,14 +216,67 @@ export class MailCraftEditor extends ElementBase {
 
   // ---- public API ----------------------------------------------------
 
+  /**
+   * Internal, and deliberately undocumented for hosts: the document object is
+   * this package's own representation, not a format anyone else should have to
+   * store, version or migrate. The host-facing contract is HTML in, HTML out
+   * (`loadTemplate({ html })` / `exportHtml()`), and exported HTML is valid
+   * input to the importer, so round-tripping through it is how a draft is
+   * saved and restored.
+   *
+   * These stay because the editor needs them internally (undo, autosave, the
+   * tests) and because a host that has genuinely outgrown HTML has somewhere
+   * to go -- but nothing in README.md points here, and the shape is free to
+   * change between versions.
+   */
   getContent() { return JSON.parse(JSON.stringify(this.core.state.doc)); }
   setContent(doc) { this.core.loadDoc(doc); }
   /** Parses arbitrary HTML (a full email, a fragment, MailCraft's own exported output) into native blocks wherever the shape is recognizable, replacing the current document. See `core/import-html.js` for the per-shape rules. */
   importHtml(html) { return this.core.importHtml(html); }
-  get campaign() { return this.core.state.campaign; }
-  set campaign(value) { this.core.setState({ campaign: value }); }
   get variables() { return this.core.vars(); }
   set variables(value) { this.core.variablesRaw = value; this.core.emit(); }
+
+  /**
+   * Which parts of the editor's own top bar are shown -- `false` for no bar at
+   * all, or an object switching individual parts off:
+   *
+   *   editor.toolbar = false;                          // no bar
+   *   editor.toolbar = { logo: false, ai: false };     // keep the rest
+   *   <mailcraft-editor toolbar="none">                // markup, no bar
+   *   <mailcraft-editor toolbar="undo,redo,export">    // markup, only these
+   *
+   * Switchable parts: logo, status, device, undo, redo, theme, ai, code,
+   * preview, export. Hiding a control does not remove the capability -- every
+   * one of them is also a method here, so a host that renders its own bar
+   * keeps all of it. Keyboard shortcuts are unaffected either way.
+   *
+   * The property wins over the attribute once set, the same way `.messages`
+   * wins over `locale`.
+   */
+  get toolbar() { return this._toolbar !== undefined ? this._toolbar : (this.getAttribute('toolbar') || ''); }
+  set toolbar(value) { this._toolbar = value; this.applyToolbar(); }
+
+  /** The resolved `{ item: boolean }` map, or null when there is to be no bar. */
+  toolbarConfig() { return resolveToolbar(this._toolbar !== undefined ? this._toolbar : this.getAttribute('toolbar')); }
+
+  /**
+   * Rebuilds the shell when, and only when, the resolved config actually
+   * changed. The header is built once (it is not part of the per-state render
+   * path), so switching a part on or off has to go through buildShell -- and
+   * that also re-creates every modal and the story viewer, which is not
+   * something to do on a set that changes nothing.
+   */
+  applyToolbar() {
+    if (!this.core || !this.shadowRoot.firstChild) return;
+    const key = toolbarKey(this.toolbarConfig());
+    if (key === this._toolbarKey) return;
+    this._toolbarKey = key;
+    this.buildShell();
+    this.applyUiFont();
+    this.applyDir();
+    this.applyTheme();
+    this.render();
+  }
 
   get uiFont() { return this.getAttribute('ui-font') || ''; }
   set uiFont(value) {
@@ -292,7 +346,7 @@ export class MailCraftEditor extends ElementBase {
       const png = blob || await this.screenshotPng();
       const a = document.createElement('a');
       a.href = URL.createObjectURL(png);
-      a.download = (this.core.state.campaign || 'email').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.png';
+      a.download = 'email.png';
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 1500);
       this.core.flash(t('toast.pngSaved'));
@@ -329,10 +383,18 @@ export class MailCraftEditor extends ElementBase {
     const outer = elS('div', 'position: relative; height: 100%; min-width: 1180px;');
     this.mc.appendChild(outer);
 
-    this.frame = elS('div', 'position: relative; height: 100%; border: 1px solid var(--ed-line-2); border-radius: var(--ed-radius); background: var(--ed-panel); display: grid; grid-template-rows: 54px 1fr; overflow: hidden; box-shadow: var(--ed-shadow-sm), var(--ed-shadow-md);', { class: 'mc-shell' });
+    // Header nodes are re-created below (or not at all). Clearing them first
+    // means a rebuild that drops the bar cannot leave the refreshers pointing
+    // at detached nodes they would then keep writing to.
+    this.savedLabel = this.savedDot = this.deviceSeg = null;
+    this.undoBtn = this.redoBtn = this.chromeBtn = null;
+    this.aiBtn = this.codeBtn = this.previewBtn = this.exportBtn = null;
+
+    const bar = this.toolbarConfig();
+    this.frame = elS('div', 'position: relative; height: 100%; border: 1px solid var(--ed-line-2); border-radius: var(--ed-radius); background: var(--ed-panel); display: grid; grid-template-rows: ' + (bar ? '54px 1fr' : '1fr') + '; overflow: hidden; box-shadow: var(--ed-shadow-sm), var(--ed-shadow-md);', { class: 'mc-shell' + (bar ? '' : ' mc-no-header') });
     outer.appendChild(this.frame);
 
-    this.frame.appendChild(this.buildHeader());
+    if (bar) this.frame.appendChild(this.buildHeader(bar));
 
     this.body = elS('div', 'display: grid; grid-template-columns: 1fr 340px; min-height: 0;', { class: 'mc-layout' });
     this.frame.appendChild(this.body);
@@ -362,7 +424,7 @@ export class MailCraftEditor extends ElementBase {
 
   // ---- header -----------------------------------------------------------
 
-  buildHeader() {
+  buildHeader(on) {
     const t = this.core.t;
     const header = elS('header', "display: flex; align-items: center; gap: 14px; padding: 0 16px; border-bottom: 1px solid var(--ed-line); background: linear-gradient(to bottom, var(--ed-panel), var(--ed-panel-2)); position: relative; z-index: 30;", { class: 'mc-header' });
 
@@ -375,7 +437,7 @@ export class MailCraftEditor extends ElementBase {
       brandMark,
       elS('span', 'font-family: var(--ed-font); font-weight: 600; font-size: 15px; letter-spacing: -0.01em; line-height: 1;', { text: 'MailCraft', class: 'mc-brand-name' }),
     );
-    header.append(brand, elS('div', 'width: 1px; height: 22px; background: var(--ed-line);'));
+    if (on.logo) header.append(brand, elS('div', 'width: 1px; height: 22px; background: var(--ed-line);'));
 
     this.savedLabel = elS('span', 'display: flex; align-items: center; gap: 6px; font-family: ui-monospace, monospace; font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ed-faint); white-space: nowrap;');
     // No infinite pulse: a forever-running animation keeps the compositor
@@ -384,29 +446,37 @@ export class MailCraftEditor extends ElementBase {
     this.savedDot = elS('span', 'width: 5px; height: 5px; border-radius: 50%; background: var(--ed-accent);');
     this.savedLabel.appendChild(this.savedDot);
     this.savedLabel.appendChild(document.createTextNode(''));
-    header.appendChild(this.savedLabel);
+    if (on.status) header.appendChild(this.savedLabel);
+    else this.savedLabel = this.savedDot = null;
 
     header.appendChild(elS('div', 'flex: 1;'));
 
-    this.deviceSeg = elS('div', '', { class: 'mc-segment mc-device-segment' });
-    header.appendChild(this.deviceSeg);
+    if (on.device) {
+      this.deviceSeg = elS('div', '', { class: 'mc-segment mc-device-segment' });
+      header.appendChild(this.deviceSeg);
+    }
 
     const iconButtons = elS('div', 'display: flex; align-items: center; gap: 3px;');
-    this.undoBtn = this.iconBtn('undo', t('action.undoHint'), () => this.core.undo(), 'action.undoHint');
-    this.redoBtn = this.iconBtn('redo', t('action.redoHint'), () => this.core.redo(), 'action.redoHint');
-    this.chromeBtn = this.labelIconBtn('moon', t('action.chromeToDark'), t('action.chromeHint'), () => {
+    if (on.undo) this.undoBtn = this.iconBtn('undo', t('action.undoHint'), () => this.core.undo(), 'action.undoHint');
+    if (on.redo) this.redoBtn = this.iconBtn('redo', t('action.redoHint'), () => this.core.redo(), 'action.redoHint');
+    if (on.theme) this.chromeBtn = this.labelIconBtn('moon', t('action.chromeToDark'), t('action.chromeHint'), () => {
       const chrome = this.core.state.chrome === 'light' ? 'dark' : 'light';
-      this.core.setState({ chrome }, () => this.core.persist(null, null, null, chrome));
+      this.core.setState({ chrome }, () => this.core.persist(null, null, chrome));
     }, 'action.chromeHint');
-    this.chromeBtn.i18nTipKey = this.core.state.chrome === 'light' ? 'action.chromeHintToDark' : 'action.chromeHintToLight';
-    this.chromeBtn.tipNode.textContent = t(this.chromeBtn.i18nTipKey);
-    this.aiBtn = this.labelIconBtn('spark', t('action.aiDraft'), t('action.aiDraftHint'), () => this.core.setState({ aiOpen: true }), 'action.aiDraftHint', 'action.aiDraft');
-    this.codeBtn = this.labelIconBtn('code', t('action.code'), t('action.codeHint'), () => this.core.openCode(), 'action.codeHint', 'action.code');
-    this.previewBtn = this.labelIconBtn('eye', t('action.preview'), t('action.previewHint') || '', () => this.core.setState({ previewOpen: true }), 'action.previewHint', 'action.preview');
-    this.exportBtn = this.labelIconBtn('download', t('action.export'), t('action.exportHint'), () => this.core.openExport(), 'action.exportHint', 'action.export');
+    if (this.chromeBtn) {
+      this.chromeBtn.i18nTipKey = this.core.state.chrome === 'light' ? 'action.chromeHintToDark' : 'action.chromeHintToLight';
+      this.chromeBtn.tipNode.textContent = t(this.chromeBtn.i18nTipKey);
+    }
+    if (on.ai) this.aiBtn = this.labelIconBtn('spark', t('action.aiDraft'), t('action.aiDraftHint'), () => this.core.setState({ aiOpen: true }), 'action.aiDraftHint', 'action.aiDraft');
+    if (on.code) this.codeBtn = this.labelIconBtn('code', t('action.code'), t('action.codeHint'), () => this.core.openCode(), 'action.codeHint', 'action.code');
+    if (on.preview) this.previewBtn = this.labelIconBtn('eye', t('action.preview'), t('action.previewHint') || '', () => this.core.setState({ previewOpen: true }), 'action.previewHint', 'action.preview');
+    if (on.export) this.exportBtn = this.labelIconBtn('download', t('action.export'), t('action.exportHint'), () => this.core.openExport(), 'action.exportHint', 'action.export');
 
-    iconButtons.append(this.undoBtn, this.redoBtn, this.chromeBtn, this.aiBtn, this.codeBtn, this.previewBtn, this.exportBtn);
-    header.appendChild(iconButtons);
+    const actions = [this.undoBtn, this.redoBtn, this.chromeBtn, this.aiBtn, this.codeBtn, this.previewBtn, this.exportBtn].filter(Boolean);
+    if (actions.length) {
+      iconButtons.append(...actions);
+      header.appendChild(iconButtons);
+    }
     return header;
   }
 
@@ -507,6 +577,7 @@ export class MailCraftEditor extends ElementBase {
    * core.onSavedChange, surgically: it is the only thing autosave changes
    * on screen, and a full render for it destroyed open dropdowns. */
   refreshSavedLabel() {
+    if (!this.savedLabel) return;
     const s = this.core.state; const t = this.core.t;
     this.savedLabel.lastChild.textContent = s.savedStatus === 'error' ? t('status.saveFailed')
       : s.savedStatus === 'saved' ? t('status.saved', { time: s.savedAt }) : t('status.autosaveOn');
@@ -657,22 +728,24 @@ export class MailCraftEditor extends ElementBase {
     this.mc.dataset.chrome = s.chrome;
     this.refreshSavedLabel();
 
-    this.undoBtn.disabled = !s.history.length;
-    this.redoBtn.disabled = !s.future.length;
+    if (this.undoBtn) this.undoBtn.disabled = !s.history.length;
+    if (this.redoBtn) this.redoBtn.disabled = !s.future.length;
     // A host-supplied `theme` attribute owns light/dark (see applyTheme) --
     // hide the built-in toggle rather than let it fight the host's control.
-    this.chromeBtn.style.display = this.hasAttribute('theme') ? 'none' : 'flex';
-    this.chromeBtn.labelNode.textContent = s.chrome === 'light' ? t('action.chromeToDark') : t('action.chromeToLight');
-    this.chromeBtn.i18nTipKey = s.chrome === 'light' ? 'action.chromeHintToDark' : 'action.chromeHintToLight';
-    this.chromeBtn.tipNode.textContent = t(this.chromeBtn.i18nTipKey);
-    this.chromeBtn.setAttribute('aria-label', t(this.chromeBtn.i18nTipKey));
-    this.chromeBtn.title = t(this.chromeBtn.i18nTipKey);
-    const chromeIcon = s.chrome === 'light' ? 'moon' : 'sun';
-    if (this.chromeBtn.iconName !== chromeIcon) {
-      const nextIcon = icon(chromeIcon, 14);
-      this.chromeBtn.iconNode.replaceWith(nextIcon);
-      this.chromeBtn.iconNode = nextIcon;
-      this.chromeBtn.iconName = chromeIcon;
+    if (this.chromeBtn) {
+      this.chromeBtn.style.display = this.hasAttribute('theme') ? 'none' : 'flex';
+      this.chromeBtn.labelNode.textContent = s.chrome === 'light' ? t('action.chromeToDark') : t('action.chromeToLight');
+      this.chromeBtn.i18nTipKey = s.chrome === 'light' ? 'action.chromeHintToDark' : 'action.chromeHintToLight';
+      this.chromeBtn.tipNode.textContent = t(this.chromeBtn.i18nTipKey);
+      this.chromeBtn.setAttribute('aria-label', t(this.chromeBtn.i18nTipKey));
+      this.chromeBtn.title = t(this.chromeBtn.i18nTipKey);
+      const chromeIcon = s.chrome === 'light' ? 'moon' : 'sun';
+      if (this.chromeBtn.iconName !== chromeIcon) {
+        const nextIcon = icon(chromeIcon, 14);
+        this.chromeBtn.iconNode.replaceWith(nextIcon);
+        this.chromeBtn.iconNode = nextIcon;
+        this.chromeBtn.iconName = chromeIcon;
+      }
     }
 
     this.renderDeviceSeg();
@@ -708,6 +781,7 @@ export class MailCraftEditor extends ElementBase {
   segFg(on) { return on ? 'var(--ed-accent-ink)' : 'var(--ed-muted)'; }
 
   renderDeviceSeg() {
+    if (!this.deviceSeg) return;
     const s = this.core.state;
     const t = this.core.t;
     this.deviceSeg.innerHTML = '';
@@ -1430,12 +1504,22 @@ export class MailCraftEditor extends ElementBase {
     goalWrap.appendChild(elS('label', 'display: block; font-size: 11.5px; color: var(--ed-muted); margin-bottom: 4px;', { text: t('ai.goal'), 'data-i18n': 'ai.goal' }));
     this.aiGoalSelect = elS('select', 'width: 100%; box-sizing: border-box; background: var(--ed-panel-2); border: 1px solid var(--ed-line); color: var(--ed-text); font: inherit; font-size: 13px; padding: 8px;');
     this.aiGoalSelect.addEventListener('change', (e) => this.core.setState({ aiGoal: e.target.value }));
+    // Filled once here rather than on every render: the lists are static, and
+    // sixteen goals under two <optgroup> headings stay scannable where one flat
+    // run of sixteen would not.
+    AI_GOALS.forEach((g) => {
+      const grp = document.createElement('optgroup');
+      grp.label = g.group;
+      g.items.forEach((name) => { const o = document.createElement('option'); o.value = name; o.textContent = name; grp.appendChild(o); });
+      this.aiGoalSelect.appendChild(grp);
+    });
     goalWrap.appendChild(this.aiGoalSelect);
 
     const toneWrap = elS('div');
     toneWrap.appendChild(elS('label', 'display: block; font-size: 11.5px; color: var(--ed-muted); margin-bottom: 4px;', { text: t('ai.tone'), 'data-i18n': 'ai.tone' }));
     this.aiToneSelect = elS('select', 'width: 100%; box-sizing: border-box; background: var(--ed-panel-2); border: 1px solid var(--ed-line); color: var(--ed-text); font: inherit; font-size: 13px; padding: 8px;');
     this.aiToneSelect.addEventListener('change', (e) => this.core.setState({ aiTone: e.target.value }));
+    AI_TONES.forEach((tone) => { const o = document.createElement('option'); o.value = tone; o.textContent = tone; this.aiToneSelect.appendChild(o); });
     toneWrap.appendChild(this.aiToneSelect);
     row.append(goalWrap, toneWrap);
     body.appendChild(row);
@@ -1473,17 +1557,8 @@ export class MailCraftEditor extends ElementBase {
     const t = this.core.t;
     this.aiModal.style.display = s.aiOpen ? 'flex' : 'none';
     if (!s.aiOpen) return;
-    const goals = ['Full email draft', 'Headline options', 'Shorten existing copy', 'Product announcement', 'Re-engagement nudge'];
-    const tones = ['Confident, plain', 'Warm and personal', 'Technical and precise', 'Playful', 'Formal'];
-    if (this.aiGoalSelect.childElementCount !== goals.length) {
-      this.aiGoalSelect.innerHTML = '';
-      goals.forEach((g) => { const o = document.createElement('option'); o.value = g; o.textContent = g; this.aiGoalSelect.appendChild(o); });
-    }
+    // Options are built once in buildAiModal; render only reflects state.
     this.aiGoalSelect.value = s.aiGoal;
-    if (this.aiToneSelect.childElementCount !== tones.length) {
-      this.aiToneSelect.innerHTML = '';
-      tones.forEach((tone) => { const o = document.createElement('option'); o.value = tone; o.textContent = tone; this.aiToneSelect.appendChild(o); });
-    }
     this.aiToneSelect.value = s.aiTone;
     if (this.aiBriefInput.value !== s.aiBrief) this.aiBriefInput.value = s.aiBrief;
     this.aiRunBtn.disabled = s.aiBusy;
@@ -1512,8 +1587,7 @@ export class MailCraftEditor extends ElementBase {
     const head = elS('div', 'display: flex; align-items: center; gap: 12px; padding: 0 20px; border-bottom: 1px solid var(--ed-line); background: var(--ed-panel);', { class: 'mc-preview-toolbar' });
     const headText = elS('div', 'flex: 1; min-width: 0;');
     this.previewKickerEl = elS('div', 'font-family: var(--ed-font); font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ed-muted);', { class: 'mc-preview-kicker' });
-    this.previewCampaignEl = elS('div', 'font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;', { class: 'mc-preview-title' });
-    headText.append(this.previewKickerEl, this.previewCampaignEl);
+    headText.append(this.previewKickerEl);
     this.previewDeviceSeg = elS('div', '', { class: 'mc-segment' });
     const closeBtn = elS('button', 'border: 1px solid var(--ed-line); background: transparent; color: var(--ed-text); cursor: pointer; height: 30px; padding: 0 13px; display: flex; align-items: center; gap: 6px; font-family: var(--ed-font); font-size: 11px; font-weight: 600; transition: border-color 0.16s, background 0.16s;', { type: 'button' });
     closeBtn.appendChild(icon('x', 14));
@@ -1537,7 +1611,6 @@ export class MailCraftEditor extends ElementBase {
     this.previewModal.style.display = s.previewOpen ? 'grid' : 'none';
     if (!s.previewOpen) return;
     this.previewKickerEl.textContent = s.device === 'mobile' ? t('preview.kickerMobile') : t('preview.kickerDesktop', { width: s.doc.theme.width });
-    this.previewCampaignEl.textContent = s.campaign;
     this.previewDeviceSeg.innerHTML = '';
     [
       { label: t('device.desktop'), v: 'desktop', iconName: 'monitor' }, { label: t('device.mobile'), v: 'mobile', iconName: 'phone' },

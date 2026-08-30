@@ -85,8 +85,7 @@ export const createStoryViewer = function (core, hooks) {
   const headRow = el('div', 'display: flex; align-items: center; gap: 10px; flex: none;');
   const headText = el('div', 'flex: 1; min-width: 0;');
   const kickerEl = el('div', 'font-family: ui-monospace, monospace; font-size: 8.5px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,255,255,0.5);');
-  const titleEl = el('div', 'font-family: var(--ed-font); font-size: 13px; font-weight: 600; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;');
-  headText.append(kickerEl, titleEl);
+  headText.append(kickerEl);
   const closeBtn = ghostBtn('width: 30px; padding: 0;', t('action.close'), 'x', () => close());
   headRow.append(headText, closeBtn);
 
@@ -368,7 +367,6 @@ export const createStoryViewer = function (core, hooks) {
     overlay.style.display = 'flex';
     overlay.removeAttribute('aria-hidden');
     kickerEl.textContent = t('story.kicker');
-    titleEl.textContent = core.state.campaign;
     void overlay.offsetWidth; // start the fade from 0, not from "already shown"
     overlay.style.opacity = '1';
     card.style.transform = 'scale(1) translateY(0)';

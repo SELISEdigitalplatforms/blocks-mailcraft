@@ -74,7 +74,7 @@ export const EN = {
   'action.duplicateHint': 'Duplicate — ⌘D',
   'action.deleteHint': 'Delete — ⌫',
   'inspector.emptyBody':
-    'Pick a row or block on the canvas to style it here. Drag blocks in from the <strong style="color: var(--ed-text); font-weight: 600;">Blocks</strong> tab; double-click any text to edit it in place.',
+    'Pick a row or block on the canvas to style it here. Drag blocks in from the <strong style="color: var(--ed-text); font-weight: 600;">Content blocks</strong> tab; double-click any text to edit it in place.',
   'inspector.shortcuts': 'Shortcuts',
   'shortcut.undoRedo': '⌘Z / ⌘⇧Z — undo, redo',
   'shortcut.duplicate': '⌘D — duplicate selection',

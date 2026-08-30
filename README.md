@@ -1,166 +1,110 @@
-# MailCraft Editor
+# MailCraft
 
-Drag-and-drop email template editor distributed through npm as a zero-dependency Web Component. No framework required.
-
-## Install
+Drag-and-drop email editor as a Web Component. No dependencies, no framework, no build step.
 
 ```sh
 npm install @seliseblocks/mailcraft
 ```
 
-```js
-import '@seliseblocks/mailcraft';
-```
+## Use
 
-Import the package once to register the custom element, then use it in your markup:
+```js
+import '@seliseblocks/mailcraft';   // registers <mailcraft-editor>
+```
 
 ```html
 <mailcraft-editor id="editor"></mailcraft-editor>
 ```
 
-Named exports such as `MailCraftEditor`, `EditorCore`, `LOCALES`, and `validateFiles` are available from the same npm entry when needed.
-
-The package is safe to import in a server-rendered application, but the editor itself renders in the browser. Create or display `<mailcraft-editor>` on the client.
-
-That is a working editor. Everything below is optional.
-
-## Get the HTML out
+Or mount it into a container from code, without writing the tag:
 
 ```js
-const html = editor.exportHtml();          // send-ready email HTML
-const doc  = editor.getContent();          // JSON, to store and reload later
+import { createEditor } from '@seliseblocks/mailcraft';
 
-editor.setContent(doc);                    // restore
-editor.addEventListener('change', (e) => save(e.detail));
+const editor = createEditor('#mail', { html, toolbar: false });
+editor.exportHtml();
+editor.destroy();
 ```
 
-## Name the campaign
-
-```html
-<mailcraft-editor campaign="Welcome email"></mailcraft-editor>
-```
-
-Sets the exported `<title>` and the download filename. Unset, they fall back to `Email` / `email.html`.
-
-## Merge variables
-
-```html
-<mailcraft-editor variables="first_name,company,unsubscribe_url"></mailcraft-editor>
-```
-
-Users insert these from the toolbar; they export as `{{first_name}}`.
-
-## Language and theme
-
-```html
-<mailcraft-editor locale="de" theme="dark"></mailcraft-editor>
-```
-
-31 locales, RTL automatic (`locale="ar"`). While `theme` is set the host owns it and the editor hides its own toggle.
-
-The editor UI uses Manrope by default. To match the host application's font, pass `ui-font="inherit"`; an explicit CSS font-family stack is also accepted:
-
-```html
-<mailcraft-editor ui-font="inherit"></mailcraft-editor>
-<mailcraft-editor ui-font="'IBM Plex Sans', Arial, sans-serif"></mailcraft-editor>
-```
-
-The same option is available as `editor.uiFont`. It changes editor chrome only, not the fonts inside the email document.
-
-## File uploads
-
-Two properties. Both are required to accept uploads — without them the library keeps its built-in demo files.
+That is a working editor. It speaks HTML in both directions — there is no document format to store or migrate:
 
 ```js
-// 1. What may be uploaded. No defaults ship: unset means uploads are refused.
-editor.storageLimits = {
-  accept: ['image/jpeg', 'image/png', 'image/gif'],
-  maxBytes: 2 * 1024 * 1024,
-  maxWidth: 1600, maxHeight: 1600,     // optional
-  maxFilesPerDrop: 20,                 // optional
-  allowSvg: false,                     // SVG needs this AND a place in `accept`
-};
-
-// 2. Where it goes. Any backend — the editor never makes a request itself.
-editor.storageProvider = {
-  async list({ folderId, cursor, query, signal }) {
-    const r = await api.images({ folderId, cursor, query });
-    return {
-      items: r.files.map((f) => ({
-        id: f.id, name: f.name, url: f.url,
-        folderId: f.folderId, w: f.width, ht: f.height, size: f.bytes,
-      })),
-      cursor: r.next ?? null,            // null when there are no more pages
-    };
-  },
-
-  async upload(file, { folderId, width, height, signal }) {
-    const saved = await api.upload(file, folderId);
-    return { id: saved.id, name: file.name, url: saved.url,
-             folderId, w: width, ht: height, size: file.size };
-  },
-
-  async folders() { return api.folders(); },            // optional: [{id, name}]
-  async remove(asset) { await api.delete(asset.id); },  // optional
-};
+editor.loadTemplate({ name: 'Welcome', html });   // give it HTML
+const html = editor.exportHtml();                 // get send-ready HTML back
 ```
 
-`url` must still resolve **after the campaign is sent** — a URL that expires in an hour produces mail whose images are already broken when it lands.
+Exported HTML is valid input to `loadTemplate`, so saving the export *is* saving the user's work.
 
-Formats are checked by reading the file's leading bytes, not `file.type`, so a renamed `.svg` cannot slip through.
-
-## Templates
-
-Templates are host content **and host UI**. The editor has no template gallery, no Templates tab, and ships no catalogue — you render your own picker (a page, a modal, a dropdown) and push the chosen template in:
-
-```js
-editor.loadTemplate({ name: 'Welcome', html: '<html>…</html>' });  // raw email HTML, via the importer
-editor.loadTemplate({ name: 'Welcome', doc: savedDoc });           // a saved document object
-editor.loadTemplate({ name: 'Digest',  build: () => makeDoc() });  // built per use
-```
-
-`html` for a real email you already have (the importer converts it — same path as `importHtml`), `doc` for a document captured earlier, `build()` for one made on demand. Either way the editor deep-copies, so your object is never mutated, and applying a template is a normal undoable edit with a toast.
-
-The other direction — storing what the user built as a template of your own:
-
-```js
-const doc = editor.getContent();      // editor -> host (document object)
-const html = editor.exportHtml();     // editor -> host (email HTML)
-```
-
-Ready-made example templates live as plain HTML files in [`examples/templates/`](examples/templates/), with a host-side picker wired up in [`examples/vanilla.html`](examples/vanilla.html) — both are host-app content, not part of the editor.
-
-## Import existing HTML
-
-```js
-editor.importHtml(html);
-```
-
-Converts real-world email HTML into editable blocks — inline- and class-styled markup, builder scaffolding, per-side borders, card columns, social strips, theme extraction. Nested grids and `rowspan`/`colspan` survive as raw-HTML blocks: rendered and exported, not block-editable.
-
-## Everything else
+## Configure
 
 | | |
 |---|---|
-| `screenshotPng()` | full template as a PNG `Blob` |
-| `downloadScreenshot()` / `copyScreenshot()` | save or clipboard |
-| `undo()` / `redo()` | |
-| `.messages` | override any UI string |
+| `variables="first_name,company"` | merge tags, exported as `{{first_name}}` |
+| `locale="de"` | 31 languages, RTL automatic |
+| `theme="light" \| "dark"` | host owns light/dark; hides the built-in toggle |
+| `ui-font="inherit"` | match your app's font |
+| `toolbar="none"` | hide the editor's own top bar |
+| `toolbar="undo,redo,export"` | …or keep only these parts |
+| `.storageProvider` + `.storageLimits` | image uploads to your backend |
 | `.aiProvider` | `async (prompt) => text`, powers the AI draft panel |
-| `.iconProvider` | supply your own social icon art |
-| `export` event | fires on export, `detail` is the HTML |
+| `.messages` | override any UI string |
 
-Documents autosave to `localStorage` per browser tab. With a `storageProvider` set, uploaded files are never written there.
+Every attribute is also a property. Full reference and integration recipes: **[DOCS.md](DOCS.md)**.
 
-A complete host page is in [`examples/vanilla.html`](examples/vanilla.html).
+## For AI agents
 
-## Development
+Everything an assistant needs to wire this up correctly:
 
 ```
-node build.js     # rebuild dist/ after any change under src/
-npm test          # unit suite: storage, export, templates — no dependencies, no DOM
+PACKAGE   @seliseblocks/mailcraft — Web Component, zero runtime deps
+IMPORT    import '@seliseblocks/mailcraft'   (side effect: registers the element)
+          Safe to import under SSR; the element itself renders in a browser only.
+ELEMENT   <mailcraft-editor id="editor"></mailcraft-editor>
+MOUNT     createEditor(target, options) -> handle   (no tag needed)
+          target  = CSS selector or Element; throws if it matches nothing
+          options = html, variables, locale, dir, theme, uiFont, toolbar,
+                    storageProvider, storageLimits, aiProvider, iconProvider,
+                    messages, height, replace, onChange(doc), onExport(html)
+          handle  = the METHODS below + .element + .destroy()
+          The container supplies the height; the editor fills it.
+
+DATA      HTML in, HTML out. There is no JSON document format in the public API.
+          editor.loadTemplate({ name, html })   apply HTML  (undoable, deep-copied)
+          editor.importHtml(html)               apply HTML  (same importer)
+          editor.exportHtml() -> string         send-ready email HTML
+          Persist by storing exportHtml() and passing it back to loadTemplate().
+          Unclassifiable markup survives as a raw-HTML block. Nothing is dropped.
+
+EVENTS    'change'  detail = internal doc (do not persist this)
+          'export'  detail = HTML string
+
+ATTRS     variables="a,b,c" | locale="de" | theme="dark" | dir="rtl"
+          ui-font="inherit" | toolbar="none" | toolbar="undo,redo,export"
+PROPS     .variables .toolbar .uiFont .messages .aiProvider .iconProvider
+          .storageProvider .storageLimits
+METHODS   exportHtml() importHtml(html) loadTemplate(tpl) undo() redo()
+          screenshotPng() previewScreenshot() downloadScreenshot() copyScreenshot()
+
+UPLOADS   Both properties are required, or every upload is refused.
+          editor.storageLimits   = { accept:['image/jpeg','image/png','image/gif'],
+                                     maxBytes: 2*1024*1024 }
+          editor.storageProvider = { list(q), upload(file, o), folders?(), remove?(a) }
+          The editor never makes a network request itself.
+
+TOOLBAR   Parts: logo status device undo redo theme ai code preview export
+          Attribute = allow-list (keep these). Property = { part: false } (drop these).
+          Hiding a control never removes the capability — each is also a method.
+
+DO NOT    Do not use getContent()/setContent() — internal, shape may change.
+          Do not expect a campaign/title option — there is none; <title> is "Email".
 ```
 
-Double-clicking `examples/vanilla.html` opens the editor — the example emails are inlined in the page, so nothing is fetched and no server is needed. The same emails also live as standalone files in `examples/templates/`, for hosts to copy.
+## Develop
 
-The importer has no automated coverage; verify importer changes by hand through the Code modal.
+```sh
+npm install && node build.js && npm test
+```
+
+`examples/vanilla.html` is a complete host page — open it directly, no server needed.
+
+MIT

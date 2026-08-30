@@ -42,20 +42,22 @@ const docOf = (blocks, rowProps = {}) => {
   return { theme: THEME, rows: [row] };
 };
 
-const render = (doc, { campaign = 'Welcome email', content = {} } = {}) =>
-  buildHtml({ doc, campaign }, stubRoot(content), boxCss);
+const render = (doc, { content = {} } = {}) =>
+  buildHtml({ doc }, stubRoot(content), boxCss);
 
 console.log('\nExport');
 
-await it('emits a complete document with the campaign as its title', async () => {
+await it('emits a complete document', async () => {
   const html = render(docOf([]));
   assert.match(html, /^<!doctype html>/);
-  assert.match(html, /<title>Welcome email<\/title>/);
   assert.match(html, /<\/html>$/);
 });
 
-await it('an unset campaign falls back to a neutral title, not a placeholder', async () => {
-  const html = render(docOf([]), { campaign: '' });
+// There is no campaign/title setting any more: hosts give the editor HTML and
+// get HTML back. A per-document title was one more thing for them to carry for
+// no benefit -- a mail client shows the Subject line, never the <title>.
+await it('the title is a fixed neutral one, never a placeholder', async () => {
+  const html = render(docOf([]));
   assert.match(html, /<title>Email<\/title>/);
   assert.equal(/Fall drop/.test(html), false);
 });

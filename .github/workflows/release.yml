@@ -1,0 +1,77 @@
+# Publishes a downloadable build.
+
+# Pushing a `v*` tag builds `dist/` from source and attaches the bundle to a
+# GitHub Release, so a host that does not want npm can download one file. The
+# bundle is rebuilt here rather than taken from the commit: a release should
+# never be able to ship a `dist/` that drifted from `src/`.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build and release (e.g. v0.1.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # No lockfile-dependent install: the only dependency is the minifier.
+      - run: npm install
+
+      - run: npm test
+
+      - run: node build.js
+
+      # The build must match what is committed. A mismatch means someone edited
+      # src/ without rebuilding, and the tag would ship a stale bundle.
+      - name: Verify dist/ is in sync with src/
+        run: |
+          if ! git diff --quiet -- dist/mailcraft-editor.bundle.js; then
+            echo "::error::dist/ is stale — run 'node build.js' and commit before tagging."
+            git diff --stat -- dist/
+            exit 1
+          fi
+
+      - name: Report bundle size
+        run: |
+          RAW=$(stat -c%s dist/mailcraft-editor.bundle.js)
+          GZ=$(gzip -c dist/mailcraft-editor.bundle.js | wc -c)
+          echo "bundle: $RAW bytes raw, $GZ bytes gzipped" >> $GITHUB_STEP_SUMMARY
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/mailcraft-editor.bundle.js
+            dist/mailcraft-editor.bundle.js.map
+          generate_release_notes: true
+          body: |
+            Download `mailcraft-editor.bundle.js` and load it with a single tag —
+            no build step, no npm:
+
+            ```html
+            <mailcraft-editor id="editor"></mailcraft-editor>
+            <script src="mailcraft-editor.bundle.js"></script>
+            ```
+
+            Or install from npm:
+
+            ```sh
+            npm install @seliseblocks/mailcraft
+            ```
+
+            The `.map` is optional; it only makes stack traces readable in devtools.

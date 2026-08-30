@@ -42,6 +42,7 @@
     "src",
     "dist",
     "README.md",
+    "DOCS.md",
     "LICENSE"
   ],
   "engines": {
@@ -52,7 +53,10 @@
   },
   "scripts": {
     "build": "node build.js",
-    "test": "node test/storage.test.mjs && node test/export.test.mjs && node test/templates.test.mjs",
+    "test": "node test/storage.test.mjs && node test/export.test.mjs && node test/templates.test.mjs && node test/system.test.mjs && node test/toolbar.test.mjs",
     "prepublishOnly": "npm run build && npm test"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
   }
 }
