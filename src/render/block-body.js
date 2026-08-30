@@ -15,6 +15,30 @@ function el(tag, style, attrs) {
 
 function m(v) { return String(v == null ? '' : v); }
 
+/**
+ * Writing assistants (Grammarly, LanguageTool and friends) treat any
+ * `contenteditable` as a field of their own: they float a button over its
+ * bottom-right corner -- squarely on top of this editor's own block toolbar --
+ * and inject their highlight/overlay DOM into it, which `syncLiveEdit`
+ * (mailcraft-editor.js) then reads back as innerHTML and stores in the
+ * template, so their markup ends up in the exported email. Every one of them
+ * honours an opt-out attribute on the field itself, so each editable surface
+ * declares all of them here rather than repeating the list six times below.
+ * The `spellcheck="false"` that already rode along stays on every copy,
+ * editable or not, and `core/export.js` strips all of it back out on the way
+ * to the recipient.
+ */
+const NO_ASSIST = {
+  'data-gramm': 'false',
+  'data-gramm_editor': 'false',
+  'data-enable-grammarly': 'false',
+  'data-lt-active': 'false',
+};
+
+function editableAttrs(on) {
+  return on ? { contenteditable: 'true', spellcheck: 'false', ...NO_ASSIST } : { spellcheck: 'false' };
+}
+
 /** An explicit block font owns every rich descendant; an empty value deliberately leaves imported inline typography untouched. */
 function overrideRichFont(root, fontFamily) {
   if (!fontFamily) return;
@@ -38,7 +62,7 @@ export function blockBody(b, theme, live, ctx) {
       const edit = live;
       const content = el('div', {
         padding: pad(p), fontSize: p.size + 'px', lineHeight: p.lh, textAlign: p.align, fontWeight: p.weight, color: p.color || t.text, outline: 'none', fontFamily: p.fontFamily || t.font,
-      }, { ...attr, contenteditable: edit ? 'true' : undefined, spellcheck: 'false', html: m(p.html), 'data-focus-key': edit ? 'block:' + b.id : undefined });
+      }, { ...attr, ...editableAttrs(edit), html: m(p.html), 'data-focus-key': edit ? 'block:' + b.id : undefined });
       // Imported email HTML keeps inline font-family declarations so an
       // untouched block retains its source typography. Once the user chooses
       // a block font, however, those nested declarations outrank inheritance
@@ -76,7 +100,7 @@ export function blockBody(b, theme, live, ctx) {
         // email pattern; the color falls back to the label color so a bare
         // "outline thickness" bump looks right without a second step.
         border: p.borderW ? p.borderW + 'px ' + (p.borderStyle || 'solid') + ' ' + (p.borderColor || p.color) : '0',
-      }, { href: p.href, contenteditable: live ? 'true' : undefined, spellcheck: 'false', text: p.label });
+      }, { href: p.href, ...editableAttrs(live), text: p.label });
       a.addEventListener('click', (e) => e.preventDefault());
       // Button editing is deliberately plain: no focus-tracked `editing` state, no
       // paste handling, no floating RTE toolbar -- only its label commits on blur.
@@ -147,7 +171,7 @@ export function blockBody(b, theme, live, ctx) {
       const safe = live
         ? raw.replace(/<style([^>]*)>([\s\S]*?)<\/style>/gi, (mm, at, css) => '<style' + at + '>' + ctx.scopeCss(css, '[data-mc-sheet]') + '</style>')
         : raw;
-      const content = el('div', { padding: '6px 0', fontFamily: t.font, color: t.text, outline: 'none' }, { ...attr, contenteditable: edit ? 'true' : undefined, spellcheck: 'false', html: m(safe), 'data-focus-key': edit ? 'block:' + b.id : undefined });
+      const content = el('div', { padding: '6px 0', fontFamily: t.font, color: t.text, outline: 'none' }, { ...attr, ...editableAttrs(edit), html: m(safe), 'data-focus-key': edit ? 'block:' + b.id : undefined });
       if (edit) wireEditable(content, b, 'code', ctx, false);
       if (!live) return content;
       return wrapWithRte(b, ctx, edit && ctx.editingId === b.id, content);
@@ -187,7 +211,7 @@ export function blockBody(b, theme, live, ctx) {
         color: p.color || t.text, outline: 'none',
         // An explicit per-block font beats the Condensed/Body style toggle.
         fontFamily: p.fontFamily || (p.font === 'condensed' ? "'Arial Narrow', 'Helvetica Neue Condensed', Helvetica, Arial, sans-serif" : t.font),
-      }, { ...attr, contenteditable: edit ? 'true' : undefined, spellcheck: 'false', text: m(p.text), 'data-focus-key': edit ? 'block:' + b.id : undefined });
+      }, { ...attr, ...editableAttrs(edit), text: m(p.text), 'data-focus-key': edit ? 'block:' + b.id : undefined });
       if (edit) wireEditable(head, b, 'text', ctx, true);
       if (!live) return head;
       return wrapWithRte(b, ctx, ctx.editingId === b.id, head);
@@ -217,7 +241,7 @@ export function blockBody(b, theme, live, ctx) {
             fontWeight: isHead ? '600' : '400', outline: 'none',
             fontFamily: p.fontFamily || t.font,
             letterSpacing: isHead ? '0.06em' : 'normal', textTransform: isHead ? 'uppercase' : 'none', fontSize: isHead ? p.size + 1 + 'px' : p.size + 'px',
-          }, { contenteditable: edit ? 'true' : undefined, spellcheck: 'false', text: m(cell), 'data-focus-key': edit ? 'block:' + b.id + ':c' + ri + '-' + ci : undefined });
+          }, { ...editableAttrs(edit), text: m(cell), 'data-focus-key': edit ? 'block:' + b.id + ':c' + ri + '-' + ci : undefined });
           if (edit) {
             // stopPropagation is load-bearing (a bubbled click would select
             // via the block wrapper AND deselect via the workspace), but it
@@ -262,7 +286,7 @@ export function blockBody(b, theme, live, ctx) {
         minHeight: p.minH ? p.minH + 'px' : 'auto', maxWidth: p.maxW + '%', margin: p.align === 'center' ? '0 auto' : '0',
         boxShadow: p.shadow ? '0 10px 30px rgba(29,31,32,0.12)' : 'none',
         fontFamily: t.font, color: t.text, fontSize: '15px', lineHeight: '1.6',
-      }, { ...attr, contenteditable: edit ? 'true' : undefined, spellcheck: 'false', html: m(p.html), 'data-focus-key': edit ? 'block:' + b.id : undefined });
+      }, { ...attr, ...editableAttrs(edit), html: m(p.html), 'data-focus-key': edit ? 'block:' + b.id : undefined });
       if (edit) wireEditable(box, b, 'html', ctx, false);
       if (!live) return box;
       return wrapWithRte(b, ctx, ctx.editingId === b.id, box);

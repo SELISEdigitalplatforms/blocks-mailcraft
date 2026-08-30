@@ -126,18 +126,31 @@ await it('a column drop is handled', async () => {
 console.log();
 console.log('Asset library and uploads');
 
-await it('the library lists the seeded files and filters by folder and query', async () => {
+/** The library ships empty, so anything that needs files puts them there itself -- exactly as a local drop would. */
+const localAssets = (el, names) => {
+  const assets = names.map((name, i) => ({ id: 'a' + i, name, url: 'data:image/png;base64,iVBORw0KGgo=', folder: '', w: 10, ht: 10, size: 100 }));
+  el.core.setState({ assets });
+  return assets;
+};
+
+await it('the library starts empty -- no files and no folders the host never created', async () => {
   const el = await mountEditor();
   await settle(2);
-  const all = el.core.visibleAssets().length;
-  assert.ok(all > 0, 'seeded files');
-  assert.ok(el.core.folderOptions().length > 1, 'folders offered');
-  el.core.setAssetFolder('Product');
+  assert.deepEqual(el.core.visibleAssets(), [], 'nothing invented');
+  assert.deepEqual(el.core.folderOptions().map((f) => f.id), [''], 'one synthetic "all files" entry');
+});
+
+await it('the local library filters by query', async () => {
+  const el = await mountEditor();
   await settle(2);
-  assert.ok(el.core.visibleAssets().length <= all);
+  localAssets(el, ['jacket-front.png', 'jacket-detail.png', 'boots.png']);
+  const all = el.core.visibleAssets().length;
+  assert.equal(all, 3);
+  assert.equal(el.core.folderOptions()[0].count, 3, 'the one folder counts what is actually there');
   el.core.setAssetQuery('jacket');
   await new Promise((r) => setTimeout(r, 380));
   await settle(2);
+  assert.equal(el.core.visibleAssets().length, 2);
   assert.ok(el.core.visibleAssets().every((a) => a.name.includes('jacket')), 'query applied');
 });
 
@@ -146,6 +159,7 @@ await it('choosing an asset fills the selected image block', async () => {
   el.core.insertBlock('image');
   await settle(2);
   const block = blocksOf(el)[0];
+  localAssets(el, ['hero.png']);
   el.core.openLibrary({ type: 'block', id: block.id, prop: 'src' });
   await settle(2);
   const asset = el.core.visibleAssets()[0];
@@ -157,7 +171,7 @@ await it('choosing an asset fills the selected image block', async () => {
 await it('dropping an asset onto the canvas adds an image block', async () => {
   const el = await mountEditor();
   await settle(2);
-  const asset = el.core.visibleAssets()[0];
+  const asset = localAssets(el, ['hero.png'])[0];
   const before = blocksOf(el).length;
   el.core.dropAsset(asset.id);
   await settle(2);

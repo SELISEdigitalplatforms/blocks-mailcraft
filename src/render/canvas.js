@@ -229,6 +229,24 @@ export function renderDoc(core, live) {
           bWrap.addEventListener('dragstart', core.startDrag({ kind: 'move-block', id: b.id }));
           bWrap.addEventListener('dragend', () => { core.drag = null; hideActive(rowDropTracker); hideActive(colTracker); });
           bWrap.addEventListener('click', (e) => { e.stopPropagation(); core.select('block', b.id); });
+          // WebKit gives a `draggable="true"` ancestor priority over the
+          // selection machinery: a mousedown anywhere inside this wrapper is
+          // taken as the start of an element drag, so in Safari a double-click
+          // on block text never selects the word and pressing and sweeping
+          // across it never extends a selection. (Chromium and Gecko both
+          // special-case contenteditable descendants; WebKit does not.)
+          // Dropping the attribute for the length of a gesture that begins
+          // inside editable text hands those mousedowns back to the caret;
+          // restoring it on mouseup keeps drag-to-reorder working from every
+          // other part of the block -- including its padding, which is what a
+          // block is normally picked up by.
+          bWrap.addEventListener('mousedown', (e) => {
+            const target = e.target;
+            if (!target || target.nodeType !== 1 || !target.closest('[contenteditable="true"]')) return;
+            bWrap.draggable = false;
+            const view = bWrap.ownerDocument.defaultView;
+            if (view) view.addEventListener('mouseup', () => { bWrap.draggable = true; }, { once: true });
+          });
         }
         if (bSel) bWrap.appendChild(toolbar(core, b.id, 'block', DEF(b.type).code));
         bWrap.appendChild(blockBody(b, theme, live, ctx));

@@ -71,12 +71,15 @@ await it('block content is read back from the rendered tree', async () => {
 await it('editing-only attributes never reach the recipient', async () => {
   const text = mk('text');
   const html = render(docOf([text]), {
-    content: { [text.id]: '<p contenteditable="true" spellcheck="false" draggable="true" data-mc-content="x">Hi</p>' },
+    content: { [text.id]: '<p contenteditable="true" spellcheck="false" draggable="true" data-mc-content="x" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" data-lt-active="false">Hi</p>' },
   });
   assert.equal(/contenteditable/.test(html), false);
   assert.equal(/spellcheck/.test(html), false);
   assert.equal(/draggable/.test(html), false);
   assert.equal(/data-mc-/.test(html), false);
+  assert.equal(/data-gramm/.test(html), false, 'the writing-assistant opt-outs are editor-only too');
+  assert.equal(/data-enable-grammarly/.test(html), false);
+  assert.equal(/data-lt-active/.test(html), false);
   assert.match(html, />Hi</);
 });
 

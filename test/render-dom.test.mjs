@@ -105,6 +105,36 @@ await it('a row with a background image renders it on the canvas', async () => {
   assert.match(el.shadowRoot.innerHTML, /bg\.png/);
 });
 
+
+await it('pressing on block text hands the gesture to the caret, not to the block drag', async () => {
+  const { el } = await withText();
+  const editable = q(el, '[contenteditable="true"]');
+  const wrap = editable.closest('.mc-block-el');
+  assert.equal(wrap.draggable, true, 'a block is draggable at rest');
+  editable.dispatchEvent(new (win().MouseEvent)('mousedown', { bubbles: true }));
+  // WebKit decides drag-vs-select at mousedown, so the attribute has to be
+  // gone by the time this returns or Safari never selects the word.
+  assert.equal(wrap.draggable, false, 'the drag is released for the length of the gesture');
+  win().dispatchEvent(new (win().MouseEvent)('mouseup', { bubbles: true }));
+  assert.equal(wrap.draggable, true, 'and comes back on mouseup, so reordering still works');
+});
+
+await it('pressing on a block that is not editable leaves its drag alone', async () => {
+  const el = await mountEditor();
+  el.core.insertBlock('divider');
+  await settle(2);
+  const wrap = q(el, '.mc-block-el');
+  wrap.dispatchEvent(new (win().MouseEvent)('mousedown', { bubbles: true }));
+  assert.equal(wrap.draggable, true);
+});
+
+await it('editable copy opts out of the writing assistants that would float over it', async () => {
+  const { el } = await withText();
+  const editable = q(el, '[contenteditable="true"]');
+  ['data-gramm', 'data-gramm_editor', 'data-enable-grammarly', 'data-lt-active'].forEach((name) => {
+    assert.equal(editable.getAttribute(name), 'false', name + ' declared');
+  });
+});
 console.log();
 console.log('Inline rich text');
 

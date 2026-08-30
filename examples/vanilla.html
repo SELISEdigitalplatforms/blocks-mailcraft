@@ -1548,32 +1548,244 @@
   // calls below at S3, a DMS, a CDN or your own API and the editor is
   // unchanged.
   //
-  // Left commented out, this demo keeps its seeded placeholder files.
+  // This demo wires a real one. There is no server behind a static page, so
+  // the "backend" is IndexedDB in your own browser — but everything the editor
+  // is allowed to see about it behaves like a service: round-trip latency,
+  // folders and search resolved on the far side, cursor-paged listings,
+  // uploads that are still there after a reload, deletes that stay deleted,
+  // and cancellation honoured. Replace `demoBackend` with `fetch` calls to
+  // your API and the provider underneath it does not change a line.
   //
-  // editor.storageProvider = {
-  //   async list({ folderId, cursor, query }) {
-  //     const r = await myApi.listImages({ folder: folderId, cursor, q: query });
-  //     return {
-  //       items: r.files.map((f) => ({
-  //         id: f.id, name: f.name, url: f.publicUrl,
-  //         folder: f.folderName, folderId: f.folderId,
-  //         w: f.width, ht: f.height, size: f.bytes,
-  //       })),
-  //       cursor: r.nextCursor ?? null,
-  //     };
-  //   },
-  //   async upload(file, { folderId, width, height, signal }) {
-  //     const saved = await myApi.upload(file, folderId, { signal });
-  //     return { id: saved.id, name: file.name, url: saved.publicUrl,
-  //              folder: '', folderId, w: width, ht: height, size: file.size };
-  //   },
-  //   async folders() { return myApi.folders(); },        // optional
-  //   async remove(asset) { await myApi.delete(asset.id); }, // optional
-  // };
+  // The editor ships no files of its own: with nothing wired here the library
+  // opens empty and stays that way until someone drops something in. Every
+  // file in the Assets modal is defined below — host content, in host code,
+  // exactly where a real integration keeps it.
+
+  // ---- the pretend backend ------------------------------------------------
+
+  const demoBackend = (() => {
+    const DB_NAME = 'mailcraft-demo-assets';
+    const STORE = 'files';
+    const PAGE_SIZE = 8;      // small on purpose: it makes "Load more" real
+    const LATENCY = 240;      // roughly what one round trip to a DMS costs
+
+    // Folders are the backend's, not the editor's. Ids are what travel over
+    // the wire; the names are only ever display strings.
+    const FOLDERS = [
+      { id: 'brand', name: 'Brand' },
+      { id: 'product', name: 'Product' },
+      { id: 'photography', name: 'Photography' },
+      { id: 'uploads', name: 'Uploads' },
+    ];
+    const folderName = (id) => (FOLDERS.find((f) => f.id === id) || {}).name || '';
+
+    // The demo's own placeholder images, as SVG data URIs so the catalogue
+    // needs no binaries next to this file. A real backend hands back durable
+    // https URLs instead — see the note on `url` at the bottom.
+    const ph = (label, w, ht) => 'data:image/svg+xml;utf8,' + encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + ht + '">'
+      + '<defs><pattern id="p" width="9" height="9" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">'
+      + '<rect width="9" height="9" fill="#ececed"/><line x1="0" y1="0" x2="0" y2="9" stroke="#cfd3d8" stroke-width="3"/></pattern></defs>'
+      + '<rect width="100%" height="100%" fill="url(#p)"/>'
+      + '<rect x="0.5" y="0.5" width="' + (w - 1) + '" height="' + (ht - 1) + '" fill="none" stroke="#9aa2ab"/>'
+      + '<text x="50%" y="50%" dy="4" text-anchor="middle" font-family="ui-monospace,monospace" font-size="'
+      + Math.max(11, Math.round(w / 40)) + '" fill="#5b6672">' + label + '</text></svg>',
+    ).replace(/\(/g, '%28').replace(/\)/g, '%29');
+
+    // Fourteen files across three folders: enough that a listing pages, and
+    // enough that a search narrows something.
+    const CATALOGUE = [
+      ['logo-lockup.png', 'brand', 480, 180],
+      ['logo-mark.png', 'brand', 240, 240],
+      ['logo-wordmark.png', 'brand', 520, 140],
+      ['jacket-03-front.jpg', 'product', 520, 360],
+      ['jacket-03-detail.jpg', 'product', 520, 360],
+      ['jacket-03-lining.jpg', 'product', 520, 360],
+      ['boots-pair.jpg', 'product', 520, 360],
+      ['boots-sole.jpg', 'product', 520, 360],
+      ['satchel-tan.jpg', 'product', 520, 360],
+      ['hero-workshop.jpg', 'photography', 600, 340],
+      ['hero-storefront.jpg', 'photography', 600, 340],
+      ['texture-waxed.jpg', 'photography', 600, 240],
+      ['texture-canvas.jpg', 'photography', 600, 240],
+      ['team-bench.jpg', 'photography', 600, 400],
+    ];
+
+    // IndexedDB is unavailable on a `file://` page in Chrome, and this file is
+    // meant to survive being double-clicked. The in-memory shim keeps every
+    // path below identical; the only thing lost is "survives a reload".
+    let memory = null;
+    let dbPromise = null;
+    function db() {
+      if (memory) return Promise.resolve(null);
+      if (!dbPromise) {
+        dbPromise = new Promise((resolve) => {
+          let req;
+          try { req = indexedDB.open(DB_NAME, 1); } catch (e) { memory = new Map(); return resolve(null); }
+          req.onupgradeneeded = () => req.result.createObjectStore(STORE, { keyPath: 'id' });
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => { memory = new Map(); resolve(null); };
+        });
+      }
+      return dbPromise;
+    }
+
+    async function readAll() {
+      const conn = await db();
+      if (!conn) return Array.from(memory.values());
+      return new Promise((resolve, reject) => {
+        const req = conn.transaction(STORE, 'readonly').objectStore(STORE).getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function write(rec) {
+      const conn = await db();
+      if (!conn) { memory.set(rec.id, rec); return rec; }
+      return new Promise((resolve, reject) => {
+        const t = conn.transaction(STORE, 'readwrite');
+        t.objectStore(STORE).put(rec);
+        t.oncomplete = () => resolve(rec);
+        t.onerror = () => reject(t.error);
+      });
+    }
+
+    async function drop(id) {
+      const conn = await db();
+      if (!conn) { memory.delete(id); return; }
+      return new Promise((resolve, reject) => {
+        const t = conn.transaction(STORE, 'readwrite');
+        t.objectStore(STORE).delete(id);
+        t.oncomplete = () => resolve();
+        t.onerror = () => reject(t.error);
+      });
+    }
+
+    // First run only: a real backend already has the customer's files in it.
+    let seeded = null;
+    function seed() {
+      if (!seeded) {
+        seeded = readAll().then(async (rows) => {
+          if (rows.length) return;
+          const t0 = Date.now() - CATALOGUE.length * 1000;
+          for (let i = 0; i < CATALOGUE.length; i++) {
+            const name = CATALOGUE[i][0];
+            const folderId = CATALOGUE[i][1];
+            const w = CATALOGUE[i][2];
+            const ht = CATALOGUE[i][3];
+            const url = ph(name.replace(/\.[a-z]+$/i, '').replace(/-/g, ' '), w, ht);
+            await write({ id: 'seed-' + i, name: name, folderId: folderId, url: url, w: w, ht: ht, size: url.length, createdAt: t0 + i * 1000 });
+          }
+        });
+      }
+      return seeded;
+    }
+
+    /** Latency you can cancel: an aborted request rejects the way `fetch` does. */
+    function nap(ms, signal) {
+      return new Promise((resolve, reject) => {
+        if (signal && signal.aborted) return reject(new DOMException('Aborted', 'AbortError'));
+        const id = setTimeout(resolve, ms);
+        if (signal) signal.addEventListener('abort', () => { clearTimeout(id); reject(new DOMException('Aborted', 'AbortError')); }, { once: true });
+      });
+    }
+
+    const readAsDataUrl = (file) => new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result);
+      fr.onerror = () => reject(new Error('the file could not be read'));
+      fr.readAsDataURL(file);
+    });
+
+    return {
+      folders: async () => { await nap(LATENCY / 2); return FOLDERS.map((f) => ({ id: f.id, name: f.name })); },
+
+      // Folder, search and paging are all resolved here, on the far side of the
+      // wire — which is exactly why the editor stops filtering locally the
+      // moment a provider is assigned. A cursor is opaque to it: this one is an
+      // offset, a real one is usually a continuation token.
+      async list(q) {
+        await seed();
+        await nap(LATENCY, q.signal);
+        const term = (q.query || '').trim().toLowerCase();
+        const rows = (await readAll())
+          .filter((r) => (!q.folderId || r.folderId === q.folderId) && (!term || r.name.toLowerCase().includes(term)))
+          .sort((a, b) => b.createdAt - a.createdAt);
+        const from = Number(q.cursor) || 0;
+        return {
+          items: rows.slice(from, from + PAGE_SIZE).map((r) => ({
+            id: r.id, name: r.name, url: r.url,
+            folder: folderName(r.folderId), folderId: r.folderId,
+            w: r.w, ht: r.ht, size: r.size,
+          })),
+          cursor: from + PAGE_SIZE < rows.length ? String(from + PAGE_SIZE) : null,
+        };
+      },
+
+      // The editor has already validated the file against `storageLimits` and
+      // measured it, so `width`/`height` arrive filled in. Uploading from "All
+      // files" means no folder was chosen — a backend still has to put the
+      // bytes somewhere, and "Uploads" is this one's answer.
+      async upload(file, opts) {
+        const url = await readAsDataUrl(file);
+        await nap(LATENCY * 2, opts.signal);
+        const target = opts.folderId || 'uploads';
+        const rec = {
+          id: 'up-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
+          name: file.name, folderId: target, url: url,
+          w: opts.width || 0, ht: opts.height || 0, size: file.size, createdAt: Date.now(),
+        };
+        await write(rec);
+        return { id: rec.id, name: rec.name, url: rec.url, folder: folderName(target), folderId: target, w: rec.w, ht: rec.ht, size: rec.size };
+      },
+
+      async remove(asset) {
+        await nap(LATENCY);
+        await drop(asset.id);
+      },
+
+      /** Not part of the contract — a console escape hatch for this demo. */
+      async reset() {
+        const rows = await readAll();
+        for (let i = 0; i < rows.length; i++) await drop(rows[i].id);
+        seeded = null;
+        await seed();
+      },
+    };
+  })();
+
+  // The provider itself: four thin methods over whatever the backend is. This
+  // is the entire integration — no editor internals, no imports, no build step.
+  const demoStorage = {
+    folders: () => demoBackend.folders(),
+    list: (q) => demoBackend.list(q),
+    upload: (file, opts) => demoBackend.upload(file, opts),
+    remove: (asset) => demoBackend.remove(asset),
+  };
+  editor.storageProvider = demoStorage;
+
+  // Handy while poking at the demo: `mailcraftDemo.reset()` empties the
+  // library, re-seeds it, and re-lists it. Re-assigning the provider is how a
+  // host tells the editor to start over — the same call the line above makes.
+  window.mailcraftDemo = {
+    reset: () => demoBackend.reset().then(() => { editor.storageProvider = demoStorage; }),
+  };
+
+  // Against a real API the same four methods are usually one-liners:
+  //
+  //   list:    ({ folderId, cursor, query, signal }) => myApi.listImages({ folder: folderId, cursor, q: query, signal })
+  //   upload:  (file, { folderId, width, height, signal }) => myApi.upload(file, folderId, { signal })
+  //   folders: () => myApi.folders(),               // optional
+  //   remove:  (asset) => myApi.delete(asset.id),   // optional
+  //
+  // — each response mapped onto `{ id, name, url, folder, folderId, w, ht, size }`.
   //
   // The one hard requirement is on `url`: it has to still resolve after the
   // campaign is sent. A URL that expires in an hour produces mail whose images
-  // are already broken when it lands.
+  // are already broken when it lands. This demo cheats it with data URIs, which
+  // no email client will render — a real integration returns the durable https
+  // URL its CDN serves.
   //
   // README.md has the full contract.
 </script>

@@ -102,7 +102,8 @@ UPLOADS   Limits and a provider are both required, or every upload is refused.
           editor.storageProvider = { list(q), upload(file, o), folders?(), remove?(a),
                                      limits? }
           provider.limits is merged per key under .storageLimits, and satisfies
-          the requirement on its own. .storageProvider = null restores the demo library.
+          the requirement on its own. With no provider the library is empty and
+          local to the draft — the package ships no files of its own.
           The editor never makes a network request itself.
 
 TOOLBAR   Parts: logo status device undo redo theme ai code preview export

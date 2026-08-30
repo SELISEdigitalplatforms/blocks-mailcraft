@@ -110,6 +110,14 @@ export const STYLE = `
 .mc-block-el.is-selected { outline: 2px solid var(--ed-accent-sheet); }
 .mc-block-el:not(.is-selected):hover { outline: 1px dashed var(--ed-accent-sheet); }
 /*
+ * The other half of the WebKit fix in render/canvas.js: a block is a
+ * draggable element, and Safari would rather drag the text inside it than
+ * let the caret select it. Taking the editable copy out of the drag path,
+ * and saying outright that it is selectable, keeps double-click-to-select
+ * and press-and-sweep working there. Harmless everywhere else.
+ */
+[contenteditable="true"] { -webkit-user-drag: none; -webkit-user-select: text; user-select: text; }
+/*
  * The grab strip runs the row's whole left edge (see render/canvas.js); the
  * visible part is a round badge straddling the selection border. It takes
  * --ed-accent-sheet, not --ed-accent, for the same reason as the canvas

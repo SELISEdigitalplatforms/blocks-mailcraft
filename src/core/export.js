@@ -20,6 +20,7 @@ export function buildHtml(state, root, boxCss) {
       .replace(/\scontenteditable="[^"]*"/g, '')
       .replace(/\sdata-mc-[a-z-]+="[^"]*"/g, '')
       .replace(/\sspellcheck="[^"]*"/g, '')
+      .replace(/\sdata-(?:gramm|gramm_editor|enable-grammarly|lt-active)="[^"]*"/g, '')
       .replace(/\sdraggable="[^"]*"/g, '');
   };
   const rows = d.rows.map((r) => {

@@ -16,9 +16,9 @@ import { renderDoc } from './canvas.js';
  *
  * The second is that it may not fetch ANY
  * external resource -- not "CORS applies", but a total network ban -- so
- * every image has to already be a data: URI when the SVG is built. Uploads
- * and the seeded placeholders are data: URIs by construction
- * (core/assets.js, core/placeholder.js); anything else (a hand-typed image
+ * every image has to already be a data: URI when the SVG is built. A block
+ * placeholder is one by construction (core/placeholder.js), and so is a file
+ * dropped into the local library; anything else (a provider URL, a hand-typed
  * URL) is inlined here via a best-effort fetch, and a fetch the remote
  * server refuses (no CORS header) degrades to a blank pixel instead of
  * silently producing a tainted, unexportable canvas.

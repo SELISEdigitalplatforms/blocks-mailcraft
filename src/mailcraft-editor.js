@@ -417,10 +417,11 @@ export class MailCraftEditor extends ElementBase {
 
   /**
    * Host-supplied file storage -- see `core/storage.js` for the contract, and
-   * README.md for a worked example. Setting one replaces the seeded demo
-   * library with the backend's own: folders, paging,
-   * upload and delete all go through it, and nothing is written to
-   * localStorage. Set `null` to go back to the built-in behaviour.
+   * README.md for a worked example. The package ships no files of its own: with
+   * nothing set here the library opens empty and holds only what is dropped
+   * into it, in this browser, in this draft. Setting a provider hands the whole
+   * library to the backend -- folders, paging, upload and delete all go through
+   * it, and nothing is written to localStorage. Set `null` to go back.
    */
   get storageProvider() { return this.core.storageProvider; }
   set storageProvider(provider) { this.core.setStorageProvider(provider); }

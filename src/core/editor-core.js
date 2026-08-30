@@ -1,7 +1,6 @@
 import { uid } from './ids.js';
 import { mk, mkRow, GROUPS, LAYOUTS, migrateDoc, normalizeDoc, blankDoc } from './blocks.js';
 import { binder, decorate, group } from './binder.js';
-import { seedAssets, KB, FOLDERS } from './assets.js';
 import { ALL_FOLDER_ID, normalizeAsset, resolveLimits, providerProblems } from './storage.js';
 import { validateFiles, limitsProblem } from './storage-limits.js';
 import { migrateTokens, cleanHtml, escHtml } from './sanitize.js';
@@ -24,6 +23,18 @@ const DRAFT_TTL = 7 * 24 * 60 * 60 * 1000;
  * the sum of its round trips.
  */
 const UPLOAD_CONCURRENCY = 3;
+/**
+ * Older builds seeded the library with six invented files (a logo, product
+ * shots, textures) drawn as hatched placeholder SVGs, and autosaved them into
+ * the draft alongside the document. Dropping the seed from the package is not
+ * enough on its own: every browser that ever opened one of those builds still
+ * has the tiles in localStorage and would keep showing them. This matches the
+ * exact placeholder signature -- an inline `<pattern id="s">`, which nothing
+ * a user uploads can be -- so a restored draft loses them once and keeps
+ * everything else.
+ */
+const RETIRED_SEED = /^data:image\/svg\+xml;utf8,.*%3Cpattern%20id%3D%22s%22/;
+const withoutRetiredSeeds = (assets) => (Array.isArray(assets) ? assets.filter((a) => !RETIRED_SEED.test(String((a && a.url) || ''))) : []);
 const BORDER_STYLES = [
   { value: 'solid', label: 'Solid' },
   { value: 'dashed', label: 'Dashed' },
@@ -173,7 +184,7 @@ export class EditorCore {
       // Empty, not a sample name: this ends up in the exported <title> and the
       // download filename, so a placeholder here ships in a host's real email.
       sel: null, hover: null, tab: 'design', chrome: 'light', device: 'desktop', mode: 'rows', zoom: 1, advancedOpen: false,
-      assets: seedAssets(), assetFolder: 'All files', assetQuery: '', libraryOpen: false, assetTarget: null,
+      assets: [], assetFolder: ALL_FOLDER_ID, assetQuery: '', libraryOpen: false, assetTarget: null,
       folders: null, assetCursor: null, assetsLoading: false, assetsError: null, assetsLoaded: false, uploading: 0,
       exportOpen: false, exportCode: '', copied: false, aiOpen: false, aiGoal: AI_GOAL_VALUES[0], aiTone: AI_TONES[0],
       aiBrief: '', aiBusy: false, aiResults: [], previewOpen: false, toast: null, drop: null, rowDrop: null,
@@ -267,7 +278,7 @@ export class EditorCore {
         // stale/foreign blob could still carry the retired 'dark' inbox-preview
         // value -- normalize anything that isn't 'mobile' to 'desktop' rather
         // than trust it verbatim.
-        if (s && s.doc) this.setState({ doc: s.doc, assets: s.assets || this.state.assets, chrome: s.chrome || 'light', device: s.device === 'mobile' ? 'mobile' : 'desktop' });
+        if (s && s.doc) this.setState({ doc: s.doc, assets: withoutRetiredSeeds(s.assets), chrome: s.chrome || 'light', device: s.device === 'mobile' ? 'mobile' : 'desktop' });
       }
     } catch { /* ignore */ }
     this.sweepDrafts();
@@ -838,9 +849,10 @@ export class EditorCore {
 
   /**
    * Host-supplied storage. Assigning one takes the library over completely:
-   * the seeded demo files go away, folders and pages come from the backend,
-   * and every upload and delete round-trips through the provider. Assigning
-   * `null` restores the built-in behaviour.
+   * folders and pages come from the backend, and every upload and delete
+   * round-trips through the provider. Assigning `null` drops back to the
+   * local-only library -- empty until something is dropped into it, and gone
+   * again when the draft is cleared.
    */
   setStorageProvider(provider) {
     const problems = provider ? providerProblems(provider) : [];
@@ -849,7 +861,7 @@ export class EditorCore {
     this.abortAssets('list');
     this.abortAssets('upload');
     if (!provider) {
-      this.setState({ assets: seedAssets(), folders: null, assetFolder: FOLDERS[0], assetCursor: null, assetsError: null });
+      this.setState({ assets: [], folders: null, assetFolder: ALL_FOLDER_ID, assetCursor: null, assetsError: null, assetsLoaded: false });
       return;
     }
     this.setState({ assets: [], folders: null, assetFolder: ALL_FOLDER_ID, assetCursor: null, assetsError: null, assetsLoaded: false });
@@ -919,13 +931,9 @@ export class EditorCore {
   /** Sidebar entries. Counts appear only where they are actually known -- a cursor-paged backend cannot say how many files a folder holds without walking all of it, and a wrong count is worse than none. */
   folderOptions() {
     const s = this.state;
-    if (!this.storageProvider) {
-      return FOLDERS.map((name) => ({
-        id: name,
-        name,
-        count: name === FOLDERS[0] ? s.assets.length : s.assets.filter((a) => a.folder === name).length,
-      }));
-    }
+    // Without a provider there is no folder tree to offer -- only whatever was
+    // dropped into this session, whose count is known exactly.
+    if (!this.storageProvider) return [{ id: ALL_FOLDER_ID, name: this.t('library.allFiles'), count: s.assets.length }];
     return [{ id: ALL_FOLDER_ID, name: this.t('library.allFiles'), count: null }]
       .concat((s.folders || []).map((f) => ({ id: f.id, name: f.name, count: null })));
   }
@@ -935,7 +943,7 @@ export class EditorCore {
     const s = this.state;
     if (this.storageProvider) return s.assets;
     const q = (s.assetQuery || '').trim().toLowerCase();
-    return s.assets.filter((a) => (s.assetFolder === FOLDERS[0] || a.folder === s.assetFolder) && (!q || a.name.toLowerCase().includes(q)));
+    return q ? s.assets.filter((a) => a.name.toLowerCase().includes(q)) : s.assets;
   }
 
   openLibrary(assetTarget) {
@@ -1000,8 +1008,8 @@ export class EditorCore {
 
   loadMoreAssets() { if (this.state.assetCursor && !this.state.assetsLoading) this.refreshAssets({ append: true }); }
 
-  /** The selected folder as the provider sees it; the built-in "all files" entry is not a real folder. */
-  folderId() { return this.state.assetFolder === FOLDERS[0] ? ALL_FOLDER_ID : this.state.assetFolder; }
+  /** The selected folder as the provider sees it. The synthetic "all files" entry is not a real folder, and its id is already the empty string a provider reads as "no filter". */
+  folderId() { return this.state.assetFolder || ALL_FOLDER_ID; }
 
   /**
    * Validate, then upload. Both halves are the host's policy: what may be
@@ -1061,10 +1069,11 @@ export class EditorCore {
   }
 
   /**
-   * The no-provider path, unchanged from the prototype and kept so the package
-   * still runs with nothing wired. Worth knowing before shipping on it: Gmail
-   * and Outlook both strip `data:` images, so this is a demo mode, not a way to
-   * send mail.
+   * The no-provider path, kept so the package still does something sensible
+   * with nothing wired: files dropped in stay in this browser, in this draft.
+   * Worth knowing before shipping on it -- Gmail and Outlook both strip
+   * `data:` images, so this is a way to try the editor, not a way to send
+   * mail. Wire a `storageProvider` before anything leaves the building.
    */
   addFilesAsDataUrls(list) {
     const files = Array.from(list || []).filter((f) => /^image\//.test(f.type));
@@ -1075,8 +1084,8 @@ export class EditorCore {
       const fr = new FileReader();
       fr.onload = () => {
         const img = new Image();
-        img.onload = () => { added.push({ id: uid(), name: f.name, url: fr.result, folder: 'Uploads', w: img.width, ht: img.height, size: f.size }); done(); };
-        img.onerror = () => { added.push({ id: uid(), name: f.name, url: fr.result, folder: 'Uploads', w: 0, ht: 0, size: f.size }); done(); };
+        img.onload = () => { added.push({ id: uid(), name: f.name, url: fr.result, folder: '', w: img.width, ht: img.height, size: f.size }); done(); };
+        img.onerror = () => { added.push({ id: uid(), name: f.name, url: fr.result, folder: '', w: 0, ht: 0, size: f.size }); done(); };
         img.src = fr.result;
       };
       fr.onerror = done;
@@ -1086,11 +1095,10 @@ export class EditorCore {
 
   finishUpload(added) {
     const assets = added.concat(this.state.assets);
-    const patch = { assets, libHot: false };
-    // "Uploads" is a real folder only in the built-in seed set; with a provider
-    // the file already sits in whichever folder the user was looking at.
-    if (!this.storageProvider) patch.assetFolder = 'Uploads';
-    this.setState(patch, () => { if (!this.storageProvider) this.persist(null, assets); });
+    // No folder switch either way: with a provider the file already sits in
+    // whichever folder the user was looking at, and without one there is only
+    // ever the single synthetic folder.
+    this.setState({ assets, libHot: false }, () => { if (!this.storageProvider) this.persist(null, assets); });
     this.flash(added.length === 1 ? this.t('toast.fileUploadedOne') : this.t('toast.fileUploadedMany', { count: added.length }));
   }
 

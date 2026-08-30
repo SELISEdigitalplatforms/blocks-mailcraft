@@ -245,7 +245,7 @@ Users insert them from the toolbar; they export as `{{first_name}}`.
 
 ## Image uploads
 
-Both properties are required. Without them the library keeps its built-in demo files and every upload is refused.
+Both properties are required. The package ships no files of its own: with no provider the library opens empty and holds only what is dropped into it — data URIs, kept in the local draft, which no email client renders. With a provider but no limits every upload is refused.
 
 ```js
 editor.storageLimits = {
@@ -294,7 +294,9 @@ editor.storageProvider = { list, upload, limits: { accept: [...], maxBytes: 5e6 
 
 The two are merged **per key**, with `editor.storageLimits` winning — so a provider can ship sane defaults and the host can still tighten one number without restating the rest. Either source satisfies the "limits are required" rule; only a file that passes the merged result reaches `upload`.
 
-Setting `editor.storageProvider = null` puts the built-in demo library back, which is what an unconfigured editor shows.
+Setting `editor.storageProvider = null` drops back to that empty local library.
+
+`examples/vanilla.html` wires a working provider over IndexedDB — latency, cursor paging, server-side folders and search, uploads that survive a reload, deletes that stay deleted. It is the shape of a real integration with `fetch` swapped out, and it is where every file in the live demo's Assets modal comes from.
 
 ## Choosing what the top bar shows
 
@@ -480,7 +482,7 @@ template, not to your app.
 | `.uiFont` | string |
 | `.accent` | string |
 | `.messages` | `{ key: string }` |
-| `.storageProvider` | `{ list, upload, folders?, remove?, limits? }` — `null` restores the built-in library |
+| `.storageProvider` | `{ list, upload, folders?, remove?, limits? }` — `null` drops back to the empty local library |
 | `.storageLimits` | `{ accept, maxBytes, maxWidth?, maxHeight?, maxFilesPerDrop?, allowSvg? }`, merged over `provider.limits` per key |
 | `.aiProvider` | `async (prompt) => text` |
 | `.iconProvider` | `(platformKey, { label, size, color }) => Node` — social-icon override; falls back to the built-in icon when it is unset, throws, or returns a non-node |

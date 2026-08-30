@@ -33,6 +33,7 @@ globalThis.Image = class {
 const { validateFiles, sanitizeName, acceptAttribute } = await import(new URL('../src/core/storage-limits.js', import.meta.url).href);
 const { EditorCore } = await import(new URL('../src/core/editor-core.js', import.meta.url).href);
 const { cssUrl } = await import(new URL('../src/core/sanitize.js', import.meta.url).href);
+const { ALL_FOLDER_ID } = await import(new URL('../src/core/storage.js', import.meta.url).href);
 
 let passed = 0;
 let failed = 0;
@@ -171,14 +172,30 @@ const fakeProvider = (over = {}) => ({
 });
 const PNG_LIMITS = { accept: ['image/png'], maxBytes: 4096 };
 
-await it('with no provider the seeded library and its counts are untouched', async () => {
+await it('with no provider the library is empty -- no invented files, no invented folders', async () => {
   const core = new EditorCore();
-  assert.equal(core.state.assets.length, 6);
-  assert.deepEqual(core.folderOptions().map((f) => f.name), ['All files', 'Brand', 'Product', 'Photography', 'Uploads']);
-  assert.equal(core.folderOptions()[0].count, 6);
+  assert.deepEqual(core.state.assets, []);
+  assert.deepEqual(core.folderOptions().map((f) => f.name), ['All files'], 'one synthetic folder, translated');
+  assert.equal(core.folderOptions()[0].count, 0);
+  assert.equal(core.folderId(), ALL_FOLDER_ID, 'and it reads as "no folder filter"');
 });
 
-await it('assigning a provider replaces the seeded library with the backend page', async () => {
+await it('a draft written by a build that seeded the library loses those tiles on restore', async () => {
+  const seedUrl = 'data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cdefs%3E%3Cpattern%20id%3D%22s%22%20width%3D%229%22%3E%3C/pattern%3E%3C/defs%3E%3C/svg%3E';
+  const mine = { id: 'mine', name: 'shot.png', url: 'data:image/png;base64,iVBORw0KGgo=', folder: '', w: 4, ht: 4, size: 40 };
+  store.set('mailcraft.v3', JSON.stringify({
+    doc: new EditorCore().state.doc,
+    assets: [{ id: 'seed', name: 'logo-lockup.png', url: seedUrl, folder: 'Brand', w: 480, ht: 180, size: 18400 }, mine],
+    chrome: 'light',
+    t: Date.now(),
+  }));
+  const core = new EditorCore();
+  core.mount(null);
+  clearInterval(core.tick);
+  assert.deepEqual(core.state.assets.map((a) => a.id), ['mine'], 'the placeholder went, the real upload stayed');
+});
+
+await it('assigning a provider replaces the local library with the backend page', async () => {
   const core = new EditorCore();
   core.setStorageProvider(fakeProvider());
   await settle();
@@ -188,12 +205,13 @@ await it('assigning a provider replaces the seeded library with the backend page
   assert.equal(core.folderOptions()[1].count, null, 'a paged backend cannot claim a per-folder count');
 });
 
-await it('clearing the provider restores the built-in behaviour', async () => {
+await it('clearing the provider drops back to the empty local library', async () => {
   const core = new EditorCore();
   core.setStorageProvider(fakeProvider());
   await settle();
   core.setStorageProvider(null);
-  assert.equal(core.state.assets.length, 6);
+  assert.deepEqual(core.state.assets, []);
+  assert.deepEqual(core.folderOptions().map((f) => f.name), ['All files']);
 });
 
 await it('with a provider, assets stay out of localStorage', async () => {
