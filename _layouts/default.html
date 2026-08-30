@@ -47,22 +47,24 @@
       <span class="brand-name">{{ site.title }}</span>
     </a>
 
-    <!-- Only pages the site actually builds. CONTRIBUTING.md and
-         CODE_OF_CONDUCT.md are not among them: jekyll-optional-front-matter
-         skips community-health filenames, so they are copied to the site as
-         raw markdown and no .html is ever generated. Adding front matter would
-         fix that and put a YAML table at the top of the file on github.com,
-         which is where contributors read it -- so those links point at GitHub
-         (see the footer) rather than at pages that cannot exist. -->
+    <!-- CONTRIBUTING.md and CODE_OF_CONDUCT.md build as pages only because they
+         carry an (empty) front-matter block: jekyll-optional-front-matter skips
+         community-health filenames, so without it Jekyll copies them to the site
+         as raw markdown and no .html is ever generated. Empty means no keys for
+         GitHub to render as a table above the content. -->
     <nav class="nav" aria-label="Primary">
       <a href="./">Overview</a>
       <a href="DOCS.html">Guide</a>
       <a href="examples/vanilla.html">Demo</a>
+      <a href="CONTRIBUTING.html">Contributing</a>
     </nav>
 
     <div class="bar-end">
       <a class="ghost" href="https://www.npmjs.com/package/@seliseblocks/mailcraft" rel="noopener">npm</a>
-      <a class="ghost" href="https://github.com/SELISEdigitalplatforms/blocks-mailcraft" rel="noopener">GitHub</a>
+      <!-- No GitHub link while the repository is private: it 404s for every
+           visitor who is not in the org. Restore it here and in the footer the
+           day the repo goes public:
+           <a class="ghost" href="https://github.com/SELISEdigitalplatforms/blocks-mailcraft" rel="noopener">GitHub</a> -->
       <button id="theme-toggle" class="icon-btn" type="button" aria-label="Switch colour theme" title="Switch colour theme">
         <svg class="i-sun" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.2M12 19.2v2.2M4.2 12H2M22 12h-2.2M6.3 6.3 4.8 4.8M19.2 19.2l-1.5-1.5M17.7 6.3l1.5-1.5M4.8 19.2l1.5-1.5"/></svg>
         <svg class="i-moon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.5A8.6 8.6 0 0 1 9.5 3.5a8.6 8.6 0 1 0 11 11Z"/></svg>
@@ -110,10 +112,10 @@
     <nav class="foot-links" aria-label="Footer">
       <a href="DOCS.html">Guide</a>
       <a href="examples/vanilla.html">Demo</a>
-      <a href="https://github.com/SELISEdigitalplatforms/blocks-mailcraft/blob/main/CONTRIBUTING.md" rel="noopener">Contributing</a>
-      <a href="https://github.com/SELISEdigitalplatforms/blocks-mailcraft/blob/main/SECURITY.md" rel="noopener">Security</a>
-      <a href="https://github.com/SELISEdigitalplatforms/blocks-mailcraft/blob/main/CODE_OF_CONDUCT.md" rel="noopener">Code of conduct</a>
-      <a href="https://github.com/SELISEdigitalplatforms/blocks-mailcraft" rel="noopener">GitHub</a>
+      <a href="CONTRIBUTING.html">Contributing</a>
+      <a href="SECURITY.html">Security</a>
+      <a href="CODE_OF_CONDUCT.html">Code of conduct</a>
+      <a href="https://www.npmjs.com/package/@seliseblocks/mailcraft" rel="noopener">npm</a>
     </nav>
   </div>
   <p class="copyright">MIT licensed · © SELISE Digital Platforms</p>

@@ -233,7 +233,7 @@ Templates are host content **and** host UI. The editor ships no catalogue and ha
 editor.loadTemplate({ name: 'Welcome', html });
 ```
 
-Applying one is a normal undoable edit with a toast, and your string is never mutated. Ready-made examples live in [`examples/templates/`](https://github.com/SELISEdigitalplatforms/blocks-mailcraft/tree/main/examples/templates) with a working picker in [`examples/vanilla.html`](examples/vanilla.html) — both host-app content, shipped in the package for you to lift but not part of its API.
+Applying one is a normal undoable edit with a toast, and your string is never mutated. Ready-made examples ship in the package under `examples/templates/`, with a working picker in [`examples/vanilla.html`](examples/vanilla.html) — both host-app content, shipped in the package for you to lift but not part of its API.
 
 ## Merge variables
 
@@ -550,7 +550,7 @@ node build.js     # rebuild dist/ after any change under src/
 npm test          # storage, export, templates, toolbar, system — no DOM needed
 ```
 
-Deeper notes for contributors and coding agents live in [AGENTS.md](https://github.com/SELISEdigitalplatforms/blocks-mailcraft/blob/main/AGENTS.md).
+Deeper notes for contributors and coding agents live in `AGENTS.md` in the repository, alongside [CONTRIBUTING](https://mailcraft.seliseblocks.com/CONTRIBUTING.html), which is also on the docs site.
 
 ---
 
