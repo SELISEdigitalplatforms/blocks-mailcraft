@@ -442,14 +442,25 @@ await it('the translator resolves English, overrides, params, and names missing 
   assert.ok(missingKeys({ 'tab.blocks': 'x' }, EN).includes('tab.design'));
 });
 
-await it('every shipped locale table resolves the tab bar without gaps, and metadata matches the tables', async () => {
+await it('every shipped locale covers the whole message table, with nothing stale', async () => {
+  // The English fallback in `createTranslator` means an untranslated key is
+  // invisible: the UI shows English inside an otherwise translated panel, and
+  // nothing fails. That is exactly how 55 keys -- the whole screenshot viewer,
+  // the RTE colour and merge-tag menus, every upload error, the AI modal's own
+  // title -- sat untranslated in all 30 locales while the tests stayed green.
+  // Key-set equality is the only assertion that catches it, so this test
+  // compares tables, never `t()`.
   const tags = LOCALES.map((l) => l.tag);
   assert.deepEqual(tags.slice().sort(), Object.keys(LOCALE_TABLES).sort(), 'LOCALES and LOCALE_TABLES cover the same tags');
+  const enKeys = Object.keys(EN);
   for (const tag of tags) {
-    const t = createTranslator(LOCALE_TABLES[tag]);
-    ['tab.design', 'tab.blocks', 'tab.rows', 'tab.settings', 'tab.data'].forEach((k) => {
-      assert.equal(t(k) === k, false, tag + ' translates ' + k);
-    });
+    const table = LOCALE_TABLES[tag];
+    assert.deepEqual(missingKeys(table, EN), [], tag + ' has no untranslated keys');
+    assert.deepEqual(Object.keys(table).filter((k) => EN[k] === undefined), [], tag + ' carries no retired keys');
+    // Interpolation is positional-free but not optional: a translation that
+    // drops `{name}` renders an error message with a hole in it.
+    const holes = (v) => (String(v).match(/{w+}/g) || []).sort().join(',');
+    enKeys.forEach((k) => assert.equal(holes(table[k]), holes(EN[k]), tag + ' keeps every placeholder in ' + k));
   }
   assert.equal(isRtl('ar'), true);
   assert.equal(isRtl('en'), false);

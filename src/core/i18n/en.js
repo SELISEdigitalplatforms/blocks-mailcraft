@@ -21,8 +21,6 @@ export const EN = {
   'action.chromeHint': 'Light / dark editor chrome',
   'action.chromeHintToDark': 'Dark mode',
   'action.chromeHintToLight': 'Light mode',
-  'action.aiCopy': 'Draft',
-  'action.aiCopyHint': 'Draft email content with AI',
   'action.aiDraft': 'Draft',
   'action.aiDraftHint': 'Draft email content with AI',
   'action.code': 'Code',
@@ -57,9 +55,9 @@ export const EN = {
   'tab.filesHint': 'Asset library',
   'tab.layers': 'Layers',
   'tab.layersHint': 'Document structure',
-  // Renamed keys (were tab.theme/tab.themeHint "Theme / Global styles"): new
-  // key names on purpose, so locales that still carry the old translation
-  // fall back to this English name instead of showing the stale "Theme".
+  // Renamed from tab.theme/tab.themeHint ("Theme / Global styles") when the
+  // panel stopped being about theming alone. Every shipped locale translates
+  // the new names; test/system.test.mjs fails if one falls back to English.
   'tab.settings': 'Settings',
   'tab.settingsHint': 'Email settings',
   'tab.data': 'Variables',
@@ -111,9 +109,6 @@ export const EN = {
   'layers.sectionMulti': 'Section · {count} columns',
   'layers.column': 'Column {index}',
   'layers.blockCount': '{count} blocks',
-
-  // Theme tab
-  'theme.globalStyles': 'Global styles',
 
   // Data (Vars) tab
   'vars.title': 'Variables',
@@ -190,8 +185,6 @@ export const EN = {
   'toast.parseError': 'Could not parse that HTML',
 
   // AI copy modal
-  'modal.copyAssist': 'AI writing assistant',
-  'modal.draftCopyTitle': 'Draft your email with AI',
   'modal.aiDraft': 'AI writing assistant',
   'modal.aiDraftTitle': 'Draft your email with AI',
   'ai.disclosure': 'AI creates suggestions from your brief. Review and edit the result before sending.',
