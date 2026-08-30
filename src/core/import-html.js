@@ -420,6 +420,28 @@ function unwrapBoxDiv(el) {
 /** Tags whose inline styles describe a local run of characters, not the block around them -- a bold lead-in `<span>`'s weight must not become the whole block's weight. */
 const INLINE_TAGS = /^(SPAN|A|B|STRONG|I|EM|U|S|STRIKE|CODE|SUP|SUB|FONT)$/;
 
+/**
+ * A text run that is nothing but dynamic-content tags -- what the exporter
+ * writes for marker blocks inside a column -- becomes those marker blocks
+ * again. Consecutive markers export joined by whitespace into one text node,
+ * so every line must parse or none do: mixed prose keeps its tags as
+ * pass-through content (an inline {{#if}} inside a sentence is the user's
+ * text, not row structure), exactly like merge tags.
+ */
+function logicMarkersOf(text) {
+  const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean);
+  if (!lines.length) return null;
+  const out = [];
+  for (const line of lines) {
+    let m = line.match(/^\{\{#(if|each)\s+([^{}]+?)\s*\}\}$/);
+    if (m) { out.push(blk(m[1] === 'if' ? 'condition' : 'loop', { expr: m[2], end: false })); continue; }
+    m = line.match(/^\{\{\/(if|each)\}\}$/);
+    if (m) { out.push(blk(m[1] === 'if' ? 'condition' : 'loop', { expr: '', end: true })); continue; }
+    return null;
+  }
+  return out;
+}
+
 function blocksFromNodes(nodes) {
   const out = [];
   let buf = [];
@@ -459,6 +481,8 @@ function blocksFromNodes(nodes) {
   };
   nodes.forEach((n) => {
     if (n.nodeType === 3) {
+      const markers = logicMarkersOf(n.textContent);
+      if (markers) { flush(); markers.forEach((mb) => out.push(mb)); return; }
       if (n.textContent && n.textContent.trim()) buf.push(escapeText(n.textContent));
       return;
     }
@@ -538,6 +562,10 @@ function unwrapNestedLayout(td) {
 function isPassthroughTable(tb) {
   const trs = tb.querySelectorAll(':scope > tbody > tr, :scope > tr');
   if (trs.length !== 1) return false;
+  // A synthetic marker row (see foldLogicWrappers) is a real row, not
+  // scaffolding -- passing through it would silently drop the marker that
+  // rowsFromContentTable mints from it.
+  if (trs[0].getAttribute('data-mc-logic')) return false;
   const cells = Array.from(trs[0].children).filter((c) => c.tagName === 'TD' || c.tagName === 'TH');
   return cells.length === 1;
 }
@@ -653,6 +681,18 @@ function rowsFromContentTable(table) {
   const tableWidthPx = PX(table.getAttribute('width') || table.style.width || '0') || null;
   const trs = Array.from(table.querySelectorAll(':scope > tbody > tr, :scope > tr'));
   return trs.map((tr) => {
+    // A synthetic marker row minted by foldLogicWrappers: one dynamic-content
+    // marker block, at the exact place the tag held in the source.
+    const logicTag = tr.getAttribute('data-mc-logic');
+    if (logicTag) {
+      const open = logicTag.match(/^#(if|each)\s+(.+)$/);
+      const row = mkRow([100]);
+      row.props.py = 4; row.props.px = 0; row.props.gap = 0;
+      row.cols[0].blocks = [open
+        ? blk(open[1] === 'if' ? 'condition' : 'loop', { expr: open[2].trim(), end: false })
+        : blk(/\/if$/.test(logicTag) ? 'condition' : 'loop', { expr: '', end: true })];
+      return row;
+    }
     const outerCells = Array.from(tr.children).filter((c) => c.tagName === 'TD' || c.tagName === 'TH');
     if (!outerCells.length) return null;
     const bgSource = outerCells[0];
@@ -943,10 +983,36 @@ function themeFromParsedDoc(doc) {
   return theme;
 }
 
+/**
+ * Dynamic-content tags that sit BETWEEN table rows (what the exporter writes
+ * for marker rows, and what hand-written Handlebars emails do around a <tr>)
+ * cannot survive DOMParser as-is: stray text inside a <table> is
+ * foster-parented out of it, divorcing the tags from their position. So
+ * before parsing, each row-adjacent tag becomes a synthetic marker <tr> of
+ * its own (`data-mc-logic`), which rowsFromContentTable turns back into a
+ * marker-block row at the same place in the document. Tags inside a cell are
+ * legal text and are left alone -- `logicMarkersOf` classifies the bare ones
+ * into marker blocks, and tags mixed into prose pass through as content,
+ * exactly like merge tags. Looped because consecutive tags share adjacency
+ * (an {{/each}} right before an {{/if}} only touches a <tr> once the
+ * {{/if}} has been converted).
+ */
+function foldLogicWrappers(src) {
+  let s = String(src);
+  const rowFor = (tag) => '<tr data-mc-logic="' + tag.replace(/"/g, '&quot;') + '"><td></td></tr>';
+  for (let i = 0; i < 6; i++) {
+    const before = s;
+    s = s.replace(/\{\{(#(?:if|each)\s+[^{}]+?|\/(?:if|each))\s*\}\}(?=\s*(?:<tr[\s>]|<\/table))/gi, (m, tag) => rowFor(tag));
+    s = s.replace(/(<\/tr>\s*)\{\{(#(?:if|each)\s+[^{}]+?|\/(?:if|each))\s*\}\}/gi, (m, pre, tag) => pre + rowFor(tag));
+    if (s === before) break;
+  }
+  return s;
+}
+
 /** Full import entry point: the rows plus the theme patch read from the same source. `theme` only carries keys the source actually declared -- the caller merges it over the current theme so unspecified fields keep their values. */
 export function htmlToDoc(src) {
   let doc;
-  try { doc = new DOMParser().parseFromString(String(src || ''), 'text/html'); } catch { return { rows: [], theme: {} }; }
+  try { doc = new DOMParser().parseFromString(foldLogicWrappers(src || ''), 'text/html'); } catch { return { rows: [], theme: {} }; }
   // Fold <style> rules into inline styles first, so class-styled templates
   // (never-inlined exports, hand-written emails) classify like inlined ones.
   // Best-effort: a pathological stylesheet must never block the import.

@@ -261,6 +261,34 @@ await it('exported output re-imports (round trip)', async () => {
   assert.equal(again.length, once.rows.length, 'stable across two passes');
 });
 
+// Dynamic-content markers: the exporter writes literal {{#if}}/{{#each}} tags
+// at marker positions (between <tr>s for marker rows, as bare text inside a
+// td for in-column markers); the importer must hand them back as marker
+// blocks in the same document order, not let the parser foster the stray
+// text out of the table into a phantom text row.
+await it('row-level dynamic-content tags become marker rows in document order', async () => {
+  const rows = rowsOf(email('{{#if has_order}}\n{{#each order.items}}\n<tr><td><p>{{ this.name }}</p></td></tr>\n{{/each}}\n{{/if}}'));
+  const seq = rows.map((r) => r.cols[0].blocks[0]).map((b) => b.type + (b.props.end ? ':end' : ''));
+  assert.deepEqual(seq, ['condition', 'loop', 'text', 'loop:end', 'condition:end']);
+  assert.equal(rows[0].cols[0].blocks[0].props.expr, 'has_order');
+  assert.equal(rows[1].cols[0].blocks[0].props.expr, 'order.items');
+  assert.match(JSON.stringify(rows), /this\.name/, 'item-scoped merge tag kept as content');
+});
+
+await it('bare tags inside a cell become marker blocks around the cell content', async () => {
+  const blocks = blocksOf(email('<tr><td>{{#if is_premium}}<p>Members only</p>{{/if}}</td></tr>'));
+  const seq = blocks.map((b) => b.type + (b.props.end ? ':end' : ''));
+  assert.deepEqual(seq, ['condition', 'text', 'condition:end']);
+  assert.equal(blocks[0].props.expr, 'is_premium');
+});
+
+await it('template tags mixed into prose stay literal content', async () => {
+  const rows = rowsOf(email('<tr><td><p>{{#if vip}}Hi{{/if}}</p></td></tr>'));
+  const types = rows.flatMap((r) => r.cols.flatMap((c) => c.blocks.map((b) => b.type)));
+  assert.deepEqual(types, ['text'], 'an inline conditional is content, not structure');
+  assert.match(JSON.stringify(rows), /\{\{#if vip\}\}/, 'and it passes through untouched');
+});
+
 console.log(`\n${passed} passed, ${failed} failed.`);
 closeDom();
 process.exit(failed ? 1 : 0);

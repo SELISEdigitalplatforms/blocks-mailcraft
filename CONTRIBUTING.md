@@ -25,7 +25,7 @@ Do not open a public issue for a suspected vulnerability. Follow the private dis
 - `src/render/`: all DOM building; the canvas is torn down and rebuilt per state change.
 - `src/index.js` / `src/mailcraft-editor.js`: package entry and the `<mailcraft-editor>` element.
 - `examples/`: the `vanilla.html` demo (loads `dist/`, never `src/`) and `examples/templates/` — host-content example emails, mirrored byte-identically as inline blocks in the demo.
-- `test/`: dependency-free, DOM-free node suites (`storage`, `export`, `templates`, `system`, `toolbar`).
+- `test/`: node suites — `storage`, `export`, `templates`, `system` and `toolbar` are DOM-free; the editor, renderer and importer suites run on jsdom (a devDependency).
 - `build.js`: the zero-dependency bundler; `dist/` is generated output.
 
 ## Build and tests
@@ -37,7 +37,7 @@ node build.js
 npm test
 ```
 
-The suites stub `localStorage` and run against `src/` directly; no DOM and no dependencies. The HTML importer has no automated coverage — verify importer changes by hand through the Code modal or a headless Chrome `--dump-dom` page.
+The suites stub `localStorage` and run against `src/` directly; the core suites need no DOM, the editor and importer suites run on jsdom. jsdom is not a real layout engine, so verify anything layout-dependent by hand through the Code modal or a headless Chrome `--dump-dom` page.
 
 ## Bundler constraints
 
@@ -52,7 +52,7 @@ No `export default`, no bare `export { ... }`, no multi-line imports, no dynamic
 
 Follow the conventions the code already uses:
 
-- Plain JavaScript ESM, web-safe and dependency-free; nothing is imported that is not in this repo.
+- Plain JavaScript ESM, web-safe; `src/` stays dependency-free — nothing is imported there that is not in this repo. TypeScript support is the hand-written `types/index.d.ts`; update it in the same commit as any public-surface change.
 - Comments explain *why* (the bug a guard prevents, the constraint that forced a shape) — match the existing density; no change-narration comments.
 - Inspector labels use plain, non-technical language; developer-grade controls go behind the "Advanced options" switch.
 - Accent color is `#0065b3` (dark variant `#58a8e3`) via `--ed-*` tokens in `render/style.js`.

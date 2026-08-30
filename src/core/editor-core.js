@@ -1,5 +1,5 @@
 import { uid } from './ids.js';
-import { mk, mkRow, GROUPS, LAYOUTS, migrateDoc, normalizeDoc, blankDoc } from './blocks.js';
+import { mk, blk, mkRow, GROUPS, LAYOUTS, migrateDoc, normalizeDoc, blankDoc } from './blocks.js';
 import { binder, decorate, group } from './binder.js';
 import { ALL_FOLDER_ID, normalizeAsset, resolveLimits, providerProblems } from './storage.js';
 import { validateFiles, limitsProblem } from './storage-limits.js';
@@ -659,13 +659,29 @@ export class EditorCore {
 
   insertBlock(type, rowId, ci, index) {
     const block = mk(type);
+    // Dynamic-content markers come in pairs: dropping the tile inserts the
+    // start and its matching end together, and the user drags content between
+    // them. From then on each half is an ordinary block -- moved, duplicated
+    // or deleted on its own (export balances whatever arrangement results).
+    const pair = type === 'condition' || type === 'loop' ? [block, blk(type, { expr: '', end: true })] : [block];
     this.commit((doc) => {
       if (this.state.mode === 'stack' || !rowId) {
-        doc.rows.splice(typeof index === 'number' ? index : doc.rows.length, 0, mkRow([100], [block]));
+        // Markers dropped at row level get a row *each*, so whole sections
+        // can be dragged between them; one shared row would trap the pair
+        // inside a single column.
+        const at = typeof index === 'number' ? index : doc.rows.length;
+        pair.slice().reverse().forEach((b) => {
+          const row = mkRow([100], [b]);
+          // Marker rows are editor scaffolding (export drops their <tr>
+          // entirely) -- a slim band, not a full padded section.
+          if (pair.length > 1) { row.props.py = 4; }
+          doc.rows.splice(at, 0, row);
+        });
       } else {
         const f = this.find(doc, rowId);
         const col = f.row.cols[ci] || f.row.cols[0];
-        col.blocks.splice(typeof index === 'number' ? index : col.blocks.length, 0, block);
+        const at = typeof index === 'number' ? index : col.blocks.length;
+        col.blocks.splice(at, 0, ...pair);
       }
     });
     this.setState({ sel: { type: 'block', id: block.id }, tab: 'design', drop: null, rowDrop: null });
@@ -1272,6 +1288,20 @@ export class EditorCore {
         case 'button': return decorate(base.concat([B.text('Label', 'label'), B.text('Link URL', 'href', 'https://'), B.color('Button color', 'bg'), B.color('Text color', 'color'), B.sel('Font', 'fontFamily', this.fontOptions(true)), B.range('Text size', 'size', 8, 48, 1, 'px'), B.range('Rounded corners', 'radius', 0, 60, 1, 'px'), B.range('Outline thickness', 'borderW', 0, 6, 1, 'px')].concat(b.props.borderW ? [B.sel('Outline style', 'borderStyle', BORDER_STYLES), B.color('Outline color', 'borderColor')] : []).concat([B.range('Button height', 'py', 0, 60, 1, 'px'), B.range('Button width', 'px', 0, 120, 2, 'px'), B.seg('Align', 'align', ALIGN), B.tog('Full width', 'full')])));
         case 'divider': return decorate(base.concat([B.range('Thickness', 'thickness', 1, 20, 1, 'px'), B.sel('Line style', 'lineStyle', BORDER_STYLES), B.range('Width', 'width', 5, 100, 5, '%'), B.color('Color', 'color'), B.range('Space above & below', 'py', 0, 160, 2, 'px')]));
         case 'spacer': return decorate(base.concat([B.range('Height', 'height', 0, 400, 2, 'px')]));
+        // Dynamic-content markers: the expression lives on the start marker;
+        // an end marker has nothing to configure, so its panel just says what
+        // it is. Authored, never evaluated -- export emits the literal
+        // {{#if}}/{{#each}} tags at the markers' positions for the host's
+        // templating engine to run at send time (see export.js).
+        // The expression field suggests the host's merge variables (the same
+        // list the Variables tab shows) but stays free text -- conditions and
+        // loops routinely reference names that aren't inline tokens.
+        case 'condition': return decorate(base.concat(b.props.end
+          ? [B.head('End of condition — drag it to move the boundary')]
+          : [B.text('Show only if', 'expr', 'e.g. is_premium', this.vars())]));
+        case 'loop': return decorate(base.concat(b.props.end
+          ? [B.head('End of loop — drag it to move the boundary')]
+          : [B.text('Repeat for each', 'expr', 'e.g. order.items', this.vars())]));
         case 'social': return decorate(base.concat([
           // Custom kind (render/fields.js `renderSocialItems`): a per-network
           // card list with an add-dropdown, replacing the raw Name|URL

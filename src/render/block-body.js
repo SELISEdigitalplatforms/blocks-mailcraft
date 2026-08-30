@@ -293,6 +293,25 @@ export function blockBody(b, theme, live, ctx) {
     }
     case 'svg':
       return el('div', { padding: p.py + 'px 0', textAlign: p.align }, { ...attr, html: '<span style="display:inline-block;width:' + p.width + '%">' + p.code + '</span>' });
+    // Dynamic-content markers. Editor furniture, never sent: the exporter
+    // emits the template tag itself at this position (core/export.js) and
+    // never reads this DOM back. The band renders in the preview too -- the
+    // preview shows the template the way it shows merge tokens, so the logic
+    // structure stays visible there rather than silently vanishing.
+    case 'condition':
+    case 'loop': {
+      const isLoop = b.type === 'loop';
+      const color = isLoop ? '#7c3aed' : '#0e7490';
+      const word = p.end ? (isLoop ? 'end loop' : 'end if') : (isLoop ? 'repeat each' : 'show if');
+      const band = el('div', {
+        display: 'flex', alignItems: 'center', gap: '8px', boxSizing: 'border-box',
+        border: '1.5px dashed ' + color, borderRadius: '7px', background: color + '14',
+        padding: '6px 12px', margin: '2px 0', color,
+      }, attr);
+      band.appendChild(el('span', { fontFamily: 'ui-monospace,monospace', fontSize: '9.5px', fontWeight: '700', letterSpacing: '0.12em', textTransform: 'uppercase', flex: 'none' }, { text: (p.end ? '⏶ ' : '⏷ ') + word }));
+      if (!p.end) band.appendChild(el('span', { fontFamily: 'ui-monospace,monospace', fontSize: '11.5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }, { text: '{{ ' + (p.expr || '…') + ' }}' }));
+      return band;
+    }
     case 'codeblock':
       return el('pre', { margin: '0', padding: p.pad + 'px', background: p.bg, color: p.color, fontFamily: 'ui-monospace, Menlo, monospace', fontSize: p.size + 'px', lineHeight: '1.6', overflowX: 'auto', whiteSpace: 'pre' }, { ...attr, text: m(p.code) });
     default:

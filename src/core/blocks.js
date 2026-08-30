@@ -26,6 +26,19 @@ BLOCKS.push(
   { type: 'box', code: 'BOX', label: 'Section box', hint: 'Styled container with free content', make: () => ({ html: '<strong style="font-size:19px;display:block;margin-bottom:6px">Section title</strong>Drop copy here, or paste markup. The box takes background, padding, border and radius.', bg: '#f8fafc', bgImage: '', border: 1, borderStyle: 'solid', lineColor: '#e2e8f0', topBorder: true, rightBorder: true, bottomBorder: true, leftBorder: true, radius: 12, pad: 22, align: 'left', minH: 0, maxW: 100, shadow: false }) },
   { type: 'svg', code: 'SVG', label: 'Inline SVG', hint: 'Paste SVG markup', make: () => ({ code: '<svg viewBox="0 0 120 40" width="120" height="40" fill="none" stroke="#0065b3" stroke-width="1.5"><rect x="0.75" y="0.75" width="118.5" height="38.5"/><path d="M12 28l14-16 12 10 10-8 18 14"/></svg>', align: 'left', width: 100, py: 10 }) },
 );
+// Dynamic-content markers. Same contract as merge tags (variables.js): the
+// editor only authors the template tags, never evaluates them -- export emits
+// literal {{#if}}/{{#each}} at the marker's position for the host's engine to
+// run at send time. Each is half of a pair (`end: false` opens, `end: true`
+// closes); insertBlock drops both at once, and the user drags any content --
+// blocks, or whole sections when the markers sit in rows of their own --
+// between them. Export balances the document (core/export.js `logicPlan`), so
+// a stray or missing half degrades to well-formed output rather than a broken
+// template.
+BLOCKS.push(
+  { type: 'condition', code: 'IF', label: 'Condition', hint: 'Show everything between the two markers only when the expression is true', make: () => ({ expr: 'is_premium', end: false }) },
+  { type: 'loop', code: 'EACH', label: 'Loop', hint: 'Repeat everything between the two markers once per list item', make: () => ({ expr: 'order.items', end: false }) },
+);
 
 export const DEF = (t) => BLOCKS.find((b) => b.type === t);
 export const mk = (t) => ({ id: uid(), type: t, props: DEF(t).make() });
@@ -161,7 +174,7 @@ export const PALETTE = [
   { t: 'button' }, { t: 'table' }, { g: 'card' }, { g: 'product' }, { g: 'hero' }, { g: 'stats' },
   { t: 'box' }, { t: 'divider' }, { t: 'spacer' }, { t: 'social' }, { t: 'video' },
   { t: 'embed' }, { t: 'menu' }, { g: 'footer' }, { t: 'html' }, { t: 'css' }, { t: 'svg' },
-  { t: 'codeblock' }, { t: 'countdown' },
+  { t: 'codeblock' }, { t: 'countdown' }, { t: 'condition' }, { t: 'loop' },
 ];
 
 /**

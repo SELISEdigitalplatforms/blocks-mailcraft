@@ -156,6 +156,89 @@ await it('migrates legacy vertical outside spacing into top and bottom', async (
   );
 });
 
+// Dynamic-content markers: the editor authors literal template tags at the
+// markers' positions, the host's engine runs them at send time -- so what
+// matters here is position, balance, and that nothing evaluated them.
+const marker = (type, over) => { const b = mk(type); Object.assign(b.props, over || {}); return b; };
+
+await it('a condition pair emits literal {{#if}}/{{/if}} around the content between them', async () => {
+  const text = mk('text');
+  const html = render(docOf([marker('condition'), text, marker('condition', { end: true })]), { content: { [text.id]: '<p>Members only</p>' } });
+  const open = html.indexOf('{{#if is_premium}}');
+  const body = html.indexOf('Members only');
+  const close = html.indexOf('{{/if}}');
+  assert.ok(open > -1 && close > -1, 'both tags are emitted');
+  assert.ok(open < body && body < close, 'the tags bracket the content');
+});
+
+await it('a loop pair emits literal {{#each}}/{{/each}}', async () => {
+  const text = mk('text');
+  const html = render(docOf([marker('loop', { expr: 'order.items' }), text, marker('loop', { end: true })]), { content: { [text.id]: '<p>{{ this.name }}</p>' } });
+  assert.ok(html.indexOf('{{#each order.items}}') < html.indexOf('this.name'));
+  assert.ok(html.indexOf('this.name') < html.indexOf('{{/each}}'));
+});
+
+await it('a stray end marker emits nothing', async () => {
+  const html = render(docOf([marker('condition', { end: true })]));
+  assert.equal(/\{\{\/if\}\}/.test(html), false);
+});
+
+await it('an unclosed start marker is auto-closed after the last row', async () => {
+  const html = render(docOf([marker('loop', { expr: 'items' })]));
+  const open = html.indexOf('{{#each items}}');
+  const close = html.indexOf('{{/each}}');
+  assert.ok(open > -1, 'the opener is emitted');
+  assert.ok(close > open, 'a closer is appended after it');
+});
+
+await it('mismatched interleaving degrades to balanced output, never a broken template', async () => {
+  // if-open, each-open, if-close (wrong order): the if-close is a stray while
+  // each is on top, so it emits nothing and both opens auto-close at the end.
+  const html = render(docOf([marker('condition'), marker('loop', { expr: 'items' }), marker('condition', { end: true })]));
+  const opens = (html.match(/\{\{#/g) || []).length;
+  const closes = (html.match(/\{\{\//g) || []).length;
+  assert.equal(opens, closes);
+  assert.ok(html.indexOf('{{/each}}') < html.indexOf('{{/if}}'), 'closed innermost-first');
+});
+
+await it('angle brackets cannot ride a marker expression into the document', async () => {
+  const html = render(docOf([marker('condition', { expr: 'x}}<script>alert(1)</script>' })]));
+  assert.equal(/<script>/.test(html), false);
+});
+
+await it('a blank expression emits no tag at all', async () => {
+  const html = render(docOf([marker('condition', { expr: '  ' }), marker('condition', { end: true })]));
+  assert.equal(/\{\{#if/.test(html), false);
+  assert.equal(/\{\{\/if\}\}/.test(html), false, 'its end marker is skipped too');
+});
+
+await it('a row holding only markers emits the tags without its <tr> scaffolding', async () => {
+  const doc = { theme: THEME, rows: [mkRow([100], [marker('condition')]), mkRow([100], [mk('text')]), mkRow([100], [marker('condition', { end: true })])] };
+  const html = buildHtml({ doc }, stubRoot({}), boxCss);
+  const bare = buildHtml({ doc: { theme: THEME, rows: [mkRow([100], [mk('text')])] } }, stubRoot({}), boxCss);
+  assert.equal((html.match(/<tr>/g) || []).length, (bare.match(/<tr>/g) || []).length, 'marker rows add no <tr> of their own');
+  assert.ok(html.indexOf('{{#if is_premium}}') > -1 && html.indexOf('{{#if is_premium}}') < html.indexOf('{{/if}}'));
+});
+
+// decorateLogicTags dresses tags for the code preview iframe only -- the
+// export itself must keep the literal text (asserted above).
+await it('decorateLogicTags turns between-row tags into slim band rows and in-cell tags into chips', async () => {
+  const { decorateLogicTags } = await import(new URL('../src/core/export.js', import.meta.url).href);
+  const src = '<table>{{#if is_premium}}<tr><td>{{#each order.items}}<p>x</p>{{/each}}</td></tr>{{/if}}</table>';
+  const out = decorateLogicTags(src);
+  assert.equal(/\{\{#|\{\{\//.test(out), false, 'no raw tags remain');
+  assert.match(out, /<tr><td colspan="99"[^>]*>[\s\S]*SHOW IF/, 'row-level tag became a band row');
+  assert.match(out, /REPEAT EACH[\s\S]*\{\{ order\.items \}\}/, 'in-cell tag became a labeled chip');
+  assert.match(out, /END LOOP/); assert.match(out, /END IF/);
+});
+
+await it('decorateLogicTags escapes markup smuggled inside an expression', async () => {
+  const { decorateLogicTags } = await import(new URL('../src/core/export.js', import.meta.url).href);
+  const out = decorateLogicTags('<td>{{#if a && "<img onerror=x>"}}</td>');
+  assert.equal(/<img/.test(out), false);
+  assert.match(out, /&lt;img/);
+});
+
 await it('the theme drives the page and content background and width', async () => {
   const html = render(docOf([]));
   assert.match(html, new RegExp('background:' + THEME.bg));

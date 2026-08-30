@@ -156,6 +156,11 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
   border-radius: var(--radius-sm); transition: color 0.15s, background 0.15s;
 }
 .ghost:hover { color: var(--text); background: var(--surface-2); text-decoration: none; }
+.ghost.copy-md.done { color: var(--accent); }
+/* The extra specificity keeps this one visible where the 720px rule below
+   hides the other ghost links — copying the page is the control a phone
+   reader is most likely to want. */
+.ghost.copy-md { display: inline-block; }
 
 .icon-btn {
   display: inline-flex; align-items: center; justify-content: center;

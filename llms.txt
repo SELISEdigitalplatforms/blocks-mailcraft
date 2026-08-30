@@ -1,0 +1,15 @@
+# MailCraft
+
+> A drag-and-drop HTML email editor, packaged as a single zero-dependency Web Component (`<mailcraft-editor>`). HTML in, HTML out; no framework, no build step, no network requests. Published on npm as `@seliseblocks/mailcraft`.
+
+The pages below are served as raw Markdown — byte-identical to the repository sources — so they can be fetched and pasted into a context window whole.
+
+## Docs
+
+- [Product & integration guide](https://mailcraft.seliseblocks.com/DOCS.md.txt): the full guide — mounting, framework wiring, storage/AI/i18n contracts, the API reference, and an appendix listing every UI message key with its English default
+- [README](https://mailcraft.seliseblocks.com/README.md.txt): the five-minute version
+
+## Optional
+
+- [Live demo](https://mailcraft.seliseblocks.com/examples/vanilla.html): the editor itself, running in the browser
+- [npm package](https://www.npmjs.com/package/@seliseblocks/mailcraft)

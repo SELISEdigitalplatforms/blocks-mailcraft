@@ -8,6 +8,7 @@ import { renderField, renderFieldCards, typeCommit } from './render/fields.js';
 import { icon } from './core/icons.js';
 import { TOKEN } from './core/variables.js';
 import { hl, cssUrl } from './core/sanitize.js';
+import { decorateLogicTags } from './core/export.js';
 import { withFocusPreserved } from './render/focus-preserve.js';
 import { captureTemplatePng } from './render/screenshot.js';
 import { resolveToolbar, toolbarKey } from './core/toolbar.js';
@@ -310,7 +311,7 @@ export class MailCraftEditor extends ElementBase {
     this.core.emit();
   }
 
-  /** `dir` wins when the host sets it explicitly; otherwise it defaults from `isRtl(locale)` so `locale="ar"` gets RTL for free. Applied directly to `#mc` (not full state, since it never affects rendered content, only the CSS `dir`). */
+  /** `dir` wins when the host sets it explicitly; otherwise it defaults from `isRtl(locale)` so `locale="ar"` gets RTL for free. Applied directly to `#mc` (not full state, since it only mirrors the editor chrome). The email sheet, the code editor, and the value-shaped inspector fields pin their own `dir` so the document being built never flips with the chrome (see render/canvas.js renderDoc). */
   applyDir() {
     if (!this.mc) return;
     const explicit = this.getAttribute('dir');
@@ -1267,7 +1268,8 @@ export class MailCraftEditor extends ElementBase {
           line.addEventListener('click', () => this.core.select('block', b.id));
           const chip = elS('span', `width: 22px; height: 22px; flex: none; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: ${bSel ? 'var(--ed-accent)' : 'var(--ed-soft)'}; color: ${bSel ? 'var(--ed-accent-ink)' : 'var(--ed-accent)'};`);
           chip.appendChild(icon(b.type, 12));
-          line.append(chip, elS('span', 'font-family: var(--ed-font); font-size: 12px; font-weight: 500; color: var(--ed-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;', { text: text || typeName, class: 'mc-tree-title' }));
+          // dir=auto: this excerpt is the email's own copy, not chrome text.
+          line.append(chip, elS('span', 'font-family: var(--ed-font); font-size: 12px; font-weight: 500; color: var(--ed-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;', { text: text || typeName, class: 'mc-tree-title', dir: 'auto' }));
           if (text) {
             line.append(
               elS('span', 'flex: 1; min-width: 8px;'),
@@ -1306,7 +1308,7 @@ export class MailCraftEditor extends ElementBase {
     wrap.appendChild(this.sectionBar(t('vars.title'), t('vars.fromCode', { count: this.core.vars().length })));
     const card = this.sectionBody();
     card.appendChild(elS('p', 'margin: 0 0 12px; font-size: 11.5px; color: var(--ed-muted); line-height: 1.55;', { text: t('vars.declaredNote') }));
-    const search = elS('input', 'width: 100%; box-sizing: border-box; background: var(--ed-panel-2); border: 1px solid var(--ed-line); border-radius: 8px; color: var(--ed-text); font: inherit; font-size: 12.5px; padding: 7px 9px; margin-bottom: 8px;', { placeholder: t('vars.filterPlaceholder'), 'data-focus-key': 'var-query' });
+    const search = elS('input', 'width: 100%; box-sizing: border-box; background: var(--ed-panel-2); border: 1px solid var(--ed-line); border-radius: 8px; color: var(--ed-text); font: inherit; font-size: 12.5px; padding: 7px 9px; margin-bottom: 8px;', { placeholder: t('vars.filterPlaceholder'), 'data-focus-key': 'var-query', dir: 'auto' });
     search.value = s.varQuery || '';
     search.addEventListener('focus', () => { search.style.borderColor = 'var(--ed-accent)'; search.style.outline = 'none'; });
     search.addEventListener('blur', () => { search.style.borderColor = 'var(--ed-line)'; });
@@ -1327,7 +1329,8 @@ export class MailCraftEditor extends ElementBase {
       const textSpan = elS('span', 'flex: 1; min-width: 0;');
       textSpan.append(
         elS('span', 'display: block; font-family: var(--ed-font); font-weight: 600; font-size: 12.5px; line-height: 1.2;', { text: name }),
-        elS('span', 'display: block; font-family: ui-monospace, monospace; font-size: 10px; color: var(--ed-accent); margin-top: 2px;', { text: TOKEN(v) }),
+        // dir=ltr keeps the braces on the right ends of {{ token }} under RTL.
+        elS('span', 'display: block; font-family: ui-monospace, monospace; font-size: 10px; color: var(--ed-accent); margin-top: 2px;', { text: TOKEN(v), dir: 'ltr' }),
       );
       btn.append(textSpan, elS('span', 'font-family: var(--ed-font); font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ed-faint);', { text: t('vars.insert') }));
       grid.appendChild(btn);
@@ -1357,7 +1360,7 @@ export class MailCraftEditor extends ElementBase {
       elS('div', 'font-family: var(--ed-font); font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ed-muted);', { text: t('modal.fileManager'), 'data-i18n': 'modal.fileManager' }),
       (this.libraryTitleText = elS('div', 'font-family: var(--ed-font); font-weight: 600; font-size: 16px; line-height: 1.25;')),
     );
-    this.assetSearch = elS('input', 'width: 210px; box-sizing: border-box; background: var(--ed-panel-2); border: 1px solid var(--ed-line); color: var(--ed-text); font: inherit; font-size: 13px; padding: 7px 9px;', { placeholder: t('library.searchPlaceholder'), 'data-i18n-placeholder': 'library.searchPlaceholder', 'data-focus-key': 'asset-query' });
+    this.assetSearch = elS('input', 'width: 210px; box-sizing: border-box; background: var(--ed-panel-2); border: 1px solid var(--ed-line); color: var(--ed-text); font: inherit; font-size: 13px; padding: 7px 9px;', { placeholder: t('library.searchPlaceholder'), 'data-i18n-placeholder': 'library.searchPlaceholder', 'data-focus-key': 'asset-query', dir: 'auto' });
     this.assetSearch.addEventListener('focus', () => { this.assetSearch.style.borderColor = 'var(--ed-accent)'; this.assetSearch.style.outline = 'none'; });
     this.assetSearch.addEventListener('blur', () => { this.assetSearch.style.borderColor = 'var(--ed-line)'; });
     // Debounced re-render; setAssetQuery separately debounces the backend call.
@@ -1517,7 +1520,9 @@ export class MailCraftEditor extends ElementBase {
     head.append(headText, this.copyBtn, this.shotBtn, downloadBtn, closeBtn);
     modal.appendChild(head);
 
-    this.exportTextarea = elS('textarea', 'width: 100%; height: 100%; box-sizing: border-box; border: 0; background: var(--ed-work); color: var(--ed-text); font-family: ui-monospace, monospace; font-size: 11.5px; line-height: 1.55; padding: 18px 20px; resize: none;', { readonly: 'true' });
+    // dir=ltr: this holds HTML source, which bidi-scrambles under the RTL
+    // chrome (same reason as buildCodeEditor).
+    this.exportTextarea = elS('textarea', 'width: 100%; height: 100%; box-sizing: border-box; border: 0; background: var(--ed-work); color: var(--ed-text); font-family: ui-monospace, monospace; font-size: 11.5px; line-height: 1.55; padding: 18px 20px; resize: none;', { readonly: 'true', dir: 'ltr' });
     modal.appendChild(this.exportTextarea);
     this.exportMetaEl = elS('div', 'padding: 10px 20px; border-top: 1px solid var(--ed-line); font-family: ui-monospace, monospace; font-size: 9.5px; letter-spacing: 0.06em; color: var(--ed-faint);');
     modal.appendChild(this.exportMetaEl);
@@ -1602,7 +1607,10 @@ export class MailCraftEditor extends ElementBase {
    * highlight or caret drifting away from the editable text. */
   buildCodeEditor() {
     const MONO = 'font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; line-height: 20px; tab-size: 2;';
-    const root = elS('div', 'position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; background: var(--ed-work);');
+    // dir=ltr: HTML source is directional text; under an RTL chrome the
+    // inherited direction would bidi-scramble it and, worse, let the caret
+    // in the transparent textarea drift off the highlighted layer beneath.
+    const root = elS('div', 'position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; background: var(--ed-work);', { dir: 'ltr' });
     const inner = elS('div', 'position: relative; min-height: 100%; width: 100%; min-width: 0;');
     this.codePre = elS('pre', `${MONO} margin: 0; padding: 14px 0 80px; width: 100%; min-width: 0; min-height: 100%; white-space: normal; color: var(--ed-text); pointer-events: none; background: linear-gradient(to right, var(--ed-panel-2) 0 52px, var(--ed-work) 52px);`, { 'aria-hidden': 'true' });
     this.codeTextarea = elS('textarea', `${MONO} position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 14px 18px 80px 70px; border: 0; background: transparent; color: transparent; caret-color: var(--ed-accent); white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; overflow: hidden; resize: none; outline: none;`, { spellcheck: 'false', wrap: 'soft', 'data-focus-key': 'code-src' });
@@ -1646,7 +1654,10 @@ export class MailCraftEditor extends ElementBase {
     if (!s.codeOpen) return;
     this.refreshCodeSource();
     if (this._codeFrameSrc !== s.codeLive) {
-      this.codeFrame.srcdoc = s.codeLive;
+      // Display-only: the preview pane draws logic tags as the canvas's
+      // dashed bands; the source pane and everything exported keep the
+      // literal {{#if}}/{{#each}} text.
+      this.codeFrame.srcdoc = decorateLogicTags(s.codeLive);
       this._codeFrameSrc = s.codeLive;
     }
     this.syncCodePreviewScrollbar();
@@ -1731,7 +1742,7 @@ export class MailCraftEditor extends ElementBase {
 
     const briefWrap = elS('div');
     briefWrap.appendChild(elS('label', 'display: block; font-size: 11.5px; color: var(--ed-muted); margin-bottom: 4px;', { text: t('ai.briefLabel'), 'data-i18n': 'ai.briefLabel' }));
-    this.aiBriefInput = elS('textarea', 'width: 100%; min-height: 78px; box-sizing: border-box; background: var(--ed-panel-2); border: 1px solid var(--ed-line); color: var(--ed-text); font: inherit; font-size: 13px; padding: 9px; resize: vertical;', { placeholder: t('ai.briefPlaceholder'), 'data-i18n-placeholder': 'ai.briefPlaceholder', 'data-focus-key': 'ai-brief' });
+    this.aiBriefInput = elS('textarea', 'width: 100%; min-height: 78px; box-sizing: border-box; background: var(--ed-panel-2); border: 1px solid var(--ed-line); color: var(--ed-text); font: inherit; font-size: 13px; padding: 9px; resize: vertical;', { placeholder: t('ai.briefPlaceholder'), 'data-i18n-placeholder': 'ai.briefPlaceholder', 'data-focus-key': 'ai-brief', dir: 'auto' });
     this.aiBriefInput.addEventListener('focus', () => { this.aiBriefInput.style.borderColor = 'var(--ed-accent)'; this.aiBriefInput.style.outline = 'none'; });
     // Debounced with a blur flush: runAi reads state.aiBrief, and clicking
     // Generate blurs this field first -- the flush lands the last keystrokes
@@ -1773,7 +1784,7 @@ export class MailCraftEditor extends ElementBase {
     s.aiResults.forEach((r) => {
       const card = elS('div', 'position: relative; border: 1px solid var(--ed-line); border-radius: var(--ed-radius-sm); padding: 15px;');
       card.appendChild(elS('div', 'font-family: var(--ed-font); font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ed-accent); margin-bottom: 7px;', { text: r.kind }));
-      card.appendChild(elS('div', 'font-size: 14px; line-height: 1.55; white-space: pre-wrap;', { text: r.text }));
+      card.appendChild(elS('div', 'font-size: 14px; line-height: 1.55; white-space: pre-wrap;', { text: r.text, dir: 'auto' }));
       const useBtn = elS('button', 'margin-top: 12px; border: 1px solid var(--ed-line); background: transparent; color: var(--ed-text); cursor: pointer; padding: 6px 11px; font-family: ui-monospace, monospace; font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; transition: background 0.16s, color 0.16s, border-color 0.16s;', { type: 'button', text: r.action });
       useBtn.addEventListener('mouseenter', () => { useBtn.style.background = 'var(--ed-accent)'; useBtn.style.color = 'var(--ed-accent-ink)'; useBtn.style.borderColor = 'var(--ed-accent)'; });
       useBtn.addEventListener('mouseleave', () => { useBtn.style.background = 'transparent'; useBtn.style.color = 'var(--ed-text)'; useBtn.style.borderColor = 'var(--ed-line)'; });

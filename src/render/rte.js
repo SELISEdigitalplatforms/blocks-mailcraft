@@ -86,7 +86,7 @@ export function renderRte(core, b) {
 
   const vars = core.vars();
   const root = el('div', {
-    position: 'absolute', top: '-82px', left: '0', zIndex: '9', display: 'grid', gap: '5px',
+    position: 'absolute', top: '-82px', left: '0', zIndex: '30', display: 'grid', gap: '5px',
     background: 'var(--rte-bg)', border: '1px solid var(--rte-border)', borderRadius: '8px', padding: '7px 8px', boxShadow: 'var(--rte-shadow)',
   }, { class: 'mc-rte', 'data-mc-rte': '1', 'data-rte-root': '1' });
   root.addEventListener('pointerdown', () => { core.rteActive = true; }, true);
@@ -145,6 +145,35 @@ export function renderRte(core, b) {
   root.appendChild(r1);
   root.appendChild(r2);
   if (core.state.linkDraft) root.appendChild(linkPopover(core, b, vars));
+  // The toolbar hangs a fixed 82px above the block, so on a block near the top
+  // of the email it reaches past the top of the scrolling workspace -- which
+  // clips it there, hiding the toolbar's first row under the header. When
+  // there is no headroom, flip it to hang below the block instead.
+  //
+  // Placement needs layout, which doesn't exist until the node is mounted --
+  // but deciding in a frame callback alone made the toolbar visibly jump from
+  // its clipped spot to the flipped one, on first open and again on every
+  // rebuild while editing (each replaceWith reset it above, then hopped).
+  // So the last decision is cached per block and applied synchronously on
+  // rebuilds, and only the first build for a block spends one frame hidden
+  // while it measures -- the toolbar then appears already in place.
+  const BELOW = 'calc(100% + 10px)';
+  const cached = core._rteFlip && core._rteFlip.id === b.id ? core._rteFlip.flip : null;
+  if (cached === true) root.style.top = BELOW;
+  else if (cached === null) root.style.visibility = 'hidden';
+  requestAnimationFrame(() => {
+    if (!root.isConnected) return;
+    const scroller = core.exportRoot && core.exportRoot.querySelector('.mc-workspace');
+    if (scroller && root.parentElement) {
+      // Judged from the block's own position, not the toolbar's current one,
+      // so an already-flipped toolbar can flip back once headroom returns.
+      const wouldBeTop = root.parentElement.getBoundingClientRect().top - 82;
+      const flip = wouldBeTop < scroller.getBoundingClientRect().top + 4;
+      core._rteFlip = { id: b.id, flip };
+      root.style.top = flip ? BELOW : '-82px';
+    }
+    root.style.visibility = '';
+  });
   return root;
 }
 

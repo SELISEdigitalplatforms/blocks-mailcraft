@@ -146,13 +146,13 @@ function renderSocialItems(f) {
     const brand = SOCIAL_BRAND[key] || '';
     const chip = el('span', { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', flex: 'none', borderRadius: '7px', background: brand || 'var(--ed-soft)', color: brand ? contrastInk(brand) : 'var(--ed-accent)' });
     chip.appendChild(brandIcon(key, 13));
-    const name = el('input', { width: '70px', flex: 'none', boxSizing: 'border-box', background: 'transparent', border: '1px solid transparent', borderRadius: '5px', color: 'var(--ed-text)', font: 'inherit', fontSize: '11.5px', fontWeight: '600', padding: '3px 4px' }, { 'data-focus-key': `f${f.key}-n${i}`, title: 'Network name' });
+    const name = el('input', { width: '70px', flex: 'none', boxSizing: 'border-box', background: 'transparent', border: '1px solid transparent', borderRadius: '5px', color: 'var(--ed-text)', font: 'inherit', fontSize: '11.5px', fontWeight: '600', padding: '3px 4px' }, { 'data-focus-key': `f${f.key}-n${i}`, title: 'Network name', dir: 'auto' });
     name.value = it.label;
     const nameCommit = typeCommit((v) => { const next = items.slice(); next[i] = { label: v, href: it.href }; commit(next); });
     name.addEventListener('input', (e) => nameCommit.call(e.target.value));
     name.addEventListener('focus', () => { name.style.borderColor = 'var(--ed-accent)'; name.style.background = 'var(--ed-panel)'; name.style.outline = 'none'; });
     name.addEventListener('blur', () => { name.style.borderColor = 'transparent'; name.style.background = 'transparent'; nameCommit.flush(); });
-    const url = el('input', { flex: '1', minWidth: '0', boxSizing: 'border-box', background: 'var(--ed-panel)', border: '1px solid var(--ed-line)', borderRadius: '6px', color: 'var(--ed-text)', fontFamily: 'ui-monospace, monospace', fontSize: '10.5px', padding: '4px 6px' }, { placeholder: 'https://', 'data-focus-key': `f${f.key}-u${i}`, title: it.href });
+    const url = el('input', { flex: '1', minWidth: '0', boxSizing: 'border-box', background: 'var(--ed-panel)', border: '1px solid var(--ed-line)', borderRadius: '6px', color: 'var(--ed-text)', fontFamily: 'ui-monospace, monospace', fontSize: '10.5px', padding: '4px 6px' }, { placeholder: 'https://', 'data-focus-key': `f${f.key}-u${i}`, title: it.href, dir: 'ltr' });
     url.value = it.href;
     const urlCommit = typeCommit((v) => { const next = items.slice(); next[i] = { label: it.label, href: v }; commit(next); });
     url.addEventListener('input', (e) => urlCommit.call(e.target.value));
@@ -214,14 +214,14 @@ function renderRichLinks(f) {
   anchors.forEach((anchor, i) => {
     const card = el('div', { padding: '8px', border: '1px solid var(--ed-line)', borderRadius: '9px', background: 'var(--ed-panel-2)' });
     const head = el('div', { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '7px' });
-    const name = el('span', { flex: '1', minWidth: '0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--ed-font)', fontSize: '11.5px', fontWeight: '600', color: 'var(--ed-text)' }, { text: (anchor.textContent || '').trim() || 'Link ' + (i + 1), title: (anchor.textContent || '').trim() });
+    const name = el('span', { flex: '1', minWidth: '0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--ed-font)', fontSize: '11.5px', fontWeight: '600', color: 'var(--ed-text)' }, { text: (anchor.textContent || '').trim() || 'Link ' + (i + 1), title: (anchor.textContent || '').trim(), dir: 'auto' });
     const remove = el('button', { flex: 'none', border: '0', borderRadius: '6px', background: 'transparent', color: 'var(--ed-faint)', cursor: 'pointer', padding: '3px 6px', fontFamily: 'var(--ed-font)', fontSize: '10.5px', fontWeight: '600' }, { type: 'button', text: 'Remove', title: 'Remove link', 'aria-label': 'Remove link from ' + ((anchor.textContent || '').trim() || 'text'), 'data-focus-key': `f${f.key}-link-remove-${i}` });
     remove.addEventListener('mouseenter', () => { remove.style.background = 'var(--ed-danger-soft)'; remove.style.color = 'var(--ed-danger)'; });
     remove.addEventListener('mouseleave', () => { remove.style.background = 'transparent'; remove.style.color = 'var(--ed-faint)'; });
     remove.addEventListener('click', () => change(i, (a) => a.replaceWith(...a.childNodes)));
     head.append(name, remove);
 
-    const url = el('input', { width: '100%', boxSizing: 'border-box', background: 'var(--ed-panel)', border: '1px solid var(--ed-line)', borderRadius: '7px', color: 'var(--ed-text)', fontFamily: 'ui-monospace, monospace', fontSize: '11px', padding: '6px 8px' }, { placeholder: 'https://', 'aria-label': 'Link destination for ' + ((anchor.textContent || '').trim() || 'link ' + (i + 1)), 'data-focus-key': `f${f.key}-link-url-${i}` });
+    const url = el('input', { width: '100%', boxSizing: 'border-box', background: 'var(--ed-panel)', border: '1px solid var(--ed-line)', borderRadius: '7px', color: 'var(--ed-text)', fontFamily: 'ui-monospace, monospace', fontSize: '11px', padding: '6px 8px' }, { placeholder: 'https://', 'aria-label': 'Link destination for ' + ((anchor.textContent || '').trim() || 'link ' + (i + 1)), 'data-focus-key': `f${f.key}-link-url-${i}`, dir: 'ltr' });
     url.value = anchor.getAttribute('href') || '';
     const urlCommit = typeCommit((v) => change(i, (a) => a.setAttribute('href', v)));
     url.addEventListener('input', (e) => urlCommit.call(e.target.value));
@@ -287,7 +287,7 @@ function renderTableGrid(f) {
         flex: '1', minWidth: '0', boxSizing: 'border-box', background: 'var(--ed-panel-2)', border: '1px solid var(--ed-line)',
         borderRadius: '6px', color: 'var(--ed-text)', font: 'inherit', fontSize: '11px',
         fontWeight: f.header && ri === 0 ? '700' : '400', padding: '5px 6px',
-      }, { 'data-focus-key': `f${f.key}-r${ri}c${ci}` });
+      }, { 'data-focus-key': `f${f.key}-r${ri}c${ci}`, dir: 'auto' });
       input.value = cell;
       const cellCommit = typeCommit((v) => { const next = rows.map((row) => row.slice()); next[ri][ci] = v; commit(next); });
       input.addEventListener('input', (e) => cellCommit.call(e.target.value));
@@ -429,7 +429,12 @@ export function renderField(f) {
   if (f.isArea) {
     const box = el('div');
     box.appendChild(fieldLabel(f.label));
-    const ta = el('textarea', { width: '100%', minHeight: '76px', boxSizing: 'border-box', background: 'var(--ed-panel-2)', border: '1px solid var(--ed-line)', color: 'var(--ed-text)', fontFamily: 'ui-monospace, monospace', fontSize: '11.5px', lineHeight: '1.5', padding: '7px 8px', resize: 'vertical' }, { placeholder: f.placeholder, 'data-focus-key': `f${f.key}` });
+    // dir=auto here and on the other content fields below: these hold the
+    // email's own text, whose language is independent of the editor chrome's
+    // locale -- inheriting the chrome's `dir=rtl` bidi-scrambled English copy
+    // (trailing periods jumping to the line start). Value-shaped fields
+    // (URLs, color codes) pin dir=ltr instead, since they are never RTL.
+    const ta = el('textarea', { width: '100%', minHeight: '76px', boxSizing: 'border-box', background: 'var(--ed-panel-2)', border: '1px solid var(--ed-line)', color: 'var(--ed-text)', fontFamily: 'ui-monospace, monospace', fontSize: '11.5px', lineHeight: '1.5', padding: '7px 8px', resize: 'vertical' }, { placeholder: f.placeholder, 'data-focus-key': `f${f.key}`, dir: 'auto' });
     ta.value = f.value;
     const taCommit = typeCommit(f.onChange);
     ta.addEventListener('input', (e) => taCommit.call(e.target.value));
@@ -548,7 +553,7 @@ export function renderField(f) {
     picker.addEventListener('input', (e) => pickCommit.call(e.target.value));
     picker.addEventListener('change', () => pickCommit.flush());
     swatch.appendChild(picker);
-    const hex = el('input', { width: '82px', boxSizing: 'border-box', background: 'transparent', border: '0', outline: 'none', color: 'var(--ed-text)', fontFamily: 'ui-monospace, monospace', fontSize: '11px', padding: '0 9px' }, { placeholder: 'inherit', class: 'mc-stepper-input', 'data-focus-key': `f${f.key}` });
+    const hex = el('input', { width: '82px', boxSizing: 'border-box', background: 'transparent', border: '0', outline: 'none', color: 'var(--ed-text)', fontFamily: 'ui-monospace, monospace', fontSize: '11px', padding: '0 9px' }, { placeholder: 'inherit', class: 'mc-stepper-input', 'data-focus-key': `f${f.key}`, dir: 'ltr' });
     hex.value = f.value;
     const hexCommit = typeCommit(f.onChange);
     hex.addEventListener('input', (e) => hexCommit.call(e.target.value));
@@ -564,8 +569,17 @@ export function renderField(f) {
     const row = el('div', { display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'space-between' }, { class: 'mc-field-row' });
     row.appendChild(fieldLabel(f.label, true));
     if (f.isText) {
-      const input = el('input', { width: '168px', boxSizing: 'border-box', background: 'var(--ed-panel-2)', border: '1px solid var(--ed-line)', color: 'var(--ed-text)', font: 'inherit', fontSize: '12px', padding: '6px 8px' }, { placeholder: f.placeholder, class: 'mc-field-control', 'data-focus-key': `f${f.key}` });
+      const input = el('input', { width: '168px', boxSizing: 'border-box', background: 'var(--ed-panel-2)', border: '1px solid var(--ed-line)', color: 'var(--ed-text)', font: 'inherit', fontSize: '12px', padding: '6px 8px' }, { placeholder: f.placeholder, class: 'mc-field-control', 'data-focus-key': `f${f.key}`, dir: 'auto' });
       input.value = f.value;
+      // Optional suggestions (e.g. the host's merge variables on a marker's
+      // expression field): a datalist keeps the input free-text -- pick one
+      // of the host's names from the dropdown, or type any other.
+      if (f.suggestions) {
+        const dl = el('datalist', null, { id: `mc-dl-f${f.key}` });
+        f.suggestions.forEach((s) => { const opt = document.createElement('option'); opt.value = s; dl.appendChild(opt); });
+        input.setAttribute('list', dl.id);
+        row.appendChild(dl);
+      }
       const textInputCommit = typeCommit(f.onChange);
       input.addEventListener('input', (e) => textInputCommit.call(e.target.value));
       input.addEventListener('focus', () => { input.style.borderColor = 'var(--ed-accent)'; input.style.outline = 'none'; });

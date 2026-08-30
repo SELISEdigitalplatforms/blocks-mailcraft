@@ -152,7 +152,9 @@ await it('every block type inserts, renders and exports', async () => {
   }
   assert.deepEqual(failures, [], 'no block type threw on insert');
   const types = allBlocks(el).map((b) => b.type);
-  assert.equal(types.length, BLOCKS.length, 'all ' + BLOCKS.length + ' inserted');
+  // Dynamic-content markers insert as a start+end pair, so they count twice.
+  const expected = BLOCKS.length + BLOCKS.filter((d) => d.type === 'condition' || d.type === 'loop').length;
+  assert.equal(types.length, expected, 'all ' + BLOCKS.length + ' inserted (markers as pairs)');
   await settle(3);
   const html = el.exportHtml();
   assert.match(html, /^<!doctype html>/);

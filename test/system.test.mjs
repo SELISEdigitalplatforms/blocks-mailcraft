@@ -467,6 +467,24 @@ await it('every shipped locale covers the whole message table, with nothing stal
   assert.deepEqual(MESSAGE_KEYS, Object.keys(EN).sort());
 });
 
+await it('the docs carry the generated message-key appendix, in sync and mirrored for the site', async () => {
+  // The appendix in DOCS.md and the .md.txt site mirrors are outputs of
+  // build.js, not hand-edited files. Nothing else fails when someone edits
+  // en.js or DOCS.md and forgets `node build.js` -- the site would silently
+  // serve a stale key list and a stale "Copy for AI" payload -- so this test
+  // parses the published table back and compares it to the live EN table.
+  const { readFileSync } = await import('node:fs');
+  const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
+  const docs = read('../DOCS.md');
+  const block = docs.match(/<!-- message-keys:begin[^>]*-->([\s\S]*?)<!-- message-keys:end -->/);
+  assert.ok(block, 'DOCS.md has the message-keys markers');
+  const rows = [...block[1].matchAll(/^\| `([^`]+)` \| (.*) \|$/gm)];
+  assert.deepEqual(rows.map((r) => r[1]).sort(), MESSAGE_KEYS, 'the appendix lists exactly the keys the editor asks for');
+  rows.forEach((r) => assert.equal(r[2].replace(/\\\|/g, '|'), EN[r[1]], 'the appendix shows the English default for ' + r[1]));
+  assert.equal(read('../DOCS.md.txt'), docs, 'DOCS.md.txt mirror is current');
+  assert.equal(read('../README.md.txt'), read('../README.md'), 'README.md.txt mirror is current');
+});
+
 await it('the storage contract normalizes provider assets and resolves limits per key', async () => {
   assert.deepEqual(normalizeAsset({ id: 7, url: 'https://x/1.png' }), { id: '7', name: 'file', url: 'https://x/1.png', folder: '', folderId: undefined, w: 0, ht: 0, size: 0 });
   assert.deepEqual(normalizeAsset(null, { name: 'f.png', w: 10, ht: 20, size: 30 }), { id: '', name: 'f.png', url: '', folder: '', folderId: undefined, w: 10, ht: 20, size: 30 });

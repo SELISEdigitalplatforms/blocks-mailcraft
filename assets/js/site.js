@@ -26,6 +26,27 @@
     });
   }
 
+  // ---- "Copy for AI" — the page's markdown source, whole ------------------
+  // The link points at the raw .md.txt mirror, which is the no-JS behavior;
+  // with JS the click copies the file instead, so the markdown lands in the
+  // clipboard ready to paste into an assistant. Any failure (fetch, clipboard
+  // permission) falls back to just opening the raw file.
+  var copyMd = document.getElementById('copy-md');
+  if (copyMd && window.fetch && navigator.clipboard && navigator.clipboard.writeText) {
+    copyMd.addEventListener('click', function (e) {
+      e.preventDefault();
+      fetch(copyMd.getAttribute('href'))
+        .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
+        .then(function (text) { return navigator.clipboard.writeText(text); })
+        .then(function () {
+          copyMd.textContent = 'Copied';
+          copyMd.classList.add('done');
+          setTimeout(function () { copyMd.textContent = 'Copy for AI'; copyMd.classList.remove('done'); }, 1600);
+        })
+        .catch(function () { location.href = copyMd.href; });
+    });
+  }
+
   if (!body) return;
 
   // ---- the markdown "Contents" list is the sidebar here ------------------

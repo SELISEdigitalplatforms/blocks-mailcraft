@@ -169,10 +169,16 @@ export function renderDoc(core, live) {
   // Lives only for this render's drag gesture(s) -- no core state, no re-render.
   const rowDropTracker = { active: null };
 
+  // `dir="ltr"` pins the sheet to the document's own direction. The editor
+  // chrome mirrors under an RTL locale (`dir=rtl` on `#mc`), but the email
+  // being built is a separate document: exportHtml emits no `dir`, so mail
+  // clients render it LTR -- letting the chrome's direction cascade in here
+  // flipped bidi punctuation and default alignment on the canvas and made it
+  // disagree with the exported result.
   const root = el('div', {
     width: width + 'px', maxWidth: '100%', background: theme.contentBg, color: theme.text, fontFamily: theme.font,
     transition: 'width 0.28s cubic-bezier(0.22,0.61,0.36,1), background 0.2s',
-  }, { 'data-mc-sheet': '1' });
+  }, { 'data-mc-sheet': '1', dir: 'ltr' });
 
   const rowLines = [];
   if (live) {
@@ -248,7 +254,12 @@ export function renderDoc(core, live) {
             if (view) view.addEventListener('mouseup', () => { bWrap.draggable = true; }, { once: true });
           });
         }
-        if (bSel) bWrap.appendChild(toolbar(core, b.id, 'block', DEF(b.type).code));
+        // Not while this block is being inline-edited: the pill sits at the
+        // block's top-right, flush against the floating RTE toolbar's bottom
+        // edge -- visually colliding with it, and putting its Delete button a
+        // few pixels from the RTE's own controls. The RTE stands in for it for
+        // the duration of the edit; it comes back on blur (still selected).
+        if (bSel && ctx.editingId !== b.id) bWrap.appendChild(toolbar(core, b.id, 'block', DEF(b.type).code));
         bWrap.appendChild(blockBody(b, theme, live, ctx));
         items.push(bWrap);
       });

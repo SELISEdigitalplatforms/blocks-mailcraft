@@ -60,6 +60,14 @@
     </nav>
 
     <div class="bar-end">
+      <!-- Jekyll renders every .md into HTML (after a Liquid pass), so the
+           markdown source itself is never served. build.js keeps byte-exact
+           .txt mirrors of README.md and DOCS.md for exactly this control: a
+           link with JS off, a clipboard copy of the page's markdown with JS
+           on — one paste puts the whole page into an AI assistant. -->
+      {% if page.path == "README.md" or page.path == "DOCS.md" %}
+      <a class="ghost copy-md" id="copy-md" href="{{ page.path }}.txt" title="Copy this page as Markdown — paste it into an AI assistant">Copy for AI</a>
+      {% endif %}
       <a class="ghost" href="https://www.npmjs.com/package/@seliseblocks/mailcraft" rel="noopener">npm</a>
       <!-- No GitHub link while the repository is private: it 404s for every
            visitor who is not in the org. Restore it here and in the footer the

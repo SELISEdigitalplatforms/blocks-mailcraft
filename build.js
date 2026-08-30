@@ -9,7 +9,7 @@
 // this script only produces the throwaway demo bundle under dist/.
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
@@ -135,3 +135,41 @@ try {
 
 fs.writeFileSync(outFile, output);
 console.log(`Wrote dist/mailcraft-editor.bundle.js (${files.length} modules, ${Buffer.byteLength(output)} bytes) -- ${note}`);
+
+/**
+ * Docs generation, in the same pass as the bundle so neither can drift:
+ *
+ * 1. The "Every message key" appendix in DOCS.md is rebuilt from the live EN
+ *    table between the `message-keys` markers. The docs page is the only
+ *    place a host without repo access can see the full key list, so it has
+ *    to be generated, never hand-maintained -- test/system.test.mjs fails
+ *    when the appendix and en.js disagree.
+ *
+ * 2. DOCS.md.txt / README.md.txt are byte-identical mirrors for the docs
+ *    site. Jekyll turns every .md into a rendered .html page (and runs
+ *    Liquid over it first), so the markdown source itself is otherwise
+ *    unreachable to visitors -- these .txt copies are static files served
+ *    verbatim, and they are what the site's "Copy for AI" button and
+ *    llms.txt hand out.
+ */
+const { EN } = await import(pathToFileURL(path.join(srcDir, 'core', 'i18n', 'en.js')).href);
+const docsPath = path.join(root, 'DOCS.md');
+const docs = fs.readFileSync(docsPath, 'utf8');
+const begin = docs.indexOf('<!-- message-keys:begin');
+const beginEnd = docs.indexOf('-->', begin);
+const end = docs.indexOf('<!-- message-keys:end -->', begin);
+if (begin === -1 || end === -1) throw new Error('DOCS.md: message-keys markers not found');
+// `|` is the only character in a value that can break a table row; keys are
+// identifier-shaped and safe inside backticks.
+const keyRows = Object.keys(EN).sort()
+  .map((k) => `| \`${k}\` | ${String(EN[k]).replace(/\|/g, '\\|')} |`);
+const table = ['\n\n| key | English default |', '|---|---|', ...keyRows, ''].join('\n');
+const updated = docs.slice(0, beginEnd + 3) + table + docs.slice(end);
+if (updated !== docs) fs.writeFileSync(docsPath, updated);
+
+for (const name of ['README.md', 'DOCS.md']) {
+  const source = fs.readFileSync(path.join(root, name), 'utf8');
+  const mirror = path.join(root, name + '.txt');
+  if (!fs.existsSync(mirror) || fs.readFileSync(mirror, 'utf8') !== source) fs.writeFileSync(mirror, source);
+}
+console.log(`Wrote DOCS.md message-key appendix (${keyRows.length} keys) and the .md.txt site mirrors`);

@@ -2,7 +2,9 @@
 export function binder(getProps, set, core) {
   return {
     head: (label) => ({ kind: 'head', label }),
-    text: (label, key, ph) => ({ kind: 'text', label, value: getProps()[key] ?? '', placeholder: ph || '', onChange: (v) => set(key, v) }),
+    // `suggestions` (optional array of strings) renders as a datalist on the
+    // input: the user picks one of the host's values or types any other.
+    text: (label, key, ph, suggestions) => ({ kind: 'text', label, value: getProps()[key] ?? '', placeholder: ph || '', suggestions: Array.isArray(suggestions) && suggestions.length ? suggestions : null, onChange: (v) => set(key, v) }),
     area: (label, key, ph) => ({ kind: 'area', label, value: getProps()[key] ?? '', placeholder: ph || '', onChange: (v) => set(key, v) }),
     // Live typing only commits parseable numbers -- `Number('')` is 0, and
     // committing that the instant a field was cleared to retype (e.g. the
