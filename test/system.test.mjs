@@ -46,6 +46,8 @@ const { buildHtml } = await import(new URL('../src/core/export.js', import.meta.
 const { createTranslator, defineMessages, missingKeys, LOCALES, isRtl } = await import(new URL('../src/core/i18n/index.js', import.meta.url).href);
 const { LOCALE_TABLES } = await import(new URL('../src/core/i18n/tables.js', import.meta.url).href);
 const { EN, MESSAGE_KEYS } = await import(new URL('../src/core/i18n/en.js', import.meta.url).href);
+const { parseColor, accentTokens, contrast } = await import(new URL('../src/core/accent.js', import.meta.url).href);
+const { resolveFooter } = await import(new URL('../src/core/footer.js', import.meta.url).href);
 
 let passed = 0;
 let failed = 0;
@@ -138,24 +140,20 @@ await it('normalizeDoc rejects nothing-usable as null so callers no-op', async (
   assert.equal(normalizeDoc({ rows: [{ cols: [] }] }).rows[0].cols.length, 1);
 });
 
-await it('migrateDoc converts legacy compound blocks and drops emptied rows, keeping purpose-empty ones', async () => {
-  const legacyRow = mkRow([100], [blk('html')]);
-  legacyRow.cols[0].blocks = [
-    { id: 'a', type: 'hero', props: { title: 'Old hero', cta: 'Go' } },
+await it('migrateDoc drops unknown block types and the rows they emptied, keeping purpose-empty ones', async () => {
+  const mixedRow = mkRow([100], [blk('html')]);
+  mixedRow.cols[0].blocks = [
+    { id: 'a', type: 'nosuchtype', props: {} },
     { id: 'b', type: 'text', props: { html: 'plain' } },
-    { id: 'c', type: 'nosuchtype', props: {} },
   ];
+  const strandedRow = mkRow([100]);
+  strandedRow.cols[0].blocks = [{ id: 'c', type: 'alsogone', props: {} }];
   const emptyOnPurpose = mkRow([100]);
-  const doc = migrateDoc({ theme: THEME(), rows: [legacyRow, emptyOnPurpose] });
+  const doc = migrateDoc({ theme: THEME(), rows: [mixedRow, strandedRow, emptyOnPurpose] });
+  assert.equal(doc.rows.length, 2, 'the row left with nothing is dropped, the purpose-empty one stays');
   const types = doc.rows[0].cols[0].blocks.map((b) => b.type);
-  assert.equal(types.includes('hero'), false, 'legacy hero converted away');
-  assert.equal(types.includes('nosuchtype'), false, 'unknown type dropped');
-  assert.equal(types.includes('text'), true, 'ordinary blocks kept');
-  // Row 0 still holds blocks (the converted hero produced some), so only the
-  // semantics are exercised: emptied rows go, purpose-empty ones stay.
-  assert.equal(doc.rows.length, 2, 'both rows survive when row 0 kept content');
-  const allEmpty = doc.rows.every((r) => r.cols.every((c) => c.blocks.length === 0));
-  assert.equal(allEmpty, false);
+  assert.deepEqual(types, ['text'], 'unknown type dropped, ordinary blocks kept');
+  assert.equal(doc.rows[1].cols[0].blocks.length, 0, 'purpose-empty row survives');
 });
 
 await it('migrateDoc seeds the four-side outside-spacing model from the legacy vertical my', async () => {
@@ -523,6 +521,108 @@ await it('the AI goal and tone lists are prompt-safe and the defaults are select
   const c = core();
   assert.ok(AI_GOAL_VALUES.includes(c.state.aiGoal), 'default goal is in the list');
   assert.ok(AI_TONES.includes(c.state.aiTone), 'default tone is in the list');
+});
+
+await it('the accent parser reads every notation a host actually types', () => {
+  const brand = { r: 225, g: 29, b: 72 };
+  assert.deepEqual(parseColor('#e11d48'), brand);
+  assert.deepEqual(parseColor('  #E11D48  '), brand, 'case and whitespace are the host\'s business, not ours');
+  assert.deepEqual(parseColor('#e11d48ff'), brand, 'alpha parses, then is dropped -- the accent is solid');
+  assert.deepEqual(parseColor('rgb(225, 29, 72)'), brand);
+  assert.deepEqual(parseColor('rgba(225 29 72 / 0.5)'), brand);
+  assert.deepEqual(parseColor('#abc'), { r: 170, g: 187, b: 204 });
+  const hsl = parseColor('hsl(347, 77%, 50%)');
+  assert.ok(Math.abs(hsl.r - 226) <= 2 && Math.abs(hsl.g - 29) <= 3 && Math.abs(hsl.b - 72) <= 3, 'hsl lands where a browser would put it');
+  // Anything unparseable has to come back null rather than a plausible-looking
+  // color: the element uses null to decide whether to fall back to a DOM probe.
+  for (const junk of ['', '   ', 'rebeccapurple', 'var(--brand)', '#gg0000', 'rgb(1,2)', null, undefined]) {
+    assert.equal(parseColor(junk), null, JSON.stringify(junk) + ' is not a color this module can resolve');
+  }
+});
+
+await it('a brand color derives a full, legible accent set in both chromes', () => {
+  const WHITE = { r: 255, g: 255, b: 255 };
+  const PANEL_LIGHT = WHITE;
+  const PANEL_DARK = { r: 17, g: 24, b: 39 };
+
+  // A brand that already reads on white is used as-is -- the editor corrects
+  // for contrast, it does not repaint someone's brand for taste.
+  const brand = { r: 225, g: 29, b: 72 };
+  const light = accentTokens(brand, 'light');
+  assert.equal(light['--ed-accent'], '#e11d48');
+  assert.equal(light['--ed-soft'], 'rgba(225,29,72,0.09)', 'the wash keeps the brand hue at the palette\'s own alpha');
+
+  // A brand yellow is unreadable on white, so it gets darkened until it isn't.
+  const yellow = accentTokens({ r: 255, g: 212, b: 0 }, 'light');
+  assert.notEqual(yellow['--ed-accent'], '#ffd400');
+  assert.ok(contrast(parseColor(yellow['--ed-accent']), PANEL_LIGHT) >= 4.5, 'accent text clears AA on the light panel');
+
+  // ...and the same color needs no correction on the dark palette, where a
+  // brand navy is the one that fails instead.
+  assert.equal(accentTokens({ r: 255, g: 212, b: 0 }, 'dark')['--ed-accent'], '#ffd400');
+  const navy = accentTokens({ r: 11, g: 61, b: 145 }, 'dark');
+  assert.ok(contrast(parseColor(navy['--ed-accent']), PANEL_DARK) >= 4.5, 'accent text clears AA on the dark panel');
+
+  for (const [chrome, panel] of [['light', PANEL_LIGHT], ['dark', PANEL_DARK]]) {
+    for (const c of ['#e11d48', '#ffd400', '#0b3d91', '#7f7f7f', '#000000', '#ffffff']) {
+      const t = accentTokens(parseColor(c), chrome);
+      const accent = parseColor(t['--ed-accent']);
+      assert.ok(contrast(accent, panel) >= 4.4, c + ' in ' + chrome + ' chrome stays readable on the panel');
+      // Ink sits *on* the accent (filled buttons, active tabs) -- it is the one
+      // pairing a host can neither see nor fix from the outside.
+      assert.ok(contrast(parseColor(t['--ed-accent-ink']), accent) >= 4.5, c + ' in ' + chrome + ' chrome has legible ink on the accent');
+      // Hover has to move away from the panel, or it reads as "less", not "more".
+      const strong = parseColor(t['--ed-accent-strong']);
+      assert.ok(contrast(strong, panel) > contrast(accent, panel) || c === '#ffffff' || c === '#000000', c + ' hover deepens in ' + chrome + ' chrome');
+      assert.match(t['--ed-soft'], /^rgba\(\d+,\d+,\d+,0\.\d+\)$/);
+
+      // The sheet family paints on the email page, which stays white in both
+      // chromes -- a dark-chrome accent light enough for the dark panels would
+      // wash out on it, so these are always fitted against white.
+      const sheet = parseColor(t['--ed-accent-sheet']);
+      assert.ok(contrast(sheet, WHITE) >= 4.4, c + ' in ' + chrome + ' chrome stays readable on the email sheet');
+      assert.ok(contrast(parseColor(t['--ed-accent-sheet-ink']), sheet) >= 4.5, c + ' in ' + chrome + ' chrome has legible ink on the sheet accent');
+      // Same exemption as the panel check above: at pure black or white there
+      // is no "deeper" left to go.
+      assert.ok(contrast(parseColor(t['--ed-accent-sheet-strong']), WHITE) >= contrast(sheet, WHITE) || c === '#ffffff' || c === '#000000', c + ' sheet hover deepens in ' + chrome + ' chrome');
+    }
+  }
+
+  // The point of the second family: on the dark chrome, panel and sheet
+  // accents genuinely differ -- the grip badge and the block toolbars must not
+  // inherit the pale panel accent.
+  const onDark = accentTokens({ r: 11, g: 61, b: 145 }, 'dark');
+  assert.notEqual(onDark['--ed-accent'], onDark['--ed-accent-sheet'], 'a dark-chrome accent is not reused on the white sheet');
+  // On light chrome the panel is white, so the two coincide.
+  const onLight = accentTokens({ r: 11, g: 61, b: 145 }, 'light');
+  assert.equal(onLight['--ed-accent'], onLight['--ed-accent-sheet']);
+});
+
+await it('the footer resolves every shape a host configures it with', () => {
+  // Unset is the built-in attribution. `text: null` on purpose -- the string
+  // is looked up through the translator at render time, so it follows locale.
+  assert.deepEqual(resolveFooter(undefined), { text: null, href: '', target: '' });
+  assert.deepEqual(resolveFooter(null), { text: null, href: '', target: '' });
+  assert.deepEqual(resolveFooter(''), { text: null, href: '', target: '' }, 'an empty attribute is not a request to hide it');
+
+  // Off, in every spelling markup might carry.
+  for (const off of [false, 'none', 'None', ' off ', 'hidden', 'false', { show: false }]) {
+    assert.equal(resolveFooter(off), null, JSON.stringify(off) + ' removes the strip');
+  }
+
+  assert.deepEqual(resolveFooter('© 2026 Acme'), { text: '© 2026 Acme', href: '', target: '' });
+  assert.deepEqual(
+    resolveFooter({ text: 'Acme Mail', href: 'https://acme.test', target: '_self' }),
+    { text: 'Acme Mail', href: 'https://acme.test', target: '_self' },
+  );
+  assert.equal(resolveFooter({ text: '', href: 'https://acme.test' }).text, '', 'an explicit empty string is honored, for a link-only strip');
+  assert.equal(resolveFooter({ href: '/about' }).href, '/about', 'a relative path has no scheme and is fine');
+  assert.equal(resolveFooter({ href: 'mailto:hi@acme.test' }).href, 'mailto:hi@acme.test');
+  // The link renders inside the editor's own DOM, so the scheme is
+  // allowlisted like every other host-supplied URL in the package.
+  for (const bad of ['javascript:alert(1)', 'JAVAscript:alert(1)', 'data:text/html,<script>x</script>']) {
+    assert.equal(resolveFooter({ href: bad }).href, '', JSON.stringify(bad) + ' never becomes a click target');
+  }
 });
 
 console.log(`\n${passed} passed, ${failed} failed.`);

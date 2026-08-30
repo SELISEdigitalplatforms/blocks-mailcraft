@@ -15,8 +15,10 @@
   - [Merge variables](#merge-variables)
   - [Image uploads](#image-uploads)
   - [Choosing what the top bar shows](#choosing-what-the-top-bar-shows)
+  - [The footer strip](#the-footer-strip)
   - [Language, direction and theme](#language-direction-and-theme)
   - [Matching your app's typography](#matching-your-apps-typography)
+  - [Matching your brand color](#matching-your-brand-color)
 - [API reference](#api-reference)
 - [How it works inside](#how-it-works-inside)
 
@@ -285,6 +287,40 @@ Parts: `logo`, `status`, `device`, `undo`, `redo`, `theme`, `ai`, `code`, `previ
 
 The **attribute names what to keep**; the **property names what to drop**. Markup has only strings to work with, and an allow-list reads better there than spelling out the seven things you did not want. Switching every part off collapses to no bar rather than an empty strip.
 
+## The footer strip
+
+The editor carries a one-line attribution along the bottom of the shell:
+
+> Powered by SELISE Blocks © 2026
+
+It is configurable the same way the top bar is — replace the line, point it
+somewhere, or remove it:
+
+```html
+<mailcraft-editor footer="none"></mailcraft-editor>            <!-- no strip -->
+<mailcraft-editor footer="© 2026 Acme"></mailcraft-editor>     <!-- your line -->
+```
+
+```js
+editor.footer = false;                                            // no strip
+editor.footer = '© 2026 Acme';                                    // your line
+editor.footer = { text: 'Acme Mail', href: 'https://acme.test' }; // ...with a link
+```
+
+A link opens in a new tab (`rel="noopener noreferrer"`) so a click never carries
+unsaved work out of the editor; pass `target` to override. Schemes are
+allowlisted to `http(s)`, `mailto` and relative paths — the strip renders inside
+the editor's own DOM.
+
+The default line is a translated string, not baked-in text, so it follows
+`locale` and can be reworded like any other label:
+
+```js
+editor.messages = { 'footer.poweredBy': 'Powered by Acme' };
+```
+
+Hiding the strip collapses its row — the canvas keeps every pixel it had.
+
 ## Language, direction and theme
 
 ```html
@@ -308,6 +344,51 @@ editor.messages = { 'action.export': 'Send to campaign' };
 
 Editor chrome only — never the fonts inside the email being edited.
 
+## Matching your brand color
+
+```html
+<mailcraft-editor accent="#e11d48"></mailcraft-editor>
+<mailcraft-editor accent="var(--brand)"></mailcraft-editor>
+<mailcraft-editor accent="inherit"></mailcraft-editor>
+```
+
+One color repaints every accented pixel in the editor — there is no second
+place to set. It reaches:
+
+| | |
+|---|---|
+| header | brand mark, code badge, undo/redo and export states |
+| inspector | active tabs and segments, focus rings, switches, sliders, field focus |
+| RTE | active controls, hover states, the color-picker ring |
+| canvas | row and block selection outlines, hover dashes, the drag insertion line, drop-target outlines |
+| canvas | the row **grip badge** and the block toolbars sitting on the email sheet |
+| everywhere | text selection, tinted washes, hover shades |
+
+`var(--brand)` is read off the host element; `inherit` reads the host's CSS
+`accent-color`.
+
+Contrast is corrected per surface, not just picked. The editor paints on two:
+the **panels**, which follow the light/dark theme, and the **email sheet**,
+which is a white page in both. A brand color is fitted separately against each
+— darkened where it would wash out on white, lightened where it would vanish on
+the dark panels, each only as far as WCAG AA needs — so the grip badge on the
+page never inherits the pale accent the dark chrome needs. Text drawn *on* the
+accent flips between white and near-black to stay legible. A brand color that
+already passes is used exactly as given. An unusable value is ignored, with a
+console warning, and the built-in accent stays.
+
+Nothing notifies an element that a CSS custom property changed, so if your own
+`--brand` moves at runtime, re-set the attribute to have it re-read:
+
+```js
+document.documentElement.style.setProperty('--brand', next);
+editor.accent = 'var(--brand)';   // same string: re-reads the token
+editor.accent = next;             // ...or just hand over the literal
+```
+
+Editor chrome only — colors inside the email being edited belong to the
+template, not to your app.
+
 ---
 
 # API reference
@@ -321,7 +402,9 @@ Editor chrome only — never the fonts inside the email being edited.
 | `dir` | `ltr` / `rtl` — defaults from `locale` |
 | `theme` | `light` / `dark` |
 | `ui-font` | `inherit` or a CSS font-family stack |
+| `accent` | a CSS color, `var(--your-token)`, or `inherit` (the host's `accent-color`) |
 | `toolbar` | `none`, or a comma list of the parts to keep |
+| `footer` | `none`, or any string to use as the line |
 
 ### Properties
 
@@ -329,7 +412,9 @@ Editor chrome only — never the fonts inside the email being edited.
 |---|---|
 | `.variables` | string or array |
 | `.toolbar` | `false`, or `{ part: false }` |
+| `.footer` | `false`, a string, or `{ text, href, target }` |
 | `.uiFont` | string |
+| `.accent` | string |
 | `.messages` | `{ key: string }` |
 | `.storageProvider` | `{ list, upload, folders?, remove? }` |
 | `.storageLimits` | `{ accept, maxBytes, maxWidth?, maxHeight?, maxFilesPerDrop?, allowSvg? }` |

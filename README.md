@@ -43,7 +43,9 @@ Exported HTML is valid input to `loadTemplate`, so saving the export *is* saving
 | `locale="de"` | 31 languages, RTL automatic |
 | `theme="light" \| "dark"` | host owns light/dark; hides the built-in toggle |
 | `ui-font="inherit"` | match your app's font |
+| `accent="#e11d48"` | your brand color, everywhere the editor is accented; also `var(--brand)` or `inherit` |
 | `toolbar="none"` | hide the editor's own top bar |
+| `footer="none"` | drop the "Powered by SELISE Blocks © 2026" strip, or pass your own line |
 | `toolbar="undo,redo,export"` | …or keep only these parts |
 | `.storageProvider` + `.storageLimits` | image uploads to your backend |
 | `.aiProvider` | `async (prompt) => text`, powers the AI draft panel |
@@ -62,7 +64,7 @@ IMPORT    import '@seliseblocks/mailcraft'   (side effect: registers the element
 ELEMENT   <mailcraft-editor id="editor"></mailcraft-editor>
 MOUNT     createEditor(target, options) -> handle   (no tag needed)
           target  = CSS selector or Element; throws if it matches nothing
-          options = html, variables, locale, dir, theme, uiFont, toolbar,
+          options = html, variables, locale, dir, theme, uiFont, accent, toolbar, footer,
                     storageProvider, storageLimits, aiProvider, iconProvider,
                     messages, height, replace, onChange(doc), onExport(html)
           handle  = the METHODS below + .element + .destroy()
@@ -79,8 +81,9 @@ EVENTS    'change'  detail = internal doc (do not persist this)
           'export'  detail = HTML string
 
 ATTRS     variables="a,b,c" | locale="de" | theme="dark" | dir="rtl"
-          ui-font="inherit" | toolbar="none" | toolbar="undo,redo,export"
-PROPS     .variables .toolbar .uiFont .messages .aiProvider .iconProvider
+          ui-font="inherit" | accent="#e11d48" | accent="var(--brand)"
+          toolbar="none" | toolbar="undo,redo,export" | footer="none"
+PROPS     .variables .toolbar .footer .uiFont .accent .messages .aiProvider .iconProvider
           .storageProvider .storageLimits
 METHODS   exportHtml() importHtml(html) loadTemplate(tpl) undo() redo()
           screenshotPng() previewScreenshot() downloadScreenshot() copyScreenshot()

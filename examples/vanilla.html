@@ -4,6 +4,9 @@
 <meta charset="utf-8" />
 <title>MailCraft Editor — vanilla JS example</title>
 <style>
+  /* The host app's brand color, as a design token -- exactly where a real
+     app keeps it. The editor is pointed at it with accent="var(--brand)". */
+  :root { --brand: #0065b3; }
   html, body { margin: 0; height: 100%; font-family: sans-serif; }
   /* The bar below stands in for the host application's own chrome: theme and
      language are host decisions, pushed into the editor as attributes. */
@@ -11,6 +14,7 @@
   #host-bar strong { font-weight: 600; letter-spacing: 0.02em; margin-right: auto; }
   #host-bar button, #host-bar select { font: inherit; font-size: 12.5px; padding: 5px 12px; border-radius: 6px; border: 1px solid #4b5563; background: #1f2937; color: #f9fafb; cursor: pointer; }
   #host-bar button:hover, #host-bar select:hover { border-color: #9ca3af; }
+  #host-bar input[type="color"] { width: 34px; height: 26px; padding: 0; border: 1px solid #4b5563; border-radius: 6px; background: #1f2937; cursor: pointer; }
   mailcraft-editor { display: block; height: calc(100vh - 46px); }
 </style>
 </head>
@@ -18,24 +22,45 @@
 <div id="host-bar">
   <strong>Host app</strong>
   <!-- The template gallery is host UI: the editor has no Templates tab. This
-       picker just sends email HTML to editor.loadTemplate() -- that's the
-       whole integration. -->
+       picker sends email HTML to editor.loadTemplate() -- that's the whole
+       integration. The first template auto-loads on startup; picking another
+       loads it immediately, no separate Load step. -->
   <label for="template-select">Template</label>
   <select id="template-select"></select>
-  <button id="template-btn" type="button">Load</button>
   <label for="lang-select">Language</label>
   <select id="lang-select"></select>
+  <!-- ui-font restyles the editor chrome only; email typography stays owned
+       by the document theme. "Match host app" is ui-font="inherit" -- the
+       computed family of this page (sans-serif, set on <body> below). -->
+  <label for="font-select">Font</label>
+  <select id="font-select">
+    <option value="">Default (Manrope)</option>
+    <option value="inherit">Match host app</option>
+    <option value="Georgia, 'Times New Roman', serif">Serif</option>
+    <option value="Verdana, Geneva, sans-serif">Verdana</option>
+  </select>
+  <label for="brand-input">Brand</label>
+  <input id="brand-input" type="color" value="#0065b3" />
   <button id="theme-btn" type="button">Switch to dark</button>
 </div>
 
-<!-- `theme` and `locale` are host-owned: while the `theme` attribute is
-     present the editor hides its built-in light/dark toggle, and `locale`
-     selects a shipped UI translation (plus RTL for e.g. locale="ar"). -->
+<!-- `theme`, `locale`, `accent` and `ui-font` are host-owned: while the `theme`
+     attribute is present the editor hides its built-in light/dark toggle,
+     `locale` selects a shipped UI translation (plus RTL for e.g. locale="ar"),
+     `accent` paints the chrome in this app's brand color, and `ui-font`
+     restyles the editor chrome only (email typography stays owned by the
+     document theme). `var(--brand)`
+     is read off this element, so pointing at a design token is enough -- a
+     literal (accent="#e11d48") or accent="inherit" (the host's CSS
+     `accent-color`) work too. The editor derives the hover shade, the color
+     of text drawn on the accent and the tinted washes from it, correcting
+     each for contrast against the light or dark chrome. -->
 <mailcraft-editor
   id="editor"
   variables="first_name,last_name,email,company,unsubscribe_url"
   theme="light"
   locale="en"
+  accent="var(--brand)"
 ></mailcraft-editor>
 
 <!-- Plain script (not type="module") so this file also works when opened
@@ -1285,6 +1310,26 @@
     themeBtn.textContent = next === 'dark' ? 'Switch to light' : 'Switch to dark';
   });
 
+  // Host-controlled brand color. Nothing notifies an element that a CSS
+  // custom property changed, so after moving --brand the host re-sets the
+  // attribute to the same string -- that is the "re-read my token" signal.
+  // (Handing over a literal, `editor.accent = brandInput.value`, needs no
+  // nudge and is the shorter route when the color isn't already a token.)
+  const brandInput = document.getElementById('brand-input');
+  brandInput.addEventListener('input', () => {
+    document.documentElement.style.setProperty('--brand', brandInput.value);
+    editor.accent = 'var(--brand)';
+  });
+
+  // Host-controlled chrome font. The attribute takes any CSS font-family
+  // value; "inherit" snapshots this page's computed family. Setting the
+  // attribute re-renders the chrome immediately.
+  const fontSelect = document.getElementById('font-select');
+  fontSelect.addEventListener('change', () => {
+    if (fontSelect.value) editor.setAttribute('ui-font', fontSelect.value);
+    else editor.removeAttribute('ui-font');
+  });
+
   // Host-controlled language: one attribute per shipped locale.
   const langSelect = document.getElementById('lang-select');
   bundle.LOCALES.forEach((l) => {
@@ -1305,6 +1350,10 @@
   //   editor.loadTemplate({ name, html })  // raw email HTML, via the importer
   //   editor.loadTemplate({ name, doc })   // a saved document object
   //   const doc = editor.getContent()      // capture back out, to store as a template
+  //
+  // The first template loads on its own: a host app typically opens a known
+  // starting point (a fresh campaign skeleton, a draft from the DB) rather
+  // than an empty canvas, so no button press is needed.
   const tplSelect = document.getElementById('template-select');
   const blocks = Array.from(document.querySelectorAll('script[type="text/x-template"]'));
   blocks.forEach((block, i) => {
@@ -1312,10 +1361,12 @@
     o.value = String(i); o.textContent = block.dataset.name;
     tplSelect.appendChild(o);
   });
-  document.getElementById('template-btn').addEventListener('click', () => {
+  const loadSelected = () => {
     const block = blocks[Number(tplSelect.value)];
     editor.loadTemplate({ name: block.dataset.name, html: block.textContent });
-  });
+  };
+  tplSelect.addEventListener('change', loadSelected);
+  loadSelected();
 
   // ---- storage ------------------------------------------------------------
   //

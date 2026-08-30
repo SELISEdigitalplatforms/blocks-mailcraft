@@ -27,12 +27,12 @@ function el(tag, style, attrs) {
  * change and no re-render involved.
  */
 function dropLine() {
-  return el('div', { height: '0', background: 'var(--ed-accent)', margin: '0', transition: 'height 0.1s', boxShadow: 'none' });
+  return el('div', { height: '0', background: 'var(--ed-accent-sheet)', margin: '0', transition: 'height 0.1s', boxShadow: 'none' });
 }
 
 function showLine(tracker, line) {
   if (tracker.active && tracker.active !== line) hideLine(tracker.active);
-  line.style.height = '3px'; line.style.margin = '3px 0'; line.style.boxShadow = '0 0 0 1px var(--ed-accent)';
+  line.style.height = '3px'; line.style.margin = '3px 0'; line.style.boxShadow = '0 0 0 1px var(--ed-accent-sheet)';
   tracker.active = line;
 }
 
@@ -54,12 +54,13 @@ function toolbar(core, id, kind, code) {
     node.addEventListener('click', (e) => { e.stopPropagation(); fn(); });
     return node;
   };
-  // Fixed dark/accent colors here (not `--ed-*` chrome tokens) on purpose: this
-  // pill sits on the canvas/email sheet, which stays the document's own light
-  // theme regardless of editor chrome dark mode, so it needs guaranteed
-  // contrast against a light background in both chrome themes.
-  const root = el('div', { position: 'absolute', top: '-12px', right: '6px', display: 'flex', alignItems: 'center', gap: '1px', background: kind === 'row' ? '#172033' : '#0065b3', borderRadius: '6px', padding: '2px 3px', zIndex: '6', boxShadow: '0 3px 10px rgba(15,23,42,0.28)' });
-  root.appendChild(el('span', { fontFamily: 'ui-monospace,monospace', fontSize: '8.5px', letterSpacing: '0.14em', color: '#fff', opacity: '0.7', padding: '0 5px' }, { text: code }));
+  // --ed-accent-sheet, not --ed-accent, on purpose: this pill sits on the
+  // canvas/email sheet, which stays the document's own light page regardless
+  // of editor chrome dark mode. The sheet family is the brand accent fitted
+  // against white (core/accent.js), so it keeps its contrast in both chrome
+  // themes -- while still following a host's `accent`.
+  const root = el('div', { position: 'absolute', top: '-12px', right: '6px', display: 'flex', alignItems: 'center', gap: '1px', background: kind === 'row' ? '#172033' : 'var(--ed-accent-sheet)', borderRadius: '6px', padding: '2px 3px', zIndex: '6', boxShadow: '0 3px 10px rgba(15,23,42,0.28)' });
+  root.appendChild(el('span', { fontFamily: 'ui-monospace,monospace', fontSize: '8.5px', letterSpacing: '0.14em', color: kind === 'row' ? '#fff' : 'var(--ed-accent-sheet-ink)', opacity: '0.7', padding: '0 5px' }, { text: code }));
   root.appendChild(btn('up', 'Move up', () => core.nudge(id, -1)));
   root.appendChild(btn('down', 'Move down', () => core.nudge(id, 1)));
   root.appendChild(btn('copy', 'Duplicate', () => { core.setState({ sel: { type: kind, id } }, () => core.dupSel()); }));
@@ -70,13 +71,14 @@ function toolbar(core, id, kind, code) {
 /**
  * Selected-row controls: square accent buttons pinned inside the row's
  * top-right corner (delete + duplicate; reordering is the left drag badge).
- * Fixed #0065b3 like `toolbar` above and for the same reason: the email sheet
- * stays light in both chrome themes, and the dark-chrome `--ed-accent`
- * (#58a8e3) loses contrast against it.
+ * On --ed-accent-sheet like `toolbar` above and for the same reason: the
+ * email sheet stays a light page in both chrome themes, and a dark-chrome
+ * `--ed-accent` -- light enough to read on the dark panels -- would wash out
+ * against it.
  */
 function rowActions(core, id) {
   const btn = (name, title, fn) => {
-    const node = el('button', { position: 'relative', border: '0', background: '#0065b3', color: '#fff', cursor: 'pointer', width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px', boxShadow: '0 2px 6px rgba(15,23,42,0.3)' }, { type: 'button', title, 'aria-label': title, 'data-tip': '1' });
+    const node = el('button', { position: 'relative', border: '0', background: 'var(--ed-accent-sheet)', color: 'var(--ed-accent-sheet-ink)', cursor: 'pointer', width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px', boxShadow: '0 2px 6px rgba(15,23,42,0.3)' }, { type: 'button', title, 'aria-label': title, 'data-tip': '1' });
     node.appendChild(icon(name, 14));
     node.appendChild(el('span', {}, { class: 'mc-tooltip mc-tooltip-up', text: title }));
     node.addEventListener('mousedown', (e) => e.stopPropagation());
@@ -238,7 +240,7 @@ export function renderDoc(core, live) {
         colTracker = { active: null };
       }
       if (live && !c.blocks.length) {
-        items.push(el('div', { border: '1px dashed rgba(0,101,179,0.5)', borderRadius: 'var(--ed-radius-sm)', color: 'var(--ed-faint)', fontFamily: 'ui-monospace,monospace', fontSize: '9.5px', letterSpacing: '0.14em', textTransform: 'uppercase', padding: '24px 8px', textAlign: 'center' }, { text: 'drop block' }));
+        items.push(el('div', { border: '1px dashed var(--ed-accent-sheet-line)', borderRadius: 'var(--ed-radius-sm)', color: 'var(--ed-faint)', fontFamily: 'ui-monospace,monospace', fontSize: '9.5px', letterSpacing: '0.14em', textTransform: 'uppercase', padding: '24px 8px', textAlign: 'center' }, { text: 'drop block' }));
       }
       const colEl = el('div', colStyle(r.props, c));
       // Column-level styling lives on an inner wrapper, not on colEl itself:
@@ -275,7 +277,7 @@ export function renderDoc(core, live) {
 
   if (live) { const line = dropLine(); rowLines.push(line); root.appendChild(line); }
   if (live && !d.rows.length) {
-    root.appendChild(el('div', { border: '1px dashed rgba(0,101,179,0.55)', padding: '90px 20px', textAlign: 'center', fontFamily: 'ui-monospace,monospace', fontSize: '10.5px', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--ed-faint)' }, { text: 'drag a row or block here' }));
+    root.appendChild(el('div', { border: '1px dashed var(--ed-accent-sheet-line)', padding: '90px 20px', textAlign: 'center', fontFamily: 'ui-monospace,monospace', fontSize: '10.5px', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--ed-faint)' }, { text: 'drag a row or block here' }));
   }
 
   return root;

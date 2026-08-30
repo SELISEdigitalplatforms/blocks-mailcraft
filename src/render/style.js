@@ -19,6 +19,12 @@ export const STYLE = `
   --ed-panel-label: #344054; --ed-panel-value: #475467; --ed-panel-meta: #7b8799;
   --ed-panel-label-size: 12px; --ed-panel-value-size: 11.5px; --ed-panel-meta-size: 9.5px;
   --ed-accent: #0065b3; --ed-accent-strong: #00538f; --ed-accent-ink: #ffffff; --ed-soft: rgba(0,101,179,0.09);
+  --ed-accent-tint: #33a3e8; --ed-glow: rgba(0,101,179,0.28); --ed-select: rgba(0,101,179,0.22);
+  /* The accent as it must read on the email sheet, which is a white page in
+     both themes -- so this family does NOT flip with the chrome (see the dark
+     palette below, where it is deliberately not overridden). */
+  --ed-accent-sheet: #0065b3; --ed-accent-sheet-strong: #004f8c; --ed-accent-sheet-ink: #ffffff;
+  --ed-accent-sheet-line: rgba(0,101,179,0.5);
   --ed-grid: rgba(71,85,105,0.10);
   --ed-danger: #dc4c53; --ed-danger-soft: rgba(220,76,83,0.12);
   --ed-success: #1a9f6b; --ed-success-soft: rgba(26,159,107,0.12);
@@ -36,6 +42,7 @@ export const STYLE = `
   --ed-text: #f1f5f9; --ed-muted: #a8b3c4; --ed-faint: #718096;
   --ed-panel-label: #e2e8f0; --ed-panel-value: #c0cad8; --ed-panel-meta: #8d9aae;
   --ed-accent: #58a8e3; --ed-accent-strong: #8fc4ec; --ed-accent-ink: #08111f; --ed-soft: rgba(88,168,227,0.13);
+  --ed-accent-tint: #8fcdf2; --ed-glow: rgba(88,168,227,0.28); --ed-select: rgba(88,168,227,0.3);
   --ed-grid: rgba(148,163,184,0.08);
   --ed-danger: #f2777c; --ed-danger-soft: rgba(242,119,124,0.14);
   --ed-success: #4ade95; --ed-success-soft: rgba(74,222,149,0.14);
@@ -82,7 +89,7 @@ export const STYLE = `
 #mc ::-webkit-scrollbar-thumb { background: var(--ed-line-2); border-radius: 999px; }
 #mc ::-webkit-scrollbar-track { background: transparent; }
 #mc :focus-visible { outline: 2px solid var(--ed-accent); outline-offset: 2px; }
-#mc ::selection { background: rgba(0,101,179,0.22); }
+#mc ::selection { background: var(--ed-select); }
 #mc a { color: var(--ed-accent); }
 #mc a:hover { color: var(--ed-accent); opacity: 0.72; }
 @keyframes mcIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
@@ -97,24 +104,25 @@ export const STYLE = `
  * real CSS instead, same visual result, zero JS.
  */
 .mc-row-el { outline: 1px solid transparent; transition: outline-color 0.12s; }
-.mc-row-el.is-selected { outline: 2px solid var(--ed-accent); }
+.mc-row-el.is-selected { outline: 2px solid var(--ed-accent-sheet); }
 .mc-row-el:not(.is-selected):hover { outline: 1px dashed var(--ed-faint); }
 .mc-block-el { outline: 1px solid transparent; outline-offset: 1px; transition: outline-color 0.12s; }
-.mc-block-el.is-selected { outline: 2px solid var(--ed-accent); }
-.mc-block-el:not(.is-selected):hover { outline: 1px dashed var(--ed-accent); }
+.mc-block-el.is-selected { outline: 2px solid var(--ed-accent-sheet); }
+.mc-block-el:not(.is-selected):hover { outline: 1px dashed var(--ed-accent-sheet); }
 /*
  * The grab strip runs the row's whole left edge (see render/canvas.js); the
- * visible part is a round badge straddling the selection border. Fixed
- * #0065b3 (not --ed-accent) for the same reason as the canvas toolbars: the
- * email sheet stays light in both chrome themes.
+ * visible part is a round badge straddling the selection border. It takes
+ * --ed-accent-sheet, not --ed-accent, for the same reason as the canvas
+ * toolbars: the email sheet stays a light page in both chrome themes, so the
+ * accent here is the one fitted against white (core/accent.js).
  */
 .mc-row-grip { display: none; }
 .mc-row-el:hover .mc-row-grip, .mc-row-el.is-selected .mc-row-grip { display: flex; }
 /* The badge's fill lives here, not inline on the element: an inline
    background would outrank the hover rule below and the badge would never
    light up under the cursor. */
-.mc-row-grip-handle { background: #0065b3; color: #ffffff; box-shadow: 0 2px 6px rgba(15,23,42,0.3); transition: background 0.14s ease; }
-.mc-row-grip:hover .mc-row-grip-handle { background: #004f8c; }
+.mc-row-grip-handle { background: var(--ed-accent-sheet); color: var(--ed-accent-sheet-ink); box-shadow: 0 2px 6px rgba(15,23,42,0.3); transition: background 0.14s ease; }
+.mc-row-grip:hover .mc-row-grip-handle { background: var(--ed-accent-sheet-strong); }
 /* The drag slider (render/fields.js isSlider). The track's filled/empty
    split is painted inline as a gradient that follows the thumb; only the
    chrome that CSS pseudo-elements own lives here. */
@@ -128,12 +136,19 @@ export const STYLE = `
 .mc-section-bar:first-child { border-top: 0; }
 .mc-rte { overflow: visible; }
 
+/* Attribution strip (mailcraft-editor.js buildFooter). Sits on the panel-2
+   surface with the panel's own hairline above it, so it reads as chrome
+   rather than as content; the link only takes the accent on hover, since a
+   permanently colored line would compete with the canvas. */
+.mc-footer-link { cursor: pointer; transition: color 0.14s ease; }
+.mc-footer-link:hover { color: var(--ed-accent); text-decoration: underline; }
+
 /* Brand mark -- the small gradient envelope glyph in the header. */
 .mc-brand-mark {
   display: flex; align-items: center; justify-content: center; flex: none;
   width: 26px; height: 26px; border-radius: 8px;
-  background: linear-gradient(145deg, #33a3e8, var(--ed-accent) 55%, var(--ed-accent-strong));
-  box-shadow: 0 5px 14px rgba(0,101,179,0.28);
+  background: linear-gradient(145deg, var(--ed-accent-tint), var(--ed-accent) 55%, var(--ed-accent-strong));
+  box-shadow: 0 5px 14px var(--ed-glow);
   color: #ffffff;
 }
 
@@ -236,7 +251,7 @@ export const STYLE = `
 /* Opaque, no backdrop-filter: the header sits over the scrolling canvas, so a
    backdrop blur re-composites every scroll frame -- visible scroll jank. */
 #mc .mc-header { padding: 0 18px !important; background: var(--ed-panel) !important; }
-#mc .mc-brand-mark { width: 30px !important; height: 30px !important; border-radius: 9px; background: linear-gradient(145deg, #33a3e8, #0065b3 56%, #00538f) !important; box-shadow: 0 7px 18px rgba(0,101,179,.25); }
+#mc .mc-brand-mark { width: 30px !important; height: 30px !important; border-radius: 9px; background: linear-gradient(145deg, var(--ed-accent-tint), var(--ed-accent) 56%, var(--ed-accent-strong)) !important; box-shadow: 0 7px 18px var(--ed-glow); }
 #mc .mc-brand-mark svg { width: 20px; height: 20px; display: block; color: #fff; }
 #mc .mc-brand-name { font-family: var(--ed-font) !important; font-size: 17px !important; letter-spacing: -.03em !important; }
 #mc .mc-header button { font-family: var(--ed-font) !important; font-size: 10.5px !important; font-weight: 600; letter-spacing: .015em !important; text-transform: none !important; }

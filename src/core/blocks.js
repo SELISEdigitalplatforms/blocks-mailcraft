@@ -164,50 +164,6 @@ export const PALETTE = [
   { t: 'codeblock' }, { t: 'countdown' },
 ];
 
-/** Documents saved before compound components became groups of ordinary blocks carry retired block types -- rebuild each from its own props so nothing is lost. */
-export const LEGACY = {
-  hero: (p) => [
-    blk('text', { html: p.kicker || '', size: 11, align: p.align || 'center', color: p.color || '#ffffff', py: 0 }),
-    blk('heading', { text: p.title || '', size: 40, align: p.align || 'center', color: p.color || '#ffffff', py: 10 }),
-    blk('text', { html: p.sub || '', size: 15, align: p.align || 'center', color: p.color || '#ffffff', py: 4 }),
-    blk('button', { label: p.cta || 'Learn more', href: p.href || '#', align: p.align || 'center', bg: p.color || '#ffffff', color: '#1d1f20' }),
-  ],
-  card: (p) => [
-    blk('image', { src: p.src, alt: p.title || '', py: 0, px: 0 }),
-    blk('heading', { text: p.title || '', size: 22, py: 14, px: 0 }),
-    blk('text', { html: p.desc || '', size: 13.5, py: 0 }),
-    blk('button', { label: p.cta || 'Read more', href: p.href || '#', size: 13, py: 10, px: 18 }),
-  ],
-  product: (p) => [
-    blk('image', { src: p.src, alt: p.title || '', py: 0, px: 0 }),
-    blk('heading', { text: p.title || '', size: 24, py: 10 }),
-    blk('text', { html: '<strong>' + (p.price || '') + '</strong> — ' + (p.desc || ''), size: 14, py: 6 }),
-    blk('button', { label: p.cta || 'View product', href: p.href || '#' }),
-  ],
-  stats: (p) => String(p.items || '').split('\n').filter(Boolean).reduce((acc, line) => {
-    const parts = line.split('|');
-    return acc.concat([
-      blk('heading', { text: parts[0] || '', size: 30, align: 'center', color: p.accent || '#5980a6', py: 0 }),
-      blk('text', { html: String(parts[1] || '').toUpperCase(), size: 11, align: 'center', py: 4 }),
-    ]);
-  }, []),
-  quote: (p) => [
-    blk('text', { html: '<em>“' + (p.text || '') + '”</em>', size: p.size || 19, lh: 1.45, py: 0 }),
-    blk('text', { html: String(p.cite || '').toUpperCase(), size: 11, py: 6 }),
-  ],
-  gallery: (p) => {
-    const list = String(p.images || '').split('\n').map((l) => l.trim()).filter(Boolean);
-    return (list.length ? list : [PH('image 01', 400, 300), PH('image 02', 400, 300)]).map((src) => blk('image', { src, alt: '', py: 6, px: 0 }));
-  },
-  grid: (p) => String(p.cells || '').split(/\n\s*\n/).map((c) => c.trim()).filter(Boolean).map((c) => blk('text', { html: c, size: 14, py: 6 })),
-  footer: (p) => [
-    blk('divider', { py: 0 }),
-    blk('text', { html: '<strong>' + (p.company || '') + '</strong><br />' + (p.address || '') + '<br />' + (p.note || ''), size: 11.5, align: 'center', py: 6 }),
-    blk('text', { html: '<a href="{' + '{ unsubscribe_url }}">' + (p.unsub || 'Unsubscribe') + '</a> · <a href="#">' + (p.pref || 'Update preferences') + '</a>', size: 11.5, align: 'center', py: 0 }),
-  ],
-};
-
-/** Documents saved when compound components were first-class block types get converted on load; rows left with zero blocks after conversion are dropped, but rows the user left empty on purpose are preserved. */
 /**
  * The document a fresh editor opens on: one empty row, default theme.
  *
@@ -232,11 +188,9 @@ export function migrateDoc(doc) {
     if (r.props.mb === undefined) r.props.mb = legacyMarginY;
     if (r.props.ml === undefined) r.props.ml = 0;
     r.cols.forEach((c) => {
-      c.blocks = c.blocks.reduce((acc, b) => {
-        if (DEF(b.type)) return acc.concat(b);
-        const conv = LEGACY[b.type];
-        return conv ? acc.concat(conv(b.props || {})) : acc;
-      }, []);
+      // A block whose type this build no longer knows is dropped rather than
+      // rendered as an unrecognized shape; a row emptied that way goes with it.
+      c.blocks = c.blocks.filter((b) => DEF(b.type));
       // `social.shape` used to have a 'solid' value meaning "filled badge, no
       // particular shape" -- now that shape is split into 'circle'/'square'
       // badges, an old 'solid' document reads as the (arbitrary but stable)

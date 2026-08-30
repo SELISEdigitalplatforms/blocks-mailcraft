@@ -258,6 +258,11 @@ export const EN = {
   'story.replay': 'Replay',
   'story.copy': 'Copy',
   'story.meta': '{w}×{h} · screen {i} of {n}',
+
+  // Footer strip (core/footer.js). One string, so a translator localizes
+  // "Powered by" while the product name and year travel with it; a host that
+  // wants different wording sets `footer` rather than translating this.
+  'footer.poweredBy': 'Powered by SELISE Blocks © 2026',
 };
 
 /** Every key the editor asks for. Exported so a translator can diff a custom table against it. */

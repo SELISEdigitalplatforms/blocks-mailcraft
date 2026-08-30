@@ -15,6 +15,12 @@ function el(tag, style, attrs) {
 
 function m(v) { return String(v == null ? '' : v); }
 
+/** An explicit block font owns every rich descendant; an empty value deliberately leaves imported inline typography untouched. */
+function overrideRichFont(root, fontFamily) {
+  if (!fontFamily) return;
+  root.querySelectorAll('[style]').forEach((node) => node.style.removeProperty('font-family'));
+}
+
 /**
  * Ported from the original `blockBody(b, theme, live)`. `ctx` supplies the
  * editing wiring that in the original lived on `this` (Component instance):
@@ -33,6 +39,14 @@ export function blockBody(b, theme, live, ctx) {
       const content = el('div', {
         padding: pad(p), fontSize: p.size + 'px', lineHeight: p.lh, textAlign: p.align, fontWeight: p.weight, color: p.color || t.text, outline: 'none', fontFamily: p.fontFamily || t.font,
       }, { ...attr, contenteditable: edit ? 'true' : undefined, spellcheck: 'false', html: m(p.html), 'data-focus-key': edit ? 'block:' + b.id : undefined });
+      // Imported email HTML keeps inline font-family declarations so an
+      // untouched block retains its source typography. Once the user chooses
+      // a block font, however, those nested declarations outrank inheritance
+      // from this wrapper and made the Font control appear broken. Remove only
+      // that imported property from descendants; their size, color, spacing
+      // and other inline formatting remain intact, while the selected family
+      // now applies consistently in the canvas and exported read-back DOM.
+      overrideRichFont(content, p.fontFamily);
       if (edit) wireEditable(content, b, 'html', ctx, false);
       if (!live) return content;
       return wrapWithRte(b, ctx, edit && ctx.editingId === b.id, content);
@@ -185,6 +199,7 @@ export function blockBody(b, theme, live, ctx) {
         const li = el('li', { marginBottom: p.gap + 'px' }, { html: m(it) });
         list.appendChild(li);
       });
+      overrideRichFont(list, p.fontFamily);
       return list;
     }
     case 'table': {

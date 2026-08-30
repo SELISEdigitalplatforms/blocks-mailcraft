@@ -20,10 +20,10 @@
 import { MailCraftEditor } from './mailcraft-editor.js';
 
 /** Options that map 1:1 onto an attribute. `uiFont` is spelled `ui-font` in markup. */
-const ATTRS = { variables: 'variables', locale: 'locale', dir: 'dir', theme: 'theme', uiFont: 'ui-font' };
+const ATTRS = { variables: 'variables', locale: 'locale', dir: 'dir', theme: 'theme', uiFont: 'ui-font', accent: 'accent' };
 
 /** Options that must be assigned as properties -- objects and functions cannot travel through an attribute. */
-const PROPS = ['storageProvider', 'storageLimits', 'aiProvider', 'iconProvider', 'messages'];
+const PROPS = ['storageProvider', 'storageLimits', 'aiProvider', 'iconProvider', 'messages', 'footer'];
 
 /** Methods forwarded verbatim onto the returned handle. */
 const METHODS = ['exportHtml', 'importHtml', 'loadTemplate', 'undo', 'redo', 'screenshotPng', 'previewScreenshot', 'downloadScreenshot', 'copyScreenshot'];
@@ -46,7 +46,9 @@ const px = (v) => (typeof v === 'number' ? v + 'px' : v);
  * @param {string} [options.html]            initial email HTML, applied through the importer
  * @param {string|string[]} [options.variables]
  * @param {string} [options.locale] @param {string} [options.dir] @param {string} [options.theme] @param {string} [options.uiFont]
+ * @param {string} [options.accent]          brand color for the editor chrome -- a CSS color, `var(--token)`, or `inherit`
  * @param {boolean|Object} [options.toolbar] which parts of the top bar to show -- see core/toolbar.js
+ * @param {boolean|string|Object} [options.footer] the attribution strip: false to remove, a string to replace it, or { text, href } -- see core/footer.js
  * @param {Object} [options.storageProvider] @param {Object} [options.storageLimits]
  * @param {Function} [options.aiProvider] @param {Function} [options.iconProvider] @param {Object} [options.messages]
  * @param {string|number} [options.height]   sets the container's height; otherwise your CSS decides

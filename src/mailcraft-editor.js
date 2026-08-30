@@ -11,9 +11,11 @@ import { hl, cssUrl } from './core/sanitize.js';
 import { withFocusPreserved } from './render/focus-preserve.js';
 import { captureTemplatePng } from './render/screenshot.js';
 import { resolveToolbar, toolbarKey } from './core/toolbar.js';
+import { resolveFooter } from './core/footer.js';
 import { createStoryViewer } from './render/story.js';
 import { STYLE } from './render/style.js';
 import { createTranslator, isRtl } from './core/i18n/index.js';
+import { ACCENT_VARS, accentTokens, parseColor } from './core/accent.js';
 import { LOCALE_TABLES } from './core/i18n/tables.js';
 
 /** `elS` mirrors the template's literal `style="..."` attribute strings verbatim -- copied, not re-derived, to keep the port pixel-exact. */
@@ -78,7 +80,12 @@ function tip(node, label, dir, align) {
  * Attributes: `variables`, `locale` (picks the shipped UI language
  * and, via `dir` defaulting, RTL), `dir`, `theme` ("light"/"dark" -- host-owned),
  * `ui-font` (a CSS font-family value; use "inherit" for the host app's font),
- * chrome; while present the built-in toggle is hidden). Properties: `.variables`, `.toolbar` (which parts of the top bar are shown),
+ * `accent` (the host's brand color -- a CSS color, `var(--your-token)`, or
+ * "inherit" to read the host's `accent-color`; the whole accent token set is
+ * derived from it, contrast-corrected per chrome),
+ * chrome; while present the built-in toggle is hidden), `footer` ("none" to
+ * remove the attribution strip, or any string to replace its text).
+ * Properties: `.variables`, `.toolbar` (which parts of the top bar are shown),
  * `.aiProvider` (optional async fn, replaces the original's `window.claude.complete`),
  * `.iconProvider` (optional social-icon override), `.storageProvider` (host-supplied
  * file storage -- see `core/storage.js`), `.storageLimits` (host-set upload ceilings,
@@ -99,7 +106,7 @@ function tip(node, label, dir, align) {
 const ElementBase = typeof HTMLElement !== 'undefined' ? HTMLElement : class {};
 
 export class MailCraftEditor extends ElementBase {
-  static get observedAttributes() { return ['variables', 'locale', 'dir', 'theme', 'ui-font', 'toolbar']; }
+  static get observedAttributes() { return ['variables', 'locale', 'dir', 'theme', 'ui-font', 'accent', 'toolbar', 'footer']; }
 
   constructor() {
     super();
@@ -115,6 +122,7 @@ export class MailCraftEditor extends ElementBase {
   connectedCallback() {
     this.buildShell();
     this.applyUiFont();
+    this.applyAccent();
     this.applyDir();
     this._toolbarKey = toolbarKey(this.toolbarConfig());
     this.core.mount(this.shadowRoot);
@@ -157,7 +165,11 @@ export class MailCraftEditor extends ElementBase {
     if (name === 'locale') this.refreshTranslator();
     if (name === 'theme') this.applyTheme();
     if (name === 'ui-font') this.applyUiFont();
+    // Forced: setting the attribute is also how a host asks for a re-derive
+    // after its own `--token` changed -- see applyAccent.
+    if (name === 'accent') this.applyAccent(true);
     if (name === 'toolbar') this.applyToolbar();
+    if (name === 'footer') this.applyFooter();
   }
 
   /**
@@ -177,6 +189,97 @@ export class MailCraftEditor extends ElementBase {
       ? getComputedStyle(this).fontFamily
       : requested;
     this.mc.style.setProperty('--ed-font', resolved || 'inherit');
+  }
+
+  /**
+   * Resolves the `accent` attribute to a plain color string. Three spellings,
+   * because a host's brand color lives in a different place in each app:
+   *
+   *   accent="#e11d48"           a literal color
+   *   accent="var(--brand)"      a design-system token, read off the host
+   *                              element (custom properties inherit through
+   *                              the shadow boundary, so the host's value is
+   *                              the one that resolves), with the optional
+   *                              `var(--brand, #fallback)` fallback honored
+   *   accent="inherit"           the host's computed `accent-color` -- the
+   *                              standard CSS property for exactly this, so a
+   *                              host that already sets it gets the editor for
+   *                              free
+   *
+   * Returns '' when there is nothing usable, which leaves the built-in accent
+   * in place rather than guessing.
+   */
+  resolveAccentValue(requested) {
+    if (typeof getComputedStyle !== 'function') return requested;
+    const hostStyle = getComputedStyle(this);
+    if (requested.toLowerCase() === 'inherit') {
+      const declared = (hostStyle.accentColor || '').trim();
+      return !declared || declared === 'auto' ? '' : declared;
+    }
+    const ref = /^var\(\s*(--[\w-]+)\s*(?:,\s*([^)]+))?\)$/.exec(requested);
+    if (!ref) return requested;
+    return (hostStyle.getPropertyValue(ref[1]) || '').trim() || (ref[2] || '').trim();
+  }
+
+  /**
+   * Host brand color for the editor chrome. One attribute drives all four
+   * accent tokens (`core/accent.js` does the derivation) instead of asking a
+   * host to hand-pick a hover shade, a legible ink color and a wash alpha --
+   * and it re-derives per chrome, since the shade that reads on white panels
+   * is not the one that reads on the dark ones.
+   *
+   * Applied as inline custom properties on `#mc`: the stylesheet declares the
+   * defaults on that same element, so only an inline value can outrank them.
+   * Email-document colors are untouched -- those belong to the template, not
+   * to the app hosting the editor.
+   *
+   * `force` skips the memo. Nothing notifies an element that a CSS custom
+   * property it reads has changed, so a host whose own `--brand` moved (a
+   * brand switcher, a tenant theme) re-sets the attribute to the same string
+   * to ask for a re-derive -- and the memo would otherwise swallow that.
+   */
+  applyAccent(force) {
+    if (!this.mc) return;
+    const requested = (this.getAttribute('accent') || '').trim();
+    const chrome = this.core.state?.chrome || 'light';
+    // Both halves matter: the same brand color resolves to different tokens in
+    // light and dark chrome, so a toggle has to re-derive.
+    const key = requested + '|' + chrome;
+    if (!force && key === this._accentKey) return;
+    this._accentKey = key;
+    const clear = () => ACCENT_VARS.forEach((name) => this.mc.style.removeProperty(name));
+    if (!requested) { clear(); return; }
+
+    const value = this.resolveAccentValue(requested);
+    // Named colors ("rebeccapurple") and anything else only a browser can
+    // resolve go through a throwaway probe: set it as a color, read back what
+    // the engine computed. Parsing first keeps the common case DOM-free.
+    const color = parseColor(value) || parseColor(this.probeColor(value));
+    if (!color) {
+      clear();
+      console.warn('[mailcraft] accent="' + requested + '" is not a usable color -- keeping the built-in accent.');
+      return;
+    }
+    const tokens = accentTokens(color, chrome);
+    for (const [name, v] of Object.entries(tokens)) this.mc.style.setProperty(name, v);
+  }
+
+  /** Asks the engine what a color string computes to. Returns '' when there is no layout to ask (SSR, a test DOM) or the value was rejected. */
+  probeColor(value) {
+    if (!value || typeof getComputedStyle !== 'function' || typeof document === 'undefined') return '';
+    const probe = document.createElement('span');
+    probe.style.display = 'none';
+    probe.style.color = value;
+    // CSSOM drops a value it cannot parse, leaving `color` empty -- and a
+    // probe with no color of its own computes to the *inherited* one, which
+    // would sail through parseColor and repaint the chrome in --ed-text.
+    if (!probe.style.color) return '';
+    // A detached node computes to nothing in some engines -- park it inside
+    // the shadow root, where it can neither be seen nor affect layout.
+    this.mc.appendChild(probe);
+    const computed = (getComputedStyle(probe).color || '').trim();
+    probe.remove();
+    return computed;
   }
 
   /**
@@ -273,15 +376,32 @@ export class MailCraftEditor extends ElementBase {
     this._toolbarKey = key;
     this.buildShell();
     this.applyUiFont();
+    this.applyAccent();
     this.applyDir();
     this.applyTheme();
     this.render();
   }
 
+  /**
+   * The attribution strip: `false`/`"none"` removes it, a string replaces the
+   * line, `{ text, href, target }` gives it a link. Unset shows the built-in
+   * "Powered by SELISE Blocks" line, which follows `locale` and `.messages`
+   * (key `footer.poweredBy`) like every other label. See core/footer.js.
+   */
+  get footer() { return this._footer !== undefined ? this._footer : (this.getAttribute('footer') || ''); }
+  set footer(value) { this._footer = value; this.applyFooter(); }
+
   get uiFont() { return this.getAttribute('ui-font') || ''; }
   set uiFont(value) {
     if (value == null || String(value).trim() === '') this.removeAttribute('ui-font');
     else this.setAttribute('ui-font', String(value));
+  }
+
+  /** The host's brand color for the editor chrome -- a CSS color, `var(--your-token)`, or `inherit` (the host's `accent-color`). Setting '' or null hands the chrome back to the built-in accent. */
+  get accent() { return this.getAttribute('accent') || ''; }
+  set accent(value) {
+    if (value == null || String(value).trim() === '') this.removeAttribute('accent');
+    else this.setAttribute('accent', String(value));
   }
 
   get aiProvider() { return this.core.aiProvider; }
@@ -377,6 +497,9 @@ export class MailCraftEditor extends ElementBase {
     root.innerHTML = '';
     root.appendChild(elS('style', '', { text: STYLE }));
 
+    // A rebuild throws away the `#mc` that carried the inline accent tokens,
+    // so the memo of what was last applied has to go with it.
+    this._accentKey = null;
     this.mc = elS('div', 'height: 100%; padding: 16px; box-sizing: border-box; background: radial-gradient(circle at 8% 0%, var(--ed-soft), transparent 28%), var(--ed-bg); color: var(--ed-text); font-family: var(--ed-font); font-size: 14px; overflow-x: auto; overflow-y: hidden;', { id: 'mc' });
     root.appendChild(this.mc);
 
@@ -391,15 +514,18 @@ export class MailCraftEditor extends ElementBase {
     this.aiBtn = this.codeBtn = this.previewBtn = this.exportBtn = null;
 
     const bar = this.toolbarConfig();
-    this.frame = elS('div', 'position: relative; height: 100%; border: 1px solid var(--ed-line-2); border-radius: var(--ed-radius); background: var(--ed-panel); display: grid; grid-template-rows: ' + (bar ? '54px 1fr' : '1fr') + '; overflow: hidden; box-shadow: var(--ed-shadow-sm), var(--ed-shadow-md);', { class: 'mc-shell' + (bar ? '' : ' mc-no-header') });
+    this.frame = elS('div', 'position: relative; height: 100%; border: 1px solid var(--ed-line-2); border-radius: var(--ed-radius); background: var(--ed-panel); display: grid; grid-template-rows: ' + (bar ? '54px minmax(0, 1fr)' : 'minmax(0, 1fr)') + '; overflow: hidden; box-shadow: var(--ed-shadow-sm), var(--ed-shadow-md);', { class: 'mc-shell' + (bar ? '' : ' mc-no-header') });
     outer.appendChild(this.frame);
 
     if (bar) this.frame.appendChild(this.buildHeader(bar));
 
-    this.body = elS('div', 'display: grid; grid-template-columns: 1fr 340px; min-height: 0;', { class: 'mc-layout' });
+    this.footerBar = this.footerText = this.footerLink = null;
+
+    this.body = elS('div', 'display: grid; grid-template-columns: minmax(0, 1fr) 340px; grid-template-rows: minmax(0, 1fr) auto; min-height: 0;', { class: 'mc-layout' });
     this.frame.appendChild(this.body);
     this.body.appendChild(this.buildMain());
     this.body.appendChild(this.buildAside());
+    this.body.appendChild(this.buildFooter());
 
     this.libraryModal = this.buildLibraryModal();
     this.exportModal = this.buildExportModal();
@@ -606,12 +732,68 @@ export class MailCraftEditor extends ElementBase {
     });
   }
 
+  // ---- footer (attribution strip) -----------------------------------------
+
+  /**
+   * Built once with the rest of the shell, then only refreshed -- like the
+   * header, it is not part of the state-driven render tree. Both a plain
+   * `<span>` and an `<a>` are created up front and toggled in `refreshFooter`:
+   * a host can add or drop a link at runtime, and swapping tag names mid-flight
+   * would strand whichever node the previous render had left in place.
+   */
+  buildFooter() {
+    this.footerBar = elS('div', 'display: flex; grid-column: 1; grid-row: 2; justify-self: center; align-items: center; justify-content: center; gap: 4px; max-width: calc(100% - 32px); padding: 6px 14px; border-top: 1px solid var(--ed-line); background: var(--ed-panel-2); color: var(--ed-panel-meta); font-family: var(--ed-font); font-size: var(--ed-panel-meta-size); letter-spacing: 0.06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;', { class: 'mc-footer' });
+    this.footerText = elS('span', '', { class: 'mc-footer-text' });
+    this.footerLink = elS('a', 'color: inherit; text-decoration: none;', { class: 'mc-footer-link' });
+    this.footerBar.appendChild(this.footerText);
+    this.footerBar.appendChild(this.footerLink);
+    return this.footerBar;
+  }
+
+  /** The resolved `{ text, href, target }`, or null when there is to be no strip. */
+  footerConfig() { return resolveFooter(this._footer !== undefined ? this._footer : this.getAttribute('footer')); }
+
+  /**
+   * Text, link and visibility in one pass, run every render: it is three
+   * property writes, and memoizing it would have to account for the
+   * translator too -- the default line follows `locale`/`.messages`, so a
+   * config-shaped memo would freeze the wrong string.
+   */
+  refreshFooter() {
+    if (!this.footerBar) return;
+    const cfg = this.footerConfig();
+    if (!cfg) { this.footerBar.style.display = 'none'; return; }
+    this.footerBar.style.display = 'flex';
+    this.footerBar.style.width = (this.core.state.device === 'mobile' ? 375 : this.core.state.doc.theme.width) + 'px';
+
+    const text = cfg.text == null ? this.core.t('footer.poweredBy') : cfg.text;
+    const linked = !!cfg.href;
+    this.footerText.style.display = linked ? 'none' : 'inline';
+    this.footerLink.style.display = linked ? 'inline' : 'none';
+    // The idle node is emptied, not just hidden: display:none still counts
+    // toward textContent, and a stale line there would reach anything reading
+    // the strip -- a screen reader's text pass included.
+    this.footerText.textContent = linked ? '' : text;
+    this.footerLink.textContent = linked ? text : '';
+    if (linked) {
+      this.footerLink.setAttribute('href', cfg.href);
+      // A footer link leaves the editor, and the editor is embedded in the
+      // host's page -- opening in place would take the user's unsaved work
+      // with it. `rel` goes with the new tab, not as an afterthought.
+      this.footerLink.setAttribute('target', cfg.target || '_blank');
+      this.footerLink.setAttribute('rel', 'noopener noreferrer');
+    }
+  }
+
+  /** Re-reads the config after an attribute or property change. Never rebuilds: the strip is one node whose contents are cheap to rewrite. */
+  applyFooter() { this.refreshFooter(); }
+
   // ---- main (canvas) ------------------------------------------------------
 
   buildMain() {
     const main = elS('main', '', { class: 'mc-workspace' });
     this.mainEl = main;
-    main.style.cssText = 'position: relative; overflow-y: auto; min-height: 0;';
+    main.style.cssText = 'grid-column: 1; grid-row: 1; position: relative; overflow-y: auto; min-height: 0;';
     main.addEventListener('click', () => { if (this.core.state.sel) this.core.setState({ sel: null }); });
 
     const pad = elS('div', 'padding: 28px 40px 150px; display: flex; justify-content: center;', { class: 'mc-canvas-stage' });
@@ -634,7 +816,7 @@ export class MailCraftEditor extends ElementBase {
   // ---- aside (tabbed inspector) -------------------------------------------
 
   buildAside() {
-    const aside = elS('aside', 'border-left: 1px solid var(--ed-line); background: var(--ed-panel); display: grid; grid-template-rows: auto 1fr; min-height: 0;', { class: 'mc-inspector' });
+    const aside = elS('aside', 'grid-column: 2; grid-row: 1 / span 2; border-left: 1px solid var(--ed-line); background: var(--ed-panel); display: grid; grid-template-rows: auto 1fr; min-height: 0;', { class: 'mc-inspector' });
     this.tabBar = elS('div', 'display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);', { class: 'mc-tabbar', role: 'tablist' });
     aside.appendChild(this.tabBar);
     // overflow-x hidden: `overflow-y: auto` alone computes overflow-x to
@@ -726,6 +908,11 @@ export class MailCraftEditor extends ElementBase {
     this.refreshStrings();
 
     this.mc.dataset.chrome = s.chrome;
+    // Re-derives only when the brand color or the chrome actually changed --
+    // the accent that clears contrast on white panels is not the one that
+    // clears it on the dark palette.
+    this.applyAccent();
+    this.refreshFooter();
     this.refreshSavedLabel();
 
     if (this.undoBtn) this.undoBtn.disabled = !s.history.length;
@@ -1398,6 +1585,7 @@ export class MailCraftEditor extends ElementBase {
     right.appendChild(elS('div', 'padding: 7px 16px; border-bottom: 1px solid var(--ed-line); background: var(--ed-panel); font-family: var(--ed-font); font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ed-muted);', { text: t('code.livePreview'), 'data-i18n': 'code.livePreview', class: 'mc-pane-label' }));
     const previewWrap = elS('div', 'overflow: auto; padding: 20px; display: flex; justify-content: center; background: var(--ed-work);', { class: 'mc-code-preview-body' });
     this.codeFrame = elS('iframe', "width: 100%; height: 100%; min-height: 420px; border: 1px solid var(--ed-line-2); border-radius: 6px; background: #ffffff; box-shadow: 0 6px 18px rgba(15,23,42,0.10); transition: width 0.24s cubic-bezier(0.22,0.61,0.36,1);", { title: t('code.liveHtmlPreviewTitle'), 'data-i18n-title': 'code.liveHtmlPreviewTitle', class: 'mc-code-frame' });
+    this.codeFrame.addEventListener('load', () => this.syncCodePreviewScrollbar());
     previewWrap.appendChild(this.codeFrame);
     right.appendChild(previewWrap);
     cols.appendChild(right);
@@ -1407,15 +1595,16 @@ export class MailCraftEditor extends ElementBase {
     return overlay;
   }
 
-  /** Ported from `codeEditorEl()`: a sticky line-number gutter + a syntax-highlighted `<pre>` sitting behind a transparent-text/visible-caret `<textarea>` -- the classic fake-highlighting-textarea trick. The gutter and `<pre>` are rebuilt on every keystroke (cheap, not focusable); the textarea itself is created once here and only ever has its `.value` patched, so it never loses focus or caret position. */
+  /** Ported from `codeEditorEl()`: numbered syntax-highlighted rows sit behind
+   * a transparent-text/visible-caret `<textarea>`. Both layers share the same
+   * fixed width and wrapping rules, so long HTML stays on screen without the
+   * highlight or caret drifting away from the editable text. */
   buildCodeEditor() {
     const MONO = 'font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; line-height: 20px; tab-size: 2;';
-    const root = elS('div', 'position: absolute; inset: 0; overflow: auto; background: var(--ed-work);');
-    const inner = elS('div', 'display: flex; align-items: stretch; min-height: 100%; width: max-content; min-width: 100%;');
-    this.codeGutter = elS('div', `${MONO} position: sticky; left: 0; z-index: 2; flex: none; width: 52px; padding: 14px 10px 80px; text-align: right; color: var(--ed-faint); background: var(--ed-panel-2); border-right: 1px solid var(--ed-line); user-select: none;`);
-    const contentWrap = elS('div', 'position: relative; flex: 1 0 auto;');
-    this.codePre = elS('pre', `${MONO} margin: 0; padding: 14px 18px 80px; white-space: pre; color: var(--ed-text); pointer-events: none; min-height: 100%;`, { 'aria-hidden': 'true' });
-    this.codeTextarea = elS('textarea', `${MONO} position: absolute; top: 0; left: 0; width: 100%; height: 100%; margin: 0; padding: 14px 18px 80px; border: 0; background: transparent; color: transparent; caret-color: var(--ed-accent); white-space: pre; overflow: hidden; resize: none; outline: none;`, { spellcheck: 'false', wrap: 'off', 'data-focus-key': 'code-src' });
+    const root = elS('div', 'position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; background: var(--ed-work);');
+    const inner = elS('div', 'position: relative; min-height: 100%; width: 100%; min-width: 0;');
+    this.codePre = elS('pre', `${MONO} margin: 0; padding: 14px 0 80px; width: 100%; min-width: 0; min-height: 100%; white-space: normal; color: var(--ed-text); pointer-events: none; background: linear-gradient(to right, var(--ed-panel-2) 0 52px, var(--ed-work) 52px);`, { 'aria-hidden': 'true' });
+    this.codeTextarea = elS('textarea', `${MONO} position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 14px 18px 80px 70px; border: 0; background: transparent; color: transparent; caret-color: var(--ed-accent); white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; overflow: hidden; resize: none; outline: none;`, { spellcheck: 'false', wrap: 'soft', 'data-focus-key': 'code-src' });
     this.codeTextarea.addEventListener('input', (e) => this.core.setCodeSrc(e.target.value));
     this.codeTextarea.addEventListener('keydown', (e) => {
       if (e.key !== 'Tab') return;
@@ -1426,10 +1615,27 @@ export class MailCraftEditor extends ElementBase {
       ta.value = next;
       ta.selectionStart = ta.selectionEnd = a + 2;
     });
-    contentWrap.append(this.codePre, this.codeTextarea);
-    inner.append(this.codeGutter, contentWrap);
+    inner.append(this.codePre, this.codeTextarea);
     root.appendChild(inner);
     return root;
+  }
+
+  /** The iframe owns a separate document, so the Shadow DOM scrollbar rules
+   * cannot reach its viewport. Mirror the editor scrollbar as preview chrome
+   * only; the source string and the HTML applied/exported by the host remain
+   * byte-for-byte untouched. */
+  syncCodePreviewScrollbar() {
+    const doc = this.codeFrame?.contentDocument;
+    if (!doc?.head) return;
+    const view = this.ownerDocument?.defaultView;
+    const thumb = view?.getComputedStyle(this.mc).getPropertyValue('--ed-line-2').trim() || 'rgba(15,23,42,0.16)';
+    let style = doc.head.querySelector('[data-mc-preview-scrollbar]');
+    if (!style) {
+      style = doc.createElement('style');
+      style.setAttribute('data-mc-preview-scrollbar', '');
+      doc.head.appendChild(style);
+    }
+    style.textContent = `html { scrollbar-width: thin !important; scrollbar-color: ${thumb} transparent !important; } *::-webkit-scrollbar { width: 8px !important; height: 8px !important; } *::-webkit-scrollbar-thumb { background: ${thumb} !important; border-radius: 999px !important; } *::-webkit-scrollbar-track { background: transparent !important; } *::-webkit-scrollbar-button { display: none !important; width: 0 !important; height: 0 !important; }`;
   }
 
   renderCodeModal() {
@@ -1442,6 +1648,7 @@ export class MailCraftEditor extends ElementBase {
       this.codeFrame.srcdoc = s.codeLive;
       this._codeFrameSrc = s.codeLive;
     }
+    this.syncCodePreviewScrollbar();
     this.codeWidthSeg.innerHTML = '';
     [{ label: t('device.desktop'), v: 'desktop', iconName: 'monitor' }, { label: t('device.mobile'), v: 'mobile', iconName: 'phone' }].forEach((w) => {
       const on = s.codeDevice === w.v;
@@ -1462,12 +1669,9 @@ export class MailCraftEditor extends ElementBase {
     const t = this.core.t;
     this.codeStatusEl.textContent = s.codeDirty ? t('code.statusEdited') : t('code.statusSynced');
     if (this.codeTextarea.value !== s.codeSrc) this.codeTextarea.value = s.codeSrc;
-    this.codePre.innerHTML = hl(s.codeSrc) + '\n';
-    const lineCount = s.codeSrc.split('\n').length;
-    if (this.codeGutter.childElementCount !== lineCount) {
-      this.codeGutter.innerHTML = '';
-      for (let i = 1; i <= lineCount; i++) this.codeGutter.appendChild(elS('div', '', { text: String(i) }));
-    }
+    const lines = s.codeSrc.split('\n');
+    this.codePre.innerHTML = lines.map((line, index) => `<span style="display:grid;grid-template-columns:52px minmax(0,1fr);min-height:20px"><span style="padding-right:10px;text-align:right;color:var(--ed-faint);border-right:1px solid var(--ed-line);user-select:none">${index + 1}</span><span style="min-width:0;padding:0 18px;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word">${hl(line) || '&#8203;'}</span></span>`).join('');
+    const lineCount = lines.length;
     this.codeMetaEl.textContent = t('code.meta', { kb: (s.codeSrc.length / 1024).toFixed(1), lines: lineCount });
   }
 
