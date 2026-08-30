@@ -1,0 +1,11 @@
+# The source tree arrived with mixed CRLF/LF. Normalize to LF in the repo so a
+# public, cross-platform checkout produces the same bytes everywhere -- and so
+# exact-match edits don't fail on the newline alone.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
