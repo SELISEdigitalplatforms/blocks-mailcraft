@@ -1,0 +1,21 @@
+node_modules/
+
+# npm pack output
+*.tgz
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+
+# Local scratch
+.env
+.env.local

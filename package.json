@@ -1,0 +1,58 @@
+{
+  "name": "@seliseblocks/mailcraft",
+  "version": "0.1.0",
+  "description": "Framework-agnostic drag-and-drop email template editor, packaged as a zero-dependency Web Component.",
+  "license": "MIT",
+  "author": "SELISE Digital Platforms",
+  "homepage": "https://github.com/SELISEdigitalplatforms/blocks-mailcraft#readme",
+  "bugs": "https://github.com/SELISEdigitalplatforms/blocks-mailcraft/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SELISEdigitalplatforms/blocks-mailcraft.git"
+  },
+  "keywords": [
+    "email",
+    "email-template",
+    "email-builder",
+    "editor",
+    "drag-and-drop",
+    "web-component",
+    "custom-element",
+    "html-email",
+    "wysiwyg",
+    "no-dependencies"
+  ],
+  "type": "module",
+  "sideEffects": [
+    "./src/index.js",
+    "./src/mailcraft-editor.js",
+    "./dist/*"
+  ],
+  "main": "./src/index.js",
+  "module": "./src/index.js",
+  "unpkg": "./dist/mailcraft-editor.bundle.js",
+  "jsdelivr": "./dist/mailcraft-editor.bundle.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./dist/*": "./dist/*",
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "node build.js",
+    "test": "node test/storage.test.mjs && node test/export.test.mjs && node test/templates.test.mjs",
+    "prepublishOnly": "npm run build && npm test"
+  }
+}

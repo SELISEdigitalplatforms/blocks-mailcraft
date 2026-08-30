@@ -1,0 +1,38 @@
+# AGENTS.md
+
+Project knowledge for working on the MailCraft editor. Host-facing API docs live in [README.md](README.md).
+
+## Workflow — always
+
+- After any change under `src/`: `node build.js`. The demo page (`examples/vanilla.html`) loads `dist/mailcraft-editor.bundle.js`, never `src/` — a change isn't visible until the bundle is rebuilt. Double-clicking the demo works: the example emails are inlined in it as `<script type="text/x-template">` blocks, so nothing is fetched. The same emails also live as standalone files in `examples/templates/` (byte-identical copies, for hosts to lift); those are not what the demo reads.
+- `npm test` runs `test/storage.test.mjs`, `test/export.test.mjs` and `test/templates.test.mjs` — no dependencies, no DOM. Storage covers upload validation, untrusted-URL escaping and every EditorCore provider transition against a fake provider; export drives `buildHtml` against a stub root (it only calls `querySelector` and reads `.outerHTML`, so no DOM is needed); templates cover the `loadTemplate` seam.
+- The importer has **no automated coverage**. The jsdom fixture/snapshot harness that used to guard `import-html.js`, `css-cascade.js` and `sanitize.js` was removed on 2026-08-29 to make the repo dependency-free; it is recoverable with `git checkout <sha> -- test  # in the original monorepo`. Until something replaces it, importer changes have to be verified by hand through the Code modal — or by driving a scratch page through headless Chrome (`chrome.exe --headless=new --dump-dom`), which is how the DOM-dependent paths get exercised without adding a dependency.
+- Documents persist in `localStorage` **per browser tab** (`mailcraft.v3.tab.<id>`, seeded from the shared `mailcraft.v3`). An already-imported document keeps its old values — rebuilding does not retroactively fix it; re-import through the Code modal to see importer changes.
+- Multiple sessions/tools may edit this repo concurrently — expect files to change on disk mid-session and re-read before editing. Source files carry **mixed CRLF/LF line endings**, so exact-match edits can fail on the newline alone.
+
+## Build system constraints
+
+`build.js` is a deliberate zero-dependency bundler with a regex transform. It only understands:
+
+- `import { a, b as c } from '...'` (single-line)
+- `export { a, b } from '...'`, `export const|function|class|async function NAME`
+
+No `export default`, no bare `export { ... }`, no multi-line imports, no dynamic `import()`. A new file using anything else fails the build with "unhandled export syntax".
+
+## Architecture
+
+- `src/core/` — state and logic, **no DOM rendering** (EditorCore in `editor-core.js`: setState + rAF-batched emit; full re-render, no diffing). `src/render/` — all DOM building. The canvas is torn down and rebuilt per state change; focus/caret survive via `data-focus-key` + `render/focus-preserve.js`. Any new focusable field needs a stable focus key.
+- Shadow DOM everywhere: `window.getSelection()` lies (use `core.getSelection()`), and window-level event listeners see retargeted `e.target` (the host element) — use `e.composedPath()[0]`.
+- Inspector fields are descriptors (`core/binder.js`) rendered by `render/fields.js`. Toggle state flows through `on` → `aria-checked`. Number-like inputs are `type="text"` + `inputmode` on purpose (number inputs break caret restoration).
+- Rows → columns → blocks. Row padding: linked `py`/`px` pair with optional per-side overrides `pt/pr/pb/pl` + `padSplit`; border sides `bTop/bRight/bBottom/bLeft`; `shadow` is a raw CSS string. Columns optionally carry `bg`/`radius`/`padY`/`padX`. `mkRow` defaults + `migrateDoc` backfill keep old saved docs valid — never make a renderer require a prop without a fallback.
+- Export (`core/export.js`) reads back the rendered DOM (`grab`); renderer changes affect exported HTML directly. Import and export are meant to stay round-trip-compatible; nothing pins that automatically any more, so check it by hand.
+- i18n: chrome strings in `core/i18n/en.js` (other locales overlay, English is the fallback); inspector field labels are deliberately hardcoded English (separate pass, see en.js header). The `locale` attribute resolves shipped tables via `core/i18n/tables.js`.
+- Lifecycle ordering is load-bearing. `EditorCore` is built in the element's **constructor** (so a host can configure before insertion), but `mount()` runs from `connectedCallback` and restores the persisted draft. `EditorCore.docSetByHost` (set by `loadTemplate`/`importHtml`/`loadDoc`) and `EditorCore.mounted` gate that restore: without them, `createElement()` → `loadTemplate()` → `append()` silently replaced the host's template with the previous draft, and re-connecting the element (a framework remount, or a move in the DOM) did the same to a live document. Any new "host pushes a document in" entry point must set `docSetByHost`. At module scope, `MailCraftEditor` extends a `typeof HTMLElement !== 'undefined'` stand-in and `customElements.define` is wrapped in a `customElements.get` check — the package must stay importable under SSR and in Node test runners, and must survive being evaluated twice (HMR, or a bundled and an ESM copy side by side).
+- Templates are host content **and host UI** — the editor has no Templates tab, no gallery, and ships no catalogue (the in-editor gallery and `editor.templates` were removed on 2026-08-30; `core/templates.js` had been deleted the same day). The whole seam is `editor.loadTemplate(tpl)` with one of three sources: `doc` (document object), `build()` (made per use), or `html` (raw email, run through the importer via the shared `parseHtmlSource` fallback — content is never dropped). A fresh editor opens on `blankDoc()` (one empty row). Example templates are plain HTML files in `examples/templates/`, mirrored inline in `examples/vanilla.html`'s host-side picker. Covered by `test/templates.test.mjs` (in `npm test`).
+
+## Conventions
+
+- Comments explain *why* (the bug a guard prevents, the constraint that forced a shape) — match the existing density; no change-narration comments.
+- Inspector labels use plain, non-technical language ("Rounded corners", "Space inside — top & bottom"); developer-grade controls go behind the "Advanced options" switch.
+- Primary/accent color is `#0065b3` (dark-chrome variant `#58a8e3`), set via `--ed-*` tokens in `render/style.js`.
+- Upload policy is the host's: no default `storageLimits`, byte-sniffed formats, SVG needs the explicit `allowSvg` second opt-in.

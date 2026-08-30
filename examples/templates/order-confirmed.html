@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Order confirmed</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f4f2;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f2;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:100%; background-color:#ffffff;">
+          <tr>
+            <td style="padding:32px 36px 6px;">
+              <p style="margin:0 0 8px; font-family:Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; letter-spacing:0.16em; text-transform:uppercase; color:#2f9e44;">Order confirmed</p>
+              <h1 style="margin:0 0 10px; font-family:Arial, Helvetica, sans-serif; font-size:24px; line-height:1.25; color:#1a1a1a;">Thanks, {{ first_name }} &mdash; it&rsquo;s on its way</h1>
+              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:14px; line-height:1.6; color:#4a4a4a;">Order <strong>#48213</strong>, placed today. We&rsquo;ll email tracking as soon as the courier scans it &mdash; usually within one business day.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 36px 4px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e6e6e2; border-radius:6px;">
+                <tr>
+                  <td style="padding:14px 18px; border-bottom:1px solid #e6e6e2;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#1a1a1a;">Field jacket &mdash; olive, M</td>
+                        <td align="right" style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#1a1a1a;">$148.00</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:14px 18px; border-bottom:1px solid #e6e6e2;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#1a1a1a;">Merino crew &mdash; charcoal, M</td>
+                        <td align="right" style="font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#1a1a1a;">$85.00</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:14px 18px; background-color:#fafaf8;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="font-family:Arial, Helvetica, sans-serif; font-size:13px; color:#4a4a4a;">Shipping</td>
+                        <td align="right" style="font-family:Arial, Helvetica, sans-serif; font-size:13px; color:#4a4a4a;">Free</td>
+                      </tr>
+                      <tr>
+                        <td style="padding-top:6px; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; color:#1a1a1a;">Total</td>
+                        <td align="right" style="padding-top:6px; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:bold; color:#1a1a1a;">$233.00</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:22px 36px 6px;">
+              <a href="https://example.com/orders/48213" style="display:inline-block; background-color:#1a1a1a; color:#ffffff; font-family:Arial, Helvetica, sans-serif; font-size:14px; font-weight:bold; text-decoration:none; padding:12px 30px; border-radius:6px;">View your order</a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 36px 8px;">
+              <hr style="border:none; border-top:1px solid #e6e6e2; margin:0;" />
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:10px 36px 30px;">
+              <p style="margin:0 0 8px; font-family:Arial, Helvetica, sans-serif; font-size:13px; line-height:1.6; color:#4a4a4a;">Need a different size? Exchanges are free for 30 days &mdash; start one from the order page above.</p>
+              <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11.5px; line-height:1.6; color:#9a9a94;">This receipt was sent to {{ email }}. <a href="{{ unsubscribe_url }}" style="color:#9a9a94;">Unsubscribe from marketing</a> &mdash; you will still receive order emails.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
