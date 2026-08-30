@@ -1,6 +1,6 @@
 {
   "name": "@seliseblocks/mailcraft",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Framework-agnostic drag-and-drop email template editor, packaged as a zero-dependency Web Component.",
   "license": "MIT",
   "author": "SELISE Digital Platforms",
@@ -30,10 +30,14 @@
   ],
   "main": "./src/index.js",
   "module": "./src/index.js",
+  "types": "./types/index.d.ts",
   "unpkg": "./dist/mailcraft-editor.bundle.js",
   "jsdelivr": "./dist/mailcraft-editor.bundle.js",
   "exports": {
-    ".": "./src/index.js",
+    ".": {
+      "types": "./types/index.d.ts",
+      "default": "./src/index.js"
+    },
     "./dist/*": "./dist/*",
     "./src/*": "./src/*",
     "./package.json": "./package.json"
@@ -41,6 +45,7 @@
   "files": [
     "src",
     "dist",
+    "types",
     "examples",
     "README.md",
     "DOCS.md",
