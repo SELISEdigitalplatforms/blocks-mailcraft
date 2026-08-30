@@ -3,7 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light dark">
+<!-- No `color-scheme` meta here on purpose: it is declared per theme in
+     site.css, so the browser's own scrollbars and form controls follow the
+     theme the page is actually painting rather than the OS setting. -->
+
 
 {%- assign is_home = false -%}
 {%- if page.url == "/" or page.url == "/index.html" -%}{%- assign is_home = true -%}{%- endif -%}
@@ -44,11 +47,17 @@
       <span class="brand-name">{{ site.title }}</span>
     </a>
 
+    <!-- Only pages the site actually builds. CONTRIBUTING.md and
+         CODE_OF_CONDUCT.md are not among them: jekyll-optional-front-matter
+         skips community-health filenames, so they are copied to the site as
+         raw markdown and no .html is ever generated. Adding front matter would
+         fix that and put a YAML table at the top of the file on github.com,
+         which is where contributors read it -- so those links point at GitHub
+         (see the footer) rather than at pages that cannot exist. -->
     <nav class="nav" aria-label="Primary">
       <a href="./">Overview</a>
       <a href="DOCS.html">Guide</a>
       <a href="examples/vanilla.html">Demo</a>
-      <a href="CONTRIBUTING.html">Contributing</a>
     </nav>
 
     <div class="bar-end">
@@ -101,9 +110,9 @@
     <nav class="foot-links" aria-label="Footer">
       <a href="DOCS.html">Guide</a>
       <a href="examples/vanilla.html">Demo</a>
-      <a href="CONTRIBUTING.html">Contributing</a>
-      <a href="SECURITY.html">Security</a>
-      <a href="CODE_OF_CONDUCT.html">Code of conduct</a>
+      <a href="https://github.com/SELISEdigitalplatforms/blocks-mailcraft/blob/main/CONTRIBUTING.md" rel="noopener">Contributing</a>
+      <a href="https://github.com/SELISEdigitalplatforms/blocks-mailcraft/blob/main/SECURITY.md" rel="noopener">Security</a>
+      <a href="https://github.com/SELISEdigitalplatforms/blocks-mailcraft/blob/main/CODE_OF_CONDUCT.md" rel="noopener">Code of conduct</a>
       <a href="https://github.com/SELISEdigitalplatforms/blocks-mailcraft" rel="noopener">GitHub</a>
     </nav>
   </div>

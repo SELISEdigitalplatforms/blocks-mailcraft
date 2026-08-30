@@ -13,6 +13,9 @@
      palette (src/render/style.js) so the demo reads as one application rather
      than a widget dropped into a stranger's page. */
   :root {
+    /* Pinned per theme, not left at `light dark`: it is what decides whether
+       the browser paints this page a light or a dark scrollbar. */
+    color-scheme: light;
     --brand: #0065b3;
     --bg: #ffffff;
     --surface: #f8fafc;
@@ -27,6 +30,7 @@
   /* One attribute drives both: the same switch that sets the editor's `theme`
      repaints this page. Host-owned light/dark, demonstrated rather than
      described. */
+  :root:has(body[data-theme="dark"]) { color-scheme: dark; }
   body[data-theme="dark"] {
     --bg: #0b1120;
     --surface: #111827;
@@ -1449,6 +1453,8 @@
     const next = editor.getAttribute('theme') === 'dark' ? 'light' : 'dark';
     editor.setAttribute('theme', next);
     document.body.dataset.theme = next;
+    // :has() covers modern browsers; this covers the rest, and costs one line.
+    document.documentElement.style.colorScheme = next;
     themeBtn.textContent = next === 'dark' ? 'Switch to light' : 'Switch to dark';
   });
 

@@ -25,6 +25,12 @@
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   --header-h: 58px;
+  --scroll-thumb: rgba(15, 23, 42, 0.22);
+  --scroll-thumb-hover: rgba(15, 23, 42, 0.40);
+  /* Drives the browser's own scrollbars and controls. Pinned per theme rather
+     than left at `light dark`, which paints a dark scrollbar down the side of
+     a light page whenever the OS is set to dark. */
+  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -43,6 +49,9 @@
     --accent-soft: rgba(88, 168, 227, 0.13);
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.38);
+    --scroll-thumb: rgba(226, 232, 240, 0.22);
+    --scroll-thumb-hover: rgba(226, 232, 240, 0.40);
+    color-scheme: dark;
   }
 }
 
@@ -61,12 +70,34 @@
   --accent-soft: rgba(88, 168, 227, 0.13);
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.38);
+  --scroll-thumb: rgba(226, 232, 240, 0.22);
+  --scroll-thumb-hover: rgba(226, 232, 240, 0.40);
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
 
 html { scroll-behavior: smooth; scroll-padding-top: calc(var(--header-h) + 18px); }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+/* Scrollbars, themed to match. `color-scheme` above already fixes the worst of
+   it -- a light page no longer gets the OS's dark bar -- and this makes the
+   remaining chrome quiet: a thin translucent thumb over no track at all, so a
+   long page or a wide code block does not grow a heavy grey gutter. Firefox
+   takes the two standard properties; WebKit and Blink need their own. */
+html { scrollbar-width: thin; scrollbar-color: var(--scroll-thumb) transparent; }
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb);
+  /* Transparent border + content-box clip insets the thumb, so it reads as a
+     floating pill rather than a bar wedged against the edge. */
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--scroll-thumb-hover); background-clip: content-box; }
 
 body {
   margin: 0;
