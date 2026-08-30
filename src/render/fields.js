@@ -545,6 +545,17 @@ export function renderField(f) {
     row.appendChild(fieldLabel(f.label, true));
     const pill = el('div', { display: 'flex', alignItems: 'center', flex: 'none', height: '32px', border: '1px solid var(--ed-line)', borderRadius: '8px', background: 'var(--ed-panel)', overflow: 'hidden', transition: 'border-color 0.16s, box-shadow 0.16s' }, { class: 'mc-field-control mc-color-control' });
     const swatch = el('label', { position: 'relative', width: '29px', alignSelf: 'stretch', flex: 'none', borderRight: '1px solid var(--ed-line)', background: f.swatch, cursor: 'pointer' }, { title: f.label });
+    // A transparent value has no colour to show, so the swatch shows the
+    // conventional checkerboard instead -- otherwise "no fill" and "white"
+    // are the same white square.
+    if (f.transparent) {
+      Object.assign(swatch.style, {
+        backgroundColor: '#ffffff',
+        backgroundImage: 'linear-gradient(45deg,#c3c9d2 25%,transparent 25%,transparent 75%,#c3c9d2 75%),linear-gradient(45deg,#c3c9d2 25%,transparent 25%,transparent 75%,#c3c9d2 75%)',
+        backgroundSize: '8px 8px',
+        backgroundPosition: '0 0, 4px 4px',
+      });
+    }
     const picker = el('input', { position: 'absolute', inset: '0', width: '100%', height: '100%', opacity: '0', cursor: 'pointer', padding: '0', border: '0' }, { type: 'color' });
     picker.value = f.swatch;
     // The native picker fires `input` continuously while dragging the hue
@@ -560,6 +571,12 @@ export function renderField(f) {
     hex.addEventListener('focus', () => { pill.style.borderColor = 'var(--ed-accent)'; pill.style.boxShadow = '0 0 0 3px var(--ed-soft)'; });
     hex.addEventListener('blur', () => { pill.style.borderColor = 'var(--ed-line)'; pill.style.boxShadow = 'none'; hexCommit.flush(); });
     pill.append(swatch, hex);
+    if (f.clearable) {
+      const none = el('button', { flex: 'none', alignSelf: 'stretch', width: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '0', borderLeft: '1px solid var(--ed-line)', background: f.transparent ? 'var(--ed-accent)' : 'transparent', color: f.transparent ? 'var(--ed-accent-ink)' : 'var(--ed-muted)', cursor: 'pointer', padding: '0' }, { type: 'button', title: f.transparent ? 'Transparent — click for a solid colour' : 'Make transparent (no fill)', 'aria-pressed': String(!!f.transparent) });
+      none.appendChild(icon(f.transparent ? 'check' : 'clear', 12));
+      none.addEventListener('click', () => f.onToggleTransparent());
+      pill.appendChild(none);
+    }
     row.appendChild(pill);
     wrap.appendChild(row);
     return wrap;

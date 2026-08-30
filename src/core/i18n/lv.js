@@ -102,7 +102,6 @@ export const LV = {
   'storage.uploading': 'Notiek {count} augšupielāde…',
   'storage.errLoadFailed': 'Neizdevās ielādēt failu bibliotēku — {reason}',
   'storage.errNoLimits': 'Augšupielāde ir izslēgta: šī lietotne nav noteikusi augšupielādes ierobežojumus.',
-  'storage.errNoAccept': 'Augšupielāde ir izslēgta: nav atļauts neviens faila formāts.',
   'storage.errNoMaxBytes': 'Augšupielāde ir izslēgta: nav noteikts maksimālais faila izmērs.',
   'storage.errTooLarge': '{name} ir {size} — ierobežojums ir {max}.',
   'storage.errFormat': '{name} ir {type} fails, kas šeit nav atļauts.',

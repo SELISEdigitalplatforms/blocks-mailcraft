@@ -102,7 +102,6 @@ export const SV = {
   'storage.uploading': 'Laddar upp {count}…',
   'storage.errLoadFailed': 'Filbiblioteket kunde inte laddas — {reason}',
   'storage.errNoLimits': 'Uppladdning är avstängd: den här appen har inte satt några uppladdningsgränser.',
-  'storage.errNoAccept': 'Uppladdning är avstängd: inga filformat har tillåtits.',
   'storage.errNoMaxBytes': 'Uppladdning är avstängd: ingen maximal filstorlek har angetts.',
   'storage.errTooLarge': '{name} är {size} — gränsen är {max}.',
   'storage.errFormat': '{name} är en {type}-fil, som inte tillåts här.',

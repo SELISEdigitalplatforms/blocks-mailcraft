@@ -19,7 +19,27 @@ export function binder(getProps, set, core) {
         set(key, Math.min(max, Math.max(min, Number.isFinite(n) ? n : (getProps()[key] ?? min))));
       },
     }),
-    color: (label, key) => ({ kind: 'color', label, value: getProps()[key] ?? '', swatch: /^#/.test(getProps()[key] || '') ? getProps()[key] : '#ffffff', onChange: (v) => set(key, v) }),
+    /*
+     * `opts.transparent` adds a "no fill" switch beside the swatch. The hex
+     * box always accepted any CSS colour word -- typing `transparent` into it
+     * already worked -- but nothing said so, and a native colour input cannot
+     * express "none", so the one value a page or content background most
+     * often wants was effectively unreachable. `opts.solid` is what the
+     * switch restores when it is turned back off.
+     */
+    color: (label, key, opts) => {
+      const raw = getProps()[key] ?? '';
+      const v = String(raw).trim();
+      const transparent = /^(transparent|none)$/i.test(v) || /^rgba\([^)]*,\s*0*(?:\.0+)?\s*\)$/i.test(v);
+      return {
+        kind: 'color', label, value: raw,
+        swatch: /^#/.test(raw || '') ? raw : '#ffffff',
+        transparent,
+        clearable: !!(opts && opts.transparent),
+        onChange: (x) => set(key, x),
+        onToggleTransparent: () => set(key, transparent ? ((opts && opts.solid) || '#ffffff') : 'transparent'),
+      };
+    },
     // A native range slider commits on every drag tick -- dozens a second --
     // and each one used to trigger a full doc clone + re-render (see
     // `commit`), which is what made dragging feel like stutter instead of a

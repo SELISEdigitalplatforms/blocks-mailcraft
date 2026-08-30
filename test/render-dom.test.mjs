@@ -135,6 +135,79 @@ await it('editable copy opts out of the writing assistants that would float over
     assert.equal(editable.getAttribute(name), 'false', name + ' declared');
   });
 });
+
+/*
+ * The page section around the sheet. It is what the recipient sees as the
+ * band around a template, and until it was painted here it was invisible in
+ * the editor -- changing its colour did nothing on screen and its size could
+ * not be changed at all.
+ */
+await it('the canvas paints the page around the sheet from the document theme', async () => {
+  const el = await mountEditor();
+  el.importHtml(EMAIL);
+  await settle(2);
+  el.core.setTheme('bg', '#123456');
+  el.core.setTheme('padY', 24);
+  el.core.setTheme('padX', 12);
+  await settle(2);
+  const page = q(el, '[data-mc-page]');
+  assert.ok(page, 'the page section exists');
+  assert.ok(page.contains(q(el, '[data-mc-sheet]')), 'the sheet sits inside it');
+  assert.match(page.style.background, /#123456|rgb\(18,\s*52,\s*86\)/);
+  assert.equal(page.style.padding, '24px 12px');
+  assert.ok(page.classList.contains('is-padded'), 'the frame moves out to the page');
+});
+
+await it('with no page padding the page hugs the sheet and keeps the sheet framed', async () => {
+  const el = await mountEditor();
+  el.importHtml(EMAIL);
+  await settle(2);
+  const page = q(el, '[data-mc-page]');
+  assert.equal(page.style.padding, '0px', 'collapsed by the CSSOM to a single zero');
+  assert.equal(page.classList.contains('is-padded'), false);
+});
+
+await it('a transparent page background is painted as transparent, not as a colour', async () => {
+  const el = await mountEditor();
+  el.importHtml(EMAIL);
+  await settle(2);
+  el.core.setTheme('bg', 'transparent');
+  await settle(2);
+  assert.equal(q(el, '[data-mc-page]').style.background, 'transparent');
+});
+
+await it('the content corner radius reaches the sheet but never clips the live canvas', async () => {
+  const el = await mountEditor();
+  el.importHtml(EMAIL);
+  await settle(2);
+  const sheet = () => q(el, '[data-mc-sheet]');
+  assert.equal(sheet().style.borderRadius, '', 'no radius set leaves the editor chrome corner alone');
+  el.core.setTheme('radius', 16);
+  await settle(2);
+  assert.equal(sheet().style.borderRadius, '16px');
+  // The sheet is what the row grip straddles and what the floating RTE
+  // toolbar overhangs; clipping it would cut both off mid-edit.
+  assert.notEqual(sheet().style.overflow, 'hidden');
+});
+
+await it('a drag held over the page padding still resolves a drop', async () => {
+  const el = await mountEditor();
+  el.importHtml(EMAIL);
+  await settle(2);
+  el.core.setTheme('padY', 40);
+  await settle(2);
+  const before = el.getContent().rows.length;
+  el.core.startDrag({ kind: 'block', type: 'text' });
+  const page = q(el, '[data-mc-page]');
+  const ev = new (win().Event)('dragover', { bubbles: true, cancelable: true });
+  ev.clientY = 5;
+  page.dispatchEvent(ev);
+  const ev2 = new (win().Event)('drop', { bubbles: true, cancelable: true });
+  ev2.clientY = 5;
+  page.dispatchEvent(ev2);
+  await settle(2);
+  assert.ok(el.getContent().rows.length >= before, 'the document survived the gesture');
+});
 console.log();
 console.log('Inline rich text');
 

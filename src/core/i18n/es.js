@@ -102,7 +102,6 @@ export const ES = {
   'storage.uploading': 'Subiendo {count}…',
   'storage.errLoadFailed': 'No se pudo cargar la biblioteca de archivos — {reason}',
   'storage.errNoLimits': 'Las subidas están desactivadas: esta aplicación no ha definido ningún límite de subida.',
-  'storage.errNoAccept': 'Las subidas están desactivadas: no se ha permitido ningún formato de archivo.',
   'storage.errNoMaxBytes': 'Las subidas están desactivadas: no se ha definido un tamaño máximo de archivo.',
   'storage.errTooLarge': '{name} pesa {size} — el límite es {max}.',
   'storage.errFormat': '{name} es un archivo {type}, que no se permite aquí.',

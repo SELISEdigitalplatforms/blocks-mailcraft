@@ -102,7 +102,6 @@ export const FR = {
   'storage.uploading': 'Envoi de {count}…',
   'storage.errLoadFailed': 'La bibliothèque de fichiers n’a pas pu être chargée — {reason}',
   'storage.errNoLimits': 'Les envois sont désactivés : cette application n’a défini aucune limite d’envoi.',
-  'storage.errNoAccept': 'Les envois sont désactivés : aucun format de fichier n’a été autorisé.',
   'storage.errNoMaxBytes': 'Les envois sont désactivés : aucune taille maximale de fichier n’a été définie.',
   'storage.errTooLarge': '{name} fait {size} — la limite est {max}.',
   'storage.errFormat': '{name} est un fichier {type}, non autorisé ici.',

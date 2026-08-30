@@ -102,7 +102,6 @@ export const NB = {
   'storage.uploading': 'Laster opp {count}…',
   'storage.errLoadFailed': 'Filbiblioteket kunne ikke lastes — {reason}',
   'storage.errNoLimits': 'Opplasting er slått av: denne appen har ikke satt noen opplastingsgrenser.',
-  'storage.errNoAccept': 'Opplasting er slått av: ingen filformater er tillatt.',
   'storage.errNoMaxBytes': 'Opplasting er slått av: ingen maksimal filstørrelse er satt.',
   'storage.errTooLarge': '{name} er {size} — grensen er {max}.',
   'storage.errFormat': '{name} er en {type}-fil, som ikke er tillatt her.',

@@ -102,7 +102,6 @@ export const SL = {
   'storage.uploading': 'Nalaganje {count}…',
   'storage.errLoadFailed': 'Knjižnice datotek ni bilo mogoče naložiti — {reason}',
   'storage.errNoLimits': 'Nalaganje je izklopljeno: ta aplikacija ni določila omejitev nalaganja.',
-  'storage.errNoAccept': 'Nalaganje je izklopljeno: dovoljena ni nobena vrsta datoteke.',
   'storage.errNoMaxBytes': 'Nalaganje je izklopljeno: največja velikost datoteke ni določena.',
   'storage.errTooLarge': '{name} je {size} — omejitev je {max}.',
   'storage.errFormat': '{name} je datoteka vrste {type}, ki tu ni dovoljena.',

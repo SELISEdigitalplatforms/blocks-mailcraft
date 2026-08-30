@@ -102,7 +102,6 @@ export const DA = {
   'storage.uploading': 'Uploader {count}…',
   'storage.errLoadFailed': 'Filbiblioteket kunne ikke indlæses — {reason}',
   'storage.errNoLimits': 'Upload er slået fra: denne app har ikke sat nogen uploadgrænser.',
-  'storage.errNoAccept': 'Upload er slået fra: ingen filformater er tilladt.',
   'storage.errNoMaxBytes': 'Upload er slået fra: der er ikke sat nogen maksimal filstørrelse.',
   'storage.errTooLarge': '{name} er {size} — grænsen er {max}.',
   'storage.errFormat': '{name} er en {type}-fil, som ikke er tilladt her.',

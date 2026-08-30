@@ -1488,8 +1488,18 @@ export class EditorCore {
     return decorate([
       B.head('Canvas'),
       B.slider('Content area width', 'width', 280, 900, 5, 'px'),
-      B.color('Background color', 'bg'),
-      B.color('Content area background color', 'contentBg'),
+      // The page section: everything outside the content column. Its colour
+      // was always here, but with nothing painting it in the editor and no
+      // way to size it, the band around a template could only be seen (and
+      // never adjusted) in a sent message.
+      B.color('Page background color', 'bg', { transparent: true, solid: '#eef2f7' }),
+      group('Space around content', [
+        B.range('Top & bottom', 'padY', 0, 120, 2, 'px'),
+        B.range('Sides', 'padX', 0, 120, 2, 'px'),
+      ]),
+      B.head('Content area'),
+      B.color('Content area background color', 'contentBg', { transparent: true, solid: '#ffffff' }),
+      B.range('Corner radius', 'radius', 0, 48, 1, 'px'),
       B.head('Type & color'),
       B.sel('Default font', 'font', this.fontOptions(false)),
       B.color('Text color', 'text'),

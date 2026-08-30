@@ -245,5 +245,60 @@ await it('the theme drives the page and content background and width', async () 
   assert.match(html, new RegExp('width:' + THEME.width + 'px'));
 });
 
+/*
+ * The page section: the band around the content column. It is the one part of
+ * a template that only exists in the sent HTML, so these guard both that it
+ * can now be shaped and that a document which never touched it still exports
+ * the flush, square markup it always did.
+ */
+await it('a document that never touched the page exports flush and square', async () => {
+  const html = render(docOf([]));
+  assert.match(html, /<td align="center" style="padding:0;">/);
+  assert.equal(/border-radius/.test(html.split('<tr>')[0]), false, 'no radius on the content table');
+  assert.equal(/overflow:hidden/.test(html), false);
+});
+
+await it('page padding becomes the band around the content column', async () => {
+  const doc = docOf([]);
+  doc.theme = Object.assign({}, THEME, { padY: 28, padX: 16 });
+  const html = render(doc);
+  assert.match(html, /<td align="center" style="padding:28px 16px;">/);
+});
+
+await it('one page padding axis alone still emits both', async () => {
+  const doc = docOf([]);
+  doc.theme = Object.assign({}, THEME, { padY: 0, padX: 24 });
+  assert.match(render(doc), /padding:0px 24px;/);
+});
+
+await it('the content radius is emitted with the clip that makes it visible', async () => {
+  const doc = docOf([]);
+  doc.theme = Object.assign({}, THEME, { radius: 14 });
+  const html = render(doc);
+  assert.match(html, /border-radius:14px;overflow:hidden;/);
+});
+
+await it('a transparent page background reaches the body and the wrapper table', async () => {
+  const doc = docOf([]);
+  doc.theme = Object.assign({}, THEME, { bg: 'transparent' });
+  const html = render(doc);
+  assert.equal((html.match(/background:transparent/g) || []).length, 2, 'body and full-width table');
+  assert.equal(html.indexOf(THEME.bg), -1, 'the old colour is gone, not merely overpainted');
+});
+
+await it('a transparent content background is passed through, not defaulted to white', async () => {
+  const doc = docOf([]);
+  doc.theme = Object.assign({}, THEME, { contentBg: 'transparent' });
+  assert.match(render(doc), /max-width:100%;background:transparent;/);
+});
+
+await it('a page with no background at all still emits valid CSS', async () => {
+  const doc = docOf([]);
+  doc.theme = Object.assign({}, THEME, { bg: '', contentBg: '' });
+  const html = render(doc);
+  assert.equal(/background:;/.test(html), false, 'never an empty declaration');
+  assert.match(html, /background:transparent/);
+});
+
 console.log(`\n${passed} passed, ${failed} failed.`);
 if (failed) process.exit(1);

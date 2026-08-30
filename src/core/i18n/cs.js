@@ -102,7 +102,6 @@ export const CS = {
   'storage.uploading': 'Nahrávání {count}…',
   'storage.errLoadFailed': 'Knihovnu souborů se nepodařilo načíst — {reason}',
   'storage.errNoLimits': 'Nahrávání je vypnuté: tato aplikace nenastavila žádné limity nahrávání.',
-  'storage.errNoAccept': 'Nahrávání je vypnuté: nebyl povolen žádný formát souboru.',
   'storage.errNoMaxBytes': 'Nahrávání je vypnuté: není nastavena maximální velikost souboru.',
   'storage.errTooLarge': '{name} má {size} — limit je {max}.',
   'storage.errFormat': '{name} je soubor typu {type}, který tu není povolen.',

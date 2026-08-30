@@ -102,7 +102,6 @@ export const HR = {
   'storage.uploading': 'Prijenos {count}…',
   'storage.errLoadFailed': 'Knjižnicu datoteka nije moguće učitati — {reason}',
   'storage.errNoLimits': 'Prijenos je isključen: ova aplikacija nije postavila nikakva ograničenja prijenosa.',
-  'storage.errNoAccept': 'Prijenos je isključen: nije dopušten nijedan format datoteke.',
   'storage.errNoMaxBytes': 'Prijenos je isključen: nije postavljena najveća veličina datoteke.',
   'storage.errTooLarge': '{name} je {size} — ograničenje je {max}.',
   'storage.errFormat': '{name} je datoteka vrste {type}, koja ovdje nije dopuštena.',

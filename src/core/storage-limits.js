@@ -1,12 +1,13 @@
 /**
  * Upload validation -- mechanism only, no policy.
  *
- * Deliberately ships no default ceilings. What an email template may carry
- * depends on the sending platform (ESP attachment caps), the audience's
- * clients (Outlook's Word engine won't render WebP; nothing renders AVIF) and
- * the host's own product rules, so the numbers are the host's to set:
- * `editor.storageLimits`, or `limits` on the provider. With a provider wired
- * and no limits declared, uploads are refused rather than waved through.
+ * Sizes and counts stay undefaulted: what an email template may carry depends
+ * on the sending platform (ESP attachment caps) and the host's own product
+ * rules, so those numbers are the host's to set -- `editor.storageLimits`, or
+ * `limits` on the provider. Formats are the one axis with a default: every
+ * image type the sniffer can name is allowed unless the host narrows `accept`.
+ * With a provider wired and no `maxBytes` declared, uploads are refused rather
+ * than waved through.
  *
  * Checks run *before* the provider is called, so a rejected file never reaches
  * the backend. That matters for any store where minting an upload URL also
@@ -96,10 +97,9 @@ export function sanitizeName(name) {
   return clean.slice(0, 120 - ext.length) + ext;
 }
 
-/** The host has to have said what's allowed. Format and size are the two that matter; the rest are optional tightenings. */
+/** The host has to have said how big a file may be; the format list is optional and defaults to all of these. */
 export function limitsProblem(limits) {
   if (!limits) return 'storage.errNoLimits';
-  if (!Array.isArray(limits.accept) || !limits.accept.length) return 'storage.errNoAccept';
   if (!(Number(limits.maxBytes) > 0)) return 'storage.errNoMaxBytes';
   return null;
 }
@@ -121,7 +121,12 @@ export async function validateFiles(list, limits) {
   const problem = limitsProblem(limits);
   if (problem) return { accepted, rejected: files.map((f) => ({ name: f.name, key: problem, params: {} })) };
 
-  const accept = limits.accept.map((m) => String(m).toLowerCase());
+  // An omitted or empty `accept` means every image type the sniffer can name,
+  // not "nothing" -- a host that wants a narrower list has to say so, but the
+  // starting point is that an image is uploadable.
+  const accept = Array.isArray(limits.accept) && limits.accept.length
+    ? limits.accept.map((m) => String(m).toLowerCase())
+    : null;
   const max = Number(limits.maxBytes);
   const maxW = Number(limits.maxWidth) || 0;
   const maxH = Number(limits.maxHeight) || 0;
@@ -146,7 +151,7 @@ export async function validateFiles(list, limits) {
       rejected.push({ name, key: 'storage.errUnreadable', params: { name } });
       continue;
     }
-    if (!accept.includes(type)) {
+    if (accept && !accept.includes(type)) {
       rejected.push({ name, key: 'storage.errFormat', params: { name, type: type.replace(/^image\//, '').toUpperCase() } });
       continue;
     }

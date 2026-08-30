@@ -102,7 +102,6 @@ export const RU = {
   'storage.uploading': 'Загрузка {count}…',
   'storage.errLoadFailed': 'Не удалось загрузить библиотеку файлов — {reason}',
   'storage.errNoLimits': 'Загрузка выключена: это приложение не задало ограничения на загрузку.',
-  'storage.errNoAccept': 'Загрузка выключена: ни один формат файлов не разрешён.',
   'storage.errNoMaxBytes': 'Загрузка выключена: не задан максимальный размер файла.',
   'storage.errTooLarge': '{name} весит {size} — предел {max}.',
   'storage.errFormat': '{name} — файл {type}, который здесь не разрешён.',

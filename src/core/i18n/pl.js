@@ -102,7 +102,6 @@ export const PL = {
   'storage.uploading': 'Przesyłanie {count}…',
   'storage.errLoadFailed': 'Nie udało się wczytać biblioteki plików — {reason}',
   'storage.errNoLimits': 'Przesyłanie jest wyłączone: ta aplikacja nie ustawiła żadnych limitów przesyłania.',
-  'storage.errNoAccept': 'Przesyłanie jest wyłączone: nie dopuszczono żadnego formatu pliku.',
   'storage.errNoMaxBytes': 'Przesyłanie jest wyłączone: nie ustawiono maksymalnego rozmiaru pliku.',
   'storage.errTooLarge': '{name} ma {size} — limit to {max}.',
   'storage.errFormat': '{name} to plik {type}, który nie jest tu dozwolony.',

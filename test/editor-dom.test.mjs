@@ -102,6 +102,42 @@ for (const tab of ['design', 'blocks', 'rows', 'layers', 'files', 'data', 'theme
   });
 }
 
+/*
+ * The page controls. A native colour input cannot express "no fill", so the
+ * one value a page or content background most often wants was unreachable
+ * from the panel even though the exporter has always passed it through.
+ */
+await it('the canvas tab offers the page padding and content radius steppers', async () => {
+  const el = await mountEditor();
+  el.importHtml(EMAIL);
+  await settle();
+  el.core.setState({ tab: 'theme' });
+  await settle();
+  const labels = qa(el, '.mc-inspector .mc-field-label, .mc-inspector label').map((n) => n.textContent.trim());
+  ['Page background color', 'Top & bottom', 'Sides', 'Corner radius'].forEach((name) => {
+    assert.ok(labels.some((l) => l.indexOf(name) > -1), 'the panel offers ' + name);
+  });
+});
+
+await it('the transparency switch clears a page background and hands back a solid one', async () => {
+  const el = await mountEditor();
+  el.importHtml(EMAIL);
+  await settle();
+  el.core.setState({ tab: 'theme' });
+  await settle();
+  const none = () => qa(el, '.mc-color-control button[aria-pressed]')[0];
+  assert.ok(none(), 'the switch is rendered beside the swatch');
+  assert.equal(none().getAttribute('aria-pressed'), 'false');
+  none().dispatchEvent(new (win().MouseEvent)('click', { bubbles: true }));
+  await settle(2);
+  assert.equal(el.getContent().theme.bg, 'transparent');
+  assert.equal(none().getAttribute('aria-pressed'), 'true', 'and reads back as pressed');
+  none().dispatchEvent(new (win().MouseEvent)('click', { bubbles: true }));
+  await settle(2);
+  assert.equal(el.getContent().theme.bg, '#eef2f7', 'turning it off restores a real colour');
+});
+
+
 await it('selecting a block shows its fields in the inspector', async () => {
   const el = await mountEditor();
   el.importHtml(EMAIL);
@@ -258,6 +294,29 @@ await it('the code preview uses the editor scrollbar without changing its source
   assert.equal(frame.srcdoc, source, 'iframe source remains the exact editor source');
 });
 
+/*
+ * The live preview is the email itself. Padding the pane and framing the
+ * iframe drew a mat and a card around a document that already paints its own
+ * page background, so a template read as four nested rectangles.
+ */
+await it('the live preview sits flush at full width and becomes a card only for the phone', async () => {
+  const el = await mountEditor();
+  el.importHtml(EMAIL);
+  await settle(3);
+  el.core.openCode();
+  await settle(2);
+  const body = q(el, '.mc-code-preview-body');
+  const frame = q(el, '.mc-code-frame');
+  assert.equal(body.style.padding, '0px', 'no mat around the full-width preview');
+  assert.equal(frame.style.border, '0px', 'and no card frame on the iframe');
+  assert.equal(body.classList.contains('is-device'), false);
+  el.core.setState({ codeDevice: 'mobile' });
+  await settle(2);
+  assert.equal(frame.style.width, '390px');
+  assert.ok(body.classList.contains('is-device'), 'the phone width gets the mat and the card back');
+});
+
+
 await it('the code source wraps long lines within the visible pane', async () => {
   const el = await mountEditor();
   el.importHtml(EMAIL);
@@ -327,7 +386,25 @@ await it('a host theme attribute hides the built-in toggle', async () => {
   const el = await mountEditor({ theme: 'dark' });
   await settle();
   const toggle = bar(el, '.mc-icon-label').find((b) => /dark|light/i.test(b.textContent));
-  assert.ok(!toggle || toggle.style.display === 'none', 'the editor does not fight the host');
+  assert.ok(toggle, 'the toggle button exists to be hidden');
+  assert.equal(toggle.style.display, 'none', 'the editor does not fight the host');
+  // `.mc-icon-label` carries `display: inline-flex !important` (render/style.js),
+  // which beats a plain `style.display = 'none'` in a real browser's cascade --
+  // jsdom's computed style does not enforce that, so this is the regression
+  // guard: without `important` priority here, the toggle stays visibly rendered
+  // despite the inline value reading 'none' (caught live, not by this suite).
+  assert.equal(toggle.style.getPropertyPriority('display'), 'important');
+});
+
+await it('removing the theme attribute hands the toggle back, still winning the cascade', async () => {
+  const el = await mountEditor({ theme: 'dark' });
+  await settle();
+  el.removeAttribute('theme');
+  await settle();
+  const toggle = bar(el, '.mc-icon-label').find((b) => /dark|light/i.test(b.textContent));
+  assert.ok(toggle);
+  assert.equal(toggle.style.display, 'flex');
+  assert.equal(toggle.style.getPropertyPriority('display'), 'important');
 });
 
 await it('ui-font reaches the chrome', async () => {

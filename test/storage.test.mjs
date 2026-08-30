@@ -63,9 +63,10 @@ await it('no limits configured refuses every file', async () => {
   assert.equal(r.rejected[0].key, 'storage.errNoLimits');
 });
 
-await it('an empty accept list is a misconfiguration, not "allow everything"', async () => {
-  const r = await validateFiles([file('a.png', PNG)], { accept: [], maxBytes: 10 });
-  assert.equal(r.rejected[0].key, 'storage.errNoAccept');
+await it('an empty accept list means every image type, not "allow nothing"', async () => {
+  const r = await validateFiles([file('a.png', PNG)], { accept: [], maxBytes: 1024 });
+  assert.equal(r.accepted.length, 1);
+  assert.equal(r.accepted[0].type, 'image/png');
 });
 
 await it('oversize is refused and the message carries both sizes', async () => {
@@ -92,6 +93,23 @@ await it('SVG needs allowSvg on top of being listed in accept', async () => {
 await it('a format left out of accept is named in the rejection', async () => {
   const r = await validateFiles([file('a.webp', WEBP)], LIMITS);
   assert.equal(r.rejected[0].params.type, 'WEBP');
+});
+
+await it('with no accept list, every sniffable image type passes', async () => {
+  const BMP = [...'BM'].map((c) => c.charCodeAt(0)).concat([0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  const r = await validateFiles(
+    [file('a.webp', WEBP), file('b.bmp', BMP)],
+    { maxBytes: 1024 },
+  );
+  assert.deepEqual(r.accepted.map((a) => a.type), ['image/webp', 'image/bmp']);
+  assert.deepEqual(r.rejected, []);
+});
+
+await it('with no accept list, SVG still needs allowSvg', async () => {
+  const refused = await validateFiles([file('logo.svg', SVG)], { maxBytes: 1024 });
+  assert.equal(refused.rejected[0].key, 'storage.errSvg');
+  const allowed = await validateFiles([file('logo.svg', SVG)], { maxBytes: 1024, allowSvg: true });
+  assert.equal(allowed.accepted.length, 1);
 });
 
 await it('the dimension ceiling applies to the decoded image', async () => {

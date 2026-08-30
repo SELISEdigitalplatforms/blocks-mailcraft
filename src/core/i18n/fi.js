@@ -102,7 +102,6 @@ export const FI = {
   'storage.uploading': 'Ladataan {count}…',
   'storage.errLoadFailed': 'Tiedostokirjastoa ei voitu ladata — {reason}',
   'storage.errNoLimits': 'Lataukset on poistettu käytöstä: tämä sovellus ei ole asettanut latausrajoja.',
-  'storage.errNoAccept': 'Lataukset on poistettu käytöstä: yhtään tiedostomuotoa ei ole sallittu.',
   'storage.errNoMaxBytes': 'Lataukset on poistettu käytöstä: tiedoston enimmäiskokoa ei ole asetettu.',
   'storage.errTooLarge': '{name} on {size} — raja on {max}.',
   'storage.errFormat': '{name} on {type}-tiedosto, jota ei sallita tässä.',

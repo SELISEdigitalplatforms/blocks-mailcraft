@@ -120,7 +120,6 @@ export const AR = {
   'storage.uploading': 'جارٍ رفع {count}…',
   'storage.errLoadFailed': 'تعذّر تحميل مكتبة الملفات — {reason}',
   'storage.errNoLimits': 'الرفع معطّل: لم يحدّد هذا التطبيق أي حدود للرفع.',
-  'storage.errNoAccept': 'الرفع معطّل: لم يُسمح بأي صيغة ملفات.',
   'storage.errNoMaxBytes': 'الرفع معطّل: لم يُحدَّد حد أقصى لحجم الملف.',
   'storage.errTooLarge': 'حجم {name} هو {size} — والحد هو {max}.',
   'storage.errFormat': '{name} ملف من نوع {type}، وهو غير مسموح به هنا.',

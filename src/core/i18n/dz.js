@@ -122,7 +122,6 @@ export const DZ = {
   'storage.uploading': '{count} ཡར་འཇུག་འབད་བཞིན་འདུག…',
   'storage.errLoadFailed': 'ཡིག་སྣོད་མཛོད་མངོན་གསལ་མ་ཚུགས — {reason}',
   'storage.errNoLimits': 'ཡར་འཇུག་བཀག་ནུག: གློག་རིམ་འདི་གིས་ཡར་འཇུག་གི་ཚད་གཞི་བཟོ་མ་བཞག།',
-  'storage.errNoAccept': 'ཡར་འཇུག་བཀག་ནུག: ཡིག་སྣོད་རྣམ་གཞག་ག་ནི་ཡང་ཆོག་མ་བཏུབ།',
   'storage.errNoMaxBytes': 'ཡར་འཇུག་བཀག་ནུག: ཡིག་སྣོད་ཀྱི་ཚད་མཐོ་ཤོས་བཀོད་མ་བཞག།',
   'storage.errTooLarge': '{name} འདི {size} ཨིན — ཚད་གཞི {max} ཨིན།',
   'storage.errFormat': '{name} འདི {type} ཡིག་སྣོད་ཨིན། ནཱ་ལུ་ཆོག་མི་འཐོབ།',

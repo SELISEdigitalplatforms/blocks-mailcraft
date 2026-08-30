@@ -102,7 +102,6 @@ export const LT = {
   'storage.uploading': 'Įkeliama {count}…',
   'storage.errLoadFailed': 'Nepavyko įkelti failų bibliotekos — {reason}',
   'storage.errNoLimits': 'Įkėlimai išjungti: ši programa nenustatė jokių įkėlimo ribų.',
-  'storage.errNoAccept': 'Įkėlimai išjungti: neleidžiamas nė vienas failo formatas.',
   'storage.errNoMaxBytes': 'Įkėlimai išjungti: nenustatytas didžiausias failo dydis.',
   'storage.errTooLarge': '{name} yra {size} — riba yra {max}.',
   'storage.errFormat': '{name} yra {type} failas, kuris čia neleidžiamas.',

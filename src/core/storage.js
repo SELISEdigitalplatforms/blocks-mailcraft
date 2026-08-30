@@ -35,7 +35,7 @@
  *   Provider-declared ceilings. `editor.storageLimits` wins over these.
  *
  * @typedef {Object} StorageLimits
- * @property {string[]} accept   Allowed MIME types, e.g. `['image/jpeg','image/png','image/gif']`. Required.
+ * @property {string[]} [accept]   Allowed MIME types. Omitted or empty means every image type the validator recognizes.
  * @property {number} maxBytes   Per-file byte ceiling. Required.
  * @property {number} [maxWidth]
  * @property {number} [maxHeight]

@@ -119,7 +119,6 @@ export const BN = {
   'storage.uploading': '{count}টি আপলোড হচ্ছে…',
   'storage.errLoadFailed': 'ফাইল লাইব্রেরি লোড করা যায়নি — {reason}',
   'storage.errNoLimits': 'আপলোড বন্ধ: এই অ্যাপ কোনো আপলোড সীমা নির্ধারণ করেনি।',
-  'storage.errNoAccept': 'আপলোড বন্ধ: কোনো ফাইল ফরম্যাট অনুমোদন করা হয়নি।',
   'storage.errNoMaxBytes': 'আপলোড বন্ধ: সর্বোচ্চ ফাইল আকার নির্ধারণ করা হয়নি।',
   'storage.errTooLarge': '{name} এর আকার {size} — সীমা {max}।',
   'storage.errFormat': '{name} একটি {type} ফাইল, যা এখানে অনুমোদিত নয়।',

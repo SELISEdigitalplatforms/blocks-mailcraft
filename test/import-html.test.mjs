@@ -228,6 +228,38 @@ await it('a font stack on the body is picked up', async () => {
   if (doc.theme.font) assert.match(doc.theme.font, /Georgia/);
 });
 
+/*
+ * The band around the template and the content column's own corner. Both are
+ * exportable now, so both have to survive a round trip -- an import that read
+ * neither would silently square off and un-pad every template a host loaded
+ * back in for editing.
+ */
+await it('page padding on the centering cell becomes the page padding', async () => {
+  const src = `<!doctype html><html><body style="background:#eef2f7">
+<table role="presentation" width="100%"><tr><td align="center" style="padding:30px 18px;">
+<table role="presentation" width="600" style="width:600px;background:#ffffff"><tr><td><p>Hi</p></td></tr></table>
+</td></tr></table></body></html>`;
+  const doc = htmlToDoc(src);
+  assert.equal(doc.theme.padY, 30);
+  assert.equal(doc.theme.padX, 18);
+});
+
+await it('a rounded content table becomes the content corner radius', async () => {
+  const src = `<!doctype html><html><body style="background:#eef2f7">
+<table role="presentation" width="100%"><tr><td align="center">
+<table role="presentation" width="600" style="width:600px;background:#ffffff;border-radius:12px;overflow:hidden"><tr><td><p>Hi</p></td></tr></table>
+</td></tr></table></body></html>`;
+  assert.equal(htmlToDoc(src).theme.radius, 12);
+});
+
+await it('a flush square email declares neither, so the current values stand', async () => {
+  const theme = htmlToDoc(email('<tr><td><p>Hi</p></td></tr>')).theme;
+  assert.equal('padY' in theme, false);
+  assert.equal('padX' in theme, false);
+  assert.equal('radius' in theme, false);
+});
+
+
 console.log();
 console.log('Importer — degrading, never dropping');
 

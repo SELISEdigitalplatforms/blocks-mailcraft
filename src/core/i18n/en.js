@@ -145,7 +145,6 @@ export const EN = {
   'storage.uploading': 'Uploading {count}…',
   'storage.errLoadFailed': 'The file library could not be loaded — {reason}',
   'storage.errNoLimits': 'Uploads are switched off: this app has not set any upload limits.',
-  'storage.errNoAccept': 'Uploads are switched off: no file formats have been allowed.',
   'storage.errNoMaxBytes': 'Uploads are switched off: no maximum file size has been set.',
   'storage.errTooLarge': '{name} is {size} — the limit is {max}.',
   'storage.errFormat': '{name} is a {type} file, which is not allowed here.',

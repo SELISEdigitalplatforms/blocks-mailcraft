@@ -102,7 +102,6 @@ export const IT = {
   'storage.uploading': 'Caricamento di {count}…',
   'storage.errLoadFailed': 'Impossibile caricare la libreria file — {reason}',
   'storage.errNoLimits': 'I caricamenti sono disattivati: questa applicazione non ha impostato limiti di caricamento.',
-  'storage.errNoAccept': 'I caricamenti sono disattivati: nessun formato di file è stato consentito.',
   'storage.errNoMaxBytes': 'I caricamenti sono disattivati: non è stata impostata una dimensione massima del file.',
   'storage.errTooLarge': '{name} è {size} — il limite è {max}.',
   'storage.errFormat': '{name} è un file {type}, non consentito qui.',

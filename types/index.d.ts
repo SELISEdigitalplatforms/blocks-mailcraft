@@ -74,8 +74,11 @@ export interface Asset {
 }
 
 export interface StorageLimits {
-  /** Allowed MIME types, e.g. `['image/jpeg', 'image/png', 'image/gif']`. Required. */
-  accept: string[];
+  /**
+   * Allowed MIME types. Omitted or empty means every image type the validator
+   * recognizes (SVG still needs `allowSvg`).
+   */
+  accept?: string[];
   /** Per-file byte ceiling. Required. */
   maxBytes: number;
   maxWidth?: number;

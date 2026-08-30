@@ -76,7 +76,9 @@ await it('a fresh editor opens on one empty row with the full default theme', as
   assert.equal(c.state.doc.rows[0].cols.length, 1);
   assert.equal(c.state.doc.rows[0].cols[0].blocks.length, 0);
   const t = c.state.doc.theme;
-  Object.keys(THEME()).forEach((k) => assert.ok(t[k], 'theme key seeded: ' + k));
+  // Presence, not truthiness: the page's padding and corner radius default
+  // to 0, which is a real seeded value.
+  Object.keys(THEME()).forEach((k) => assert.ok(t[k] !== undefined, 'theme key seeded: ' + k));
 });
 
 await it('every block type the palette offers can be made and carries its defaults', async () => {

@@ -22,6 +22,9 @@ globalThis.sessionStorage = { getItem: () => null, setItem: () => {} };
 
 const { EditorCore } = await import(new URL('../src/core/editor-core.js', import.meta.url).href);
 const { blankDoc, mkRow, mk } = await import(new URL('../src/core/blocks.js', import.meta.url).href);
+// Counted, not listed: the assertion is 'every default key is seeded', which
+// must not need editing every time the page model grows a field.
+const { THEME } = await import(new URL('../src/core/theme.js', import.meta.url).href);
 
 let passed = 0;
 let failed = 0;
@@ -156,7 +159,7 @@ await it('setContent fills in a sparse document instead of half-applying it', as
   const doc = core.state.doc;
   const row = doc.rows[0];
   const heading = row.cols[0].blocks[0];
-  assert.equal(Object.keys(doc.theme).length, 6, 'the full theme is seeded');
+  assert.equal(Object.keys(doc.theme).length, Object.keys(THEME()).length, 'the full theme is seeded');
   assert.equal(row.props.py, 20, 'row props come from the row defaults');
   assert.equal(row.cols[0].span, 100, 'a column with no span gets one');
   assert.ok(row.id && row.cols[0].id && heading.id, 'ids are generated');

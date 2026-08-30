@@ -102,7 +102,6 @@ export const CA = {
   'storage.uploading': 'S’estan pujant {count}…',
   'storage.errLoadFailed': 'No s’ha pogut carregar la biblioteca de fitxers — {reason}',
   'storage.errNoLimits': 'Les pujades estan desactivades: aquesta aplicació no ha definit cap límit de pujada.',
-  'storage.errNoAccept': 'Les pujades estan desactivades: no s’ha permès cap format de fitxer.',
   'storage.errNoMaxBytes': 'Les pujades estan desactivades: no s’ha definit cap mida màxima de fitxer.',
   'storage.errTooLarge': '{name} fa {size} — el límit és {max}.',
   'storage.errFormat': '{name} és un fitxer {type}, que no s’admet aquí.',

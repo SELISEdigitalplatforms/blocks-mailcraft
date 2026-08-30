@@ -102,7 +102,6 @@ export const UK = {
   'storage.uploading': 'Завантаження {count}…',
   'storage.errLoadFailed': 'Не вдалося завантажити бібліотеку файлів — {reason}',
   'storage.errNoLimits': 'Завантаження вимкнено: цей застосунок не задав обмежень на завантаження.',
-  'storage.errNoAccept': 'Завантаження вимкнено: не дозволено жодного формату файлів.',
   'storage.errNoMaxBytes': 'Завантаження вимкнено: не задано максимальний розмір файлу.',
   'storage.errTooLarge': '{name} важить {size} — обмеження {max}.',
   'storage.errFormat': '{name} — файл {type}, який тут не дозволено.',

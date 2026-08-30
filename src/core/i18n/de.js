@@ -102,7 +102,6 @@ export const DE = {
   'storage.uploading': '{count} werden hochgeladen…',
   'storage.errLoadFailed': 'Die Dateibibliothek konnte nicht geladen werden — {reason}',
   'storage.errNoLimits': 'Uploads sind deaktiviert: Diese Anwendung hat keine Upload-Limits gesetzt.',
-  'storage.errNoAccept': 'Uploads sind deaktiviert: Es wurden keine Dateiformate freigegeben.',
   'storage.errNoMaxBytes': 'Uploads sind deaktiviert: Es wurde keine maximale Dateigröße festgelegt.',
   'storage.errTooLarge': '{name} ist {size} groß — das Limit liegt bei {max}.',
   'storage.errFormat': '{name} ist eine {type}-Datei, die hier nicht erlaubt ist.',

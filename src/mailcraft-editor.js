@@ -429,10 +429,10 @@ export class MailCraftEditor extends ElementBase {
 
   /**
    * What may be uploaded: `{ accept, maxBytes, maxWidth, maxHeight, maxFilesPerDrop, allowSvg }`.
-   * Required alongside a provider and deliberately undefaulted -- the ceilings
-   * that suit an email template depend on the sending platform, the audience's
-   * mail clients and the host's own rules, none of which this package can know.
-   * See `core/storage-limits.js`.
+   * Only `maxBytes` is required alongside a provider -- sizes depend on the
+   * sending platform and the host's own rules, none of which this package can
+   * know. `accept` is optional and defaults to every image type the validator
+   * can recognize; list MIME types to narrow it. See `core/storage-limits.js`.
    */
   get storageLimits() { return this.core.storageLimits; }
   set storageLimits(limits) { this.core.setStorageLimits(limits); }
@@ -523,7 +523,7 @@ export class MailCraftEditor extends ElementBase {
 
     this.footerBar = this.footerText = this.footerLink = null;
 
-    this.body = elS('div', 'display: grid; grid-template-columns: minmax(0, 1fr) 340px; grid-template-rows: minmax(0, 1fr) auto; min-height: 0;', { class: 'mc-layout' });
+    this.body = elS('div', 'display: grid; grid-template-columns: minmax(0, 1fr) 340px; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; background: var(--ed-work);', { class: 'mc-layout' });
     this.frame.appendChild(this.body);
     this.body.appendChild(this.buildMain());
     this.body.appendChild(this.buildAside());
@@ -744,7 +744,7 @@ export class MailCraftEditor extends ElementBase {
    * would strand whichever node the previous render had left in place.
    */
   buildFooter() {
-    this.footerBar = elS('div', 'display: flex; grid-column: 1; grid-row: 2; justify-self: center; align-items: center; justify-content: center; gap: 4px; max-width: calc(100% - 32px); padding: 6px 14px; border-top: 1px solid var(--ed-line); background: var(--ed-panel-2); color: var(--ed-panel-meta); font-family: var(--ed-font); font-size: var(--ed-panel-meta-size); letter-spacing: 0.06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;', { class: 'mc-footer' });
+    this.footerBar = elS('div', 'display: flex; grid-column: 1; grid-row: 2; justify-self: center; align-items: center; justify-content: center; gap: 4px; max-width: calc(100% - 32px); padding: 6px 14px; background: transparent; color: var(--ed-panel-meta); font-family: var(--ed-font); font-size: var(--ed-panel-meta-size); letter-spacing: 0.06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;', { class: 'mc-footer' });
     this.footerText = elS('span', '', { class: 'mc-footer-text' });
     this.footerLink = elS('a', 'color: inherit; text-decoration: none;', { class: 'mc-footer-link' });
     this.footerBar.appendChild(this.footerText);
@@ -921,8 +921,11 @@ export class MailCraftEditor extends ElementBase {
     if (this.redoBtn) this.redoBtn.disabled = !s.future.length;
     // A host-supplied `theme` attribute owns light/dark (see applyTheme) --
     // hide the built-in toggle rather than let it fight the host's control.
+    // setProperty(..., 'important'): a plain assignment loses to the
+    // `!important` on `.mc-icon-label` (render/style.js) that keeps every
+    // other label-icon button visible, leaving the toggle rendered anyway.
     if (this.chromeBtn) {
-      this.chromeBtn.style.display = this.hasAttribute('theme') ? 'none' : 'flex';
+      this.chromeBtn.style.setProperty('display', this.hasAttribute('theme') ? 'none' : 'flex', 'important');
       this.chromeBtn.labelNode.textContent = s.chrome === 'light' ? t('action.chromeToDark') : t('action.chromeToLight');
       this.chromeBtn.i18nTipKey = s.chrome === 'light' ? 'action.chromeHintToDark' : 'action.chromeHintToLight';
       this.chromeBtn.tipNode.textContent = t(this.chromeBtn.i18nTipKey);
@@ -1589,8 +1592,16 @@ export class MailCraftEditor extends ElementBase {
 
     const right = elS('div', 'display: grid; grid-template-rows: auto 1fr; min-height: 0; border: 1px solid var(--ed-line); border-radius: 12px; overflow: hidden; background: var(--ed-panel);', { class: 'mc-code-preview' });
     right.appendChild(elS('div', 'padding: 7px 16px; border-bottom: 1px solid var(--ed-line); background: var(--ed-panel); font-family: var(--ed-font); font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ed-muted);', { text: t('code.livePreview'), 'data-i18n': 'code.livePreview', class: 'mc-pane-label' }));
-    const previewWrap = elS('div', 'overflow: auto; padding: 20px; display: flex; justify-content: center; background: var(--ed-work);', { class: 'mc-code-preview-body' });
-    this.codeFrame = elS('iframe', "width: 100%; height: 100%; min-height: 420px; border: 1px solid var(--ed-line-2); border-radius: 6px; background: #ffffff; box-shadow: 0 6px 18px rgba(15,23,42,0.10); transition: width 0.24s cubic-bezier(0.22,0.61,0.36,1);", { title: t('code.liveHtmlPreviewTitle'), 'data-i18n-title': 'code.liveHtmlPreviewTitle', class: 'mc-code-frame' });
+    // Flush, not a card on a mat: the document inside the frame paints its
+    // own page background edge to edge, so padding the wrap and framing the
+    // iframe stacked a second and third rectangle around a template that
+    // already has one -- the pane, a mat, a bordered card, then the email's
+    // own page, then its content column. `is-device` (renderCodeModal) puts
+    // the mat and the frame back for the 390px phone width, where the card
+    // *is* the point.
+    const previewWrap = elS('div', 'overflow: auto; padding: 0; display: flex; justify-content: center; background: var(--ed-work);', { class: 'mc-code-preview-body' });
+    this.codePreviewBody = previewWrap;
+    this.codeFrame = elS('iframe', "width: 100%; height: 100%; min-height: 420px; border: 0; background: #ffffff; transition: width 0.24s cubic-bezier(0.22,0.61,0.36,1);", { title: t('code.liveHtmlPreviewTitle'), 'data-i18n-title': 'code.liveHtmlPreviewTitle', class: 'mc-code-frame' });
     this.codeFrame.addEventListener('load', () => this.syncCodePreviewScrollbar());
     previewWrap.appendChild(this.codeFrame);
     right.appendChild(previewWrap);
@@ -1670,7 +1681,9 @@ export class MailCraftEditor extends ElementBase {
       tip(btn, w.label, 'down');
       this.codeWidthSeg.appendChild(btn);
     });
-    this.codeFrame.style.width = s.codeDevice === 'mobile' ? '390px' : '100%';
+    const phone = s.codeDevice === 'mobile';
+    this.codeFrame.style.width = phone ? '390px' : '100%';
+    this.codePreviewBody.classList.toggle('is-device', phone);
   }
 
   /** Repaint the syntax layer, gutter and metadata without touching the
@@ -1813,7 +1826,14 @@ export class MailCraftEditor extends ElementBase {
     closeBtn.addEventListener('click', () => this.core.setState({ previewOpen: false }));
     head.append(headText, this.previewDeviceSeg, closeBtn);
     overlay.appendChild(head);
-    const body = elS('div', 'overflow-y: auto; padding: 32px 24px;', { class: 'mc-preview-body' });
+    // Flush and unpainted: this body *is* the sent email's page, so the
+    // sheet sits edge to edge exactly as exportHtml() renders it -- the
+    // theme's page background is applied on each render (renderPreviewModal).
+    const body = elS('div', 'overflow-y: auto; padding: 0;', { class: 'mc-preview-body' });
+    // Kept on the instance: renderPreviewModal repaints it from the document's
+    // page background on every render, and it runs long after this builder's
+    // local has gone out of scope.
+    this.previewBody = body;
     this.previewSlot = elS('div', '', { class: 'mc-sheet-wrap' });
     this.previewSlot.style.cssText = 'display: flex; justify-content: center;';
     body.appendChild(this.previewSlot);
@@ -1838,6 +1858,13 @@ export class MailCraftEditor extends ElementBase {
       tip(btn, d.label, 'down');
       this.previewDeviceSeg.appendChild(btn);
     });
+    // The preview body doubles as the sent page: the theme's page background
+    // paints it, exactly as the exported <body style="background:..."> does.
+    // Falls back to the empty string -- and so to the stylesheet's dotted
+    // grid -- for a transparent page, which is exactly what a client with no
+    // page colour of its own shows behind the email.
+    const pageBg = s.doc.theme.bg || '';
+    this.previewBody.style.background = /^(transparent|none)$/i.test(pageBg.trim()) ? '' : pageBg;
     this.previewSlot.innerHTML = '';
     this.previewSlot.appendChild(renderDoc(this.core, false));
   }

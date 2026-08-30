@@ -102,7 +102,6 @@ export const RO = {
   'storage.uploading': 'Se încarcă {count}…',
   'storage.errLoadFailed': 'Biblioteca de fișiere nu a putut fi încărcată — {reason}',
   'storage.errNoLimits': 'Încărcările sunt oprite: această aplicație nu a stabilit nicio limită de încărcare.',
-  'storage.errNoAccept': 'Încărcările sunt oprite: nu a fost permis niciun format de fișier.',
   'storage.errNoMaxBytes': 'Încărcările sunt oprite: nu a fost stabilită o dimensiune maximă a fișierului.',
   'storage.errTooLarge': '{name} are {size} — limita este {max}.',
   'storage.errFormat': '{name} este un fișier {type}, care nu este permis aici.',

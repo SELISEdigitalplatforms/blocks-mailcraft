@@ -84,11 +84,11 @@ You write those functions next to the auth and base URL you already own, and poi
 
 The same applies to AI (`.aiProvider` is one `async (prompt) => text` function) and to social icons (`.iconProvider`).
 
-### 3. Upload policy belongs to the host
+### 3. Upload policy belongs to the host — formats excepted
 
-The package ships **no default limits**. What an email may carry depends on the sending platform's caps, the audience's mail clients, and the host's own product rules — none of which this package can know.
+Sizes and counts ship undefaulted: what an email may carry depends on the sending platform's caps and the host's own product rules — none of which this package can know. With a provider wired and no `maxBytes` declared, uploads are refused rather than waved through.
 
-With a provider wired and no limits declared, uploads are refused rather than waved through. Silently accepting anything is the exact failure the limits exist to prevent.
+Formats are the one default: **every image type is allowed** — JPEG, PNG, GIF, WebP, BMP, TIFF, ICO, AVIF, HEIC — unless `accept` lists a narrower set. SVG keeps its own gate below.
 
 Two supporting details:
 
@@ -269,12 +269,12 @@ A start marker's expression field suggests the host's `variables` in a dropdown 
 
 ## Image uploads
 
-Both properties are required. The package ships no files of its own: with no provider the library opens empty and holds only what is dropped into it — data URIs, kept in the local draft, which no email client renders. With a provider but no limits every upload is refused.
+A provider and a `maxBytes` ceiling are both required. The package ships no files of its own: with no provider the library opens empty and holds only what is dropped into it — data URIs, kept in the local draft, which no email client renders. With a provider but no `maxBytes` every upload is refused.
 
 ```js
 editor.storageLimits = {
-  accept: ['image/jpeg', 'image/png', 'image/gif'],
   maxBytes: 2 * 1024 * 1024,
+  accept: ['image/jpeg', 'image/png', 'image/gif'],  // optional: omit to allow every image type
   maxWidth: 1600, maxHeight: 1600,   // optional
   maxFilesPerDrop: 20,               // optional
   allowSvg: false,                   // SVG needs this AND a place in `accept`
@@ -316,7 +316,7 @@ A provider may also carry its own `limits` object, for a backend that knows its 
 editor.storageProvider = { list, upload, limits: { accept: [...], maxBytes: 5e6 } };
 ```
 
-The two are merged **per key**, with `editor.storageLimits` winning — so a provider can ship sane defaults and the host can still tighten one number without restating the rest. Either source satisfies the "limits are required" rule; only a file that passes the merged result reaches `upload`.
+The two are merged **per key**, with `editor.storageLimits` winning — so a provider can ship sane defaults and the host can still tighten one number without restating the rest. Either source satisfies the "`maxBytes` is required" rule; only a file that passes the merged result reaches `upload`.
 
 Setting `editor.storageProvider = null` drops back to that empty local library.
 
@@ -509,7 +509,7 @@ template, not to your app.
 | `.accent` | string |
 | `.messages` | `{ key: string }` |
 | `.storageProvider` | `{ list, upload, folders?, remove?, limits? }` — `null` drops back to the empty local library |
-| `.storageLimits` | `{ accept, maxBytes, maxWidth?, maxHeight?, maxFilesPerDrop?, allowSvg? }`, merged over `provider.limits` per key |
+| `.storageLimits` | `{ accept?, maxBytes, maxWidth?, maxHeight?, maxFilesPerDrop?, allowSvg? }`, merged over `provider.limits` per key |
 | `.aiProvider` | `async (prompt) => text` |
 | `.iconProvider` | `(platformKey, { label, size, color }) => Node` — social-icon override; falls back to the built-in icon when it is unset, throws, or returns a non-node |
 
@@ -686,7 +686,6 @@ The complete catalog of UI strings that `.messages` accepts — every key the ed
 | `storage.errDimensions` | {name} is {w}×{ht}px — the limit is {maxW}×{maxH}px. |
 | `storage.errFormat` | {name} is a {type} file, which is not allowed here. |
 | `storage.errLoadFailed` | The file library could not be loaded — {reason} |
-| `storage.errNoAccept` | Uploads are switched off: no file formats have been allowed. |
 | `storage.errNoLimits` | Uploads are switched off: this app has not set any upload limits. |
 | `storage.errNoMaxBytes` | Uploads are switched off: no maximum file size has been set. |
 | `storage.errSvg` | {name} is an SVG, which this app does not accept. |

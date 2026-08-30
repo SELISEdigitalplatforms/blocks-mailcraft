@@ -102,7 +102,6 @@ export const NL = {
   'storage.uploading': '{count} uploaden…',
   'storage.errLoadFailed': 'De bestandsbibliotheek kon niet worden geladen — {reason}',
   'storage.errNoLimits': 'Uploaden staat uit: deze app heeft geen uploadlimieten ingesteld.',
-  'storage.errNoAccept': 'Uploaden staat uit: er zijn geen bestandsformaten toegestaan.',
   'storage.errNoMaxBytes': 'Uploaden staat uit: er is geen maximale bestandsgrootte ingesteld.',
   'storage.errTooLarge': '{name} is {size} — de limiet is {max}.',
   'storage.errFormat': '{name} is een {type}-bestand, dat hier niet is toegestaan.',

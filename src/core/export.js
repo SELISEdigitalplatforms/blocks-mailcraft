@@ -133,13 +133,29 @@ export function buildHtml(state, root, boxCss) {
       ? cssBody
       : '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>\n          ' + cells + '\n          </tr></table>';
     const tdBg = rp.bgImage
-      ? 'background-color:' + (rp.bg || t.contentBg) + ';background-image:' + (rp.overlay ? 'linear-gradient(rgba(20,22,24,' + (rp.overlay / 100) + '),rgba(20,22,24,' + (rp.overlay / 100) + ')),' : '') + 'url(&quot;' + cssUrl(rp.bgImage) + '&quot;);background-size:' + (rp.bgSize || 'cover') + ';background-position:' + (rp.bgPos || 'center') + ';background-repeat:' + (rp.bgRepeat || 'no-repeat') + ';'
-      : 'background:' + (rp.bg || t.contentBg) + ';';
+      ? 'background-color:' + (rp.bg || t.contentBg || 'transparent') + ';background-image:' + (rp.overlay ? 'linear-gradient(rgba(20,22,24,' + (rp.overlay / 100) + '),rgba(20,22,24,' + (rp.overlay / 100) + ')),' : '') + 'url(&quot;' + cssUrl(rp.bgImage) + '&quot;);background-size:' + (rp.bgSize || 'cover') + ';background-position:' + (rp.bgPos || 'center') + ';background-repeat:' + (rp.bgRepeat || 'no-repeat') + ';'
+      // Falls all the way through to `transparent`: a row inherits the
+      // content column's background, and that column may itself be unpainted
+      // now that it can be -- 'background:;' is not a declaration.
+      : 'background:' + (rp.bg || t.contentBg || 'transparent') + ';';
     const tdBorder = rowBorderCss(rp)
       + (rp.radius ? 'border-radius:' + rp.radius + 'px;' : '')
       + (rp.shadow ? 'box-shadow:' + rp.shadow + ';' : '')
       + ((rp.mt || rp.mr || rp.mb || rp.ml || rp.my) ? 'margin:' + rowMargin(rp) + ';' : '');
     return '      <tr>\n        <td style="padding:' + rowPad(rp) + ';' + tdBg + tdBorder + '">\n          ' + body + '\n        </td>\n      </tr>';
   }).join('\n') + (logic.tail ? '\n      ' + logic.tail : '');
-  return '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<meta name="color-scheme" content="light dark">\n<title>' + 'Email' + '</title>\n</head>\n<body style="margin:0;padding:0;background:' + t.bg + ';font-family:' + t.font.replace(/"/g, "'") + ';color:' + t.text + ';-webkit-font-smoothing:antialiased;">\n<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:' + t.bg + ';">\n  <tr><td align="center" style="padding:24px 12px;">\n    <table role="presentation" width="' + t.width + '" cellpadding="0" cellspacing="0" border="0" style="width:' + t.width + 'px;max-width:100%;background:' + t.contentBg + ';">\n' + rows + '\n    </table>\n  </td></tr>\n</table>\n</body>\n</html>';
+  // The page section -- the full-width area the content column sits on. Its
+  // padding is the band a mail client shows around the template, and `radius`
+  // is the content column's own shape. The padding used to be a hard-coded
+  // `24px 12px` here -- an unreachable strip around every sent template -- so
+  // it now comes from the document and starts at 0. A background of
+  // `transparent` (or any rgba value) is passed through untouched: clients
+  // that honour it let their own surface show through, the rest fall back to
+  // their default page colour.
+  const pageBg = t.bg || 'transparent';
+  const pagePad = (t.padY || t.padX) ? (t.padY || 0) + 'px ' + (t.padX || 0) + 'px' : '0';
+  // `overflow:hidden` is what actually clips a row's own background to the
+  // rounded corner; without it the first and last rows paint square over it.
+  const contentShape = t.radius ? 'border-radius:' + t.radius + 'px;overflow:hidden;' : '';
+  return '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<meta name="color-scheme" content="light dark">\n<title>' + 'Email' + '</title>\n</head>\n<body style="margin:0;padding:0;background:' + pageBg + ';font-family:' + t.font.replace(/"/g, "'") + ';color:' + t.text + ';-webkit-font-smoothing:antialiased;">\n<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:' + pageBg + ';">\n  <tr><td align="center" style="padding:' + pagePad + ';">\n    <table role="presentation" width="' + t.width + '" cellpadding="0" cellspacing="0" border="0" style="width:' + t.width + 'px;max-width:100%;background:' + (t.contentBg || 'transparent') + ';' + contentShape + '">\n' + rows + '\n    </table>\n  </td></tr>\n</table>\n</body>\n</html>';
 }

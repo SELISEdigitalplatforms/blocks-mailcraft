@@ -102,7 +102,6 @@ export const HU = {
   'storage.uploading': '{count} feltöltése…',
   'storage.errLoadFailed': 'A fájlkönyvtár nem tölthető be — {reason}',
   'storage.errNoLimits': 'A feltöltés ki van kapcsolva: ez az alkalmazás nem állított be feltöltési korlátokat.',
-  'storage.errNoAccept': 'A feltöltés ki van kapcsolva: nincs engedélyezett fájlformátum.',
   'storage.errNoMaxBytes': 'A feltöltés ki van kapcsolva: nincs beállítva maximális fájlméret.',
   'storage.errTooLarge': 'A(z) {name} mérete {size} — a korlát {max}.',
   'storage.errFormat': 'A(z) {name} egy {type} fájl, ami itt nem engedélyezett.',

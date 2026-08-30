@@ -102,7 +102,6 @@ export const ET = {
   'storage.uploading': 'Laadin üles {count}…',
   'storage.errLoadFailed': 'Failikogu laadimine ebaõnnestus — {reason}',
   'storage.errNoLimits': 'Üleslaadimine on välja lülitatud: see rakendus pole määranud üleslaadimispiiranguid.',
-  'storage.errNoAccept': 'Üleslaadimine on välja lülitatud: ühtegi failivormingut pole lubatud.',
   'storage.errNoMaxBytes': 'Üleslaadimine on välja lülitatud: faili suurimat lubatud mahtu pole määratud.',
   'storage.errTooLarge': '{name} on {size} — piir on {max}.',
   'storage.errFormat': '{name} on {type}-fail, mis pole siin lubatud.',

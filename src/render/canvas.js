@@ -175,21 +175,57 @@ export function renderDoc(core, live) {
   // clients render it LTR -- letting the chrome's direction cascade in here
   // flipped bidi punctuation and default alignment on the canvas and made it
   // disagree with the exported result.
+  const radius = Number(theme.radius) || 0;
   const root = el('div', {
-    width: width + 'px', maxWidth: '100%', background: theme.contentBg, color: theme.text, fontFamily: theme.font,
-    transition: 'width 0.28s cubic-bezier(0.22,0.61,0.36,1), background 0.2s',
+    width: width + 'px', maxWidth: '100%', background: theme.contentBg || 'transparent', color: theme.text, fontFamily: theme.font,
+    // Only when the document actually asks for a shape: an unconditional
+    // `0px` would override the editor chrome's own soft corner on the sheet
+    // (style.js) and square off every template that never touched the field.
+    borderRadius: radius ? radius + 'px' : '',
+    // Clipping the rows to that corner is right for the sent email (export
+    // emits `overflow:hidden` alongside the radius) and for the static
+    // preview, but not for the editable canvas: the sheet is also what the
+    // row grip straddles and what the floating RTE toolbar overhangs
+    // (top:-82px on the first block), and hiding the overflow cuts both off.
+    overflow: !live && radius ? 'hidden' : '',
+    transition: 'width 0.28s cubic-bezier(0.22,0.61,0.36,1), background 0.2s, border-radius 0.2s',
   }, { 'data-mc-sheet': '1', dir: 'ltr' });
+
+  /*
+   * The page: the full-width section the email sits on, painted from the
+   * document's own `bg`/`padY`/`padX` rather than left to the workspace
+   * chrome. It is the band a mail client shows around the content column --
+   * the one part of the template that used to exist only in the exported
+   * HTML, so changing its colour did nothing visible in the editor and its
+   * size could not be changed at all. With the padding at its 0 default the
+   * page hugs the sheet exactly and nothing about the canvas changes.
+   */
+  const padY = Number(theme.padY) || 0;
+  const padX = Number(theme.padX) || 0;
+  const page = el('div', {
+    background: theme.bg || 'transparent',
+    padding: padY + 'px ' + padX + 'px',
+    boxSizing: 'border-box', maxWidth: '100%', display: 'flex', justifyContent: 'center',
+    transition: 'background 0.2s, padding 0.22s cubic-bezier(0.22,0.61,0.36,1)',
+    // `is-padded` is what moves the editor's frame outward (style.js): with
+    // no padding the page hugs the sheet exactly, so the sheet keeps the
+    // frame and an untouched canvas looks exactly as it always did.
+  }, { 'data-mc-page': '1', class: 'mc-page' + (padY || padX ? ' is-padded' : ''), dir: 'ltr' });
 
   const rowLines = [];
   if (live) {
-    root.addEventListener('dragover', (e) => {
+    // On the page, not the sheet: a drag held over the page padding is still
+    // aimed at the template, and these fire for the sheet's own events too
+    // (they bubble). Column drops stop propagation before they get here, as
+    // they did when these listeners sat on the sheet.
+    page.addEventListener('dragover', (e) => {
       const dr = core.drag; if (!dr) return;
       e.preventDefault();
       const index = core.indexFromPoint(root, e.clientY);
       showLine(rowDropTracker, rowLines[index]);
     });
-    root.addEventListener('dragleave', (e) => { if (e.target === root) hideActive(rowDropTracker); });
-    root.addEventListener('drop', (e) => { hideActive(rowDropTracker); core.canvasDrop(e); });
+    page.addEventListener('dragleave', (e) => { if (e.target === root || e.target === page) hideActive(rowDropTracker); });
+    page.addEventListener('drop', (e) => { hideActive(rowDropTracker); core.canvasDrop(e); });
   }
 
   d.rows.forEach((r, ri) => {
@@ -309,5 +345,6 @@ export function renderDoc(core, live) {
     root.appendChild(el('div', { border: '1px dashed var(--ed-accent-sheet-line)', padding: '90px 20px', textAlign: 'center', fontFamily: 'ui-monospace,monospace', fontSize: '10.5px', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--ed-faint)' }, { text: 'drag a row or block here' }));
   }
 
-  return root;
+  page.appendChild(root);
+  return page;
 }

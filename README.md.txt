@@ -102,9 +102,10 @@ KEYS      Bound on window, so they survive toolbar="none":
           Ctrl/Cmd+E (export dialog), Ctrl/Cmd+K (link, while editing),
           Ctrl/Cmd+D (duplicate), Backspace|Delete (delete selection).
 
-UPLOADS   Limits and a provider are both required, or every upload is refused.
-          editor.storageLimits   = { accept:['image/jpeg','image/png','image/gif'],
-                                     maxBytes: 2*1024*1024 }
+UPLOADS   A provider plus `maxBytes` are required, or every upload is refused;
+          every image type is allowed unless `accept` narrows it.
+          editor.storageLimits   = { maxBytes: 2*1024*1024,
+                                     accept:['image/jpeg','image/png'] }  // accept optional
           editor.storageProvider = { list(q), upload(file, o), folders?(), remove?(a),
                                      limits? }
           provider.limits is merged per key under .storageLimits, and satisfies

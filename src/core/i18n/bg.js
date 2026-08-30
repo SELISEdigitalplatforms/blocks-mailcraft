@@ -102,7 +102,6 @@ export const BG = {
   'storage.uploading': 'Качване на {count}…',
   'storage.errLoadFailed': 'Библиотеката с файлове не можа да се зареди — {reason}',
   'storage.errNoLimits': 'Качването е изключено: това приложение не е задало ограничения за качване.',
-  'storage.errNoAccept': 'Качването е изключено: не са разрешени файлови формати.',
   'storage.errNoMaxBytes': 'Качването е изключено: не е зададен максимален размер на файл.',
   'storage.errTooLarge': '{name} е {size} — ограничението е {max}.',
   'storage.errFormat': '{name} е файл от тип {type}, който не е разрешен тук.',

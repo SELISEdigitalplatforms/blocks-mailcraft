@@ -102,7 +102,6 @@ export const TR = {
   'storage.uploading': '{count} yükleniyor…',
   'storage.errLoadFailed': 'Dosya kitaplığı yüklenemedi — {reason}',
   'storage.errNoLimits': 'Yüklemeler kapalı: bu uygulama hiçbir yükleme sınırı belirlemedi.',
-  'storage.errNoAccept': 'Yüklemeler kapalı: hiçbir dosya biçimine izin verilmedi.',
   'storage.errNoMaxBytes': 'Yüklemeler kapalı: en büyük dosya boyutu belirlenmedi.',
   'storage.errTooLarge': '{name} {size} — sınır {max}.',
   'storage.errFormat': '{name} bir {type} dosyası ve burada izin verilmiyor.',

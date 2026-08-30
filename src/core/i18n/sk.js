@@ -102,7 +102,6 @@ export const SK = {
   'storage.uploading': 'Nahrávanie {count}…',
   'storage.errLoadFailed': 'Knižnicu súborov sa nepodarilo načítať — {reason}',
   'storage.errNoLimits': 'Nahrávanie je vypnuté: táto aplikácia nenastavila žiadne limity nahrávania.',
-  'storage.errNoAccept': 'Nahrávanie je vypnuté: nebol povolený žiadny formát súboru.',
   'storage.errNoMaxBytes': 'Nahrávanie je vypnuté: nie je nastavená maximálna veľkosť súboru.',
   'storage.errTooLarge': '{name} má {size} — limit je {max}.',
   'storage.errFormat': '{name} je súbor typu {type}, ktorý tu nie je povolený.',

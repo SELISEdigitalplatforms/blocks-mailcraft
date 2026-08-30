@@ -200,7 +200,7 @@ export const STYLE = `
 }
 
 /* Dotted-grid workspace background, shared by the canvas and the preview body. */
-.mc-workspace, .mc-preview-body {
+.mc-workspace {
   background-color: var(--ed-work);
   background-image: radial-gradient(circle, var(--ed-grid) 1px, transparent 1.2px);
   background-size: 22px 22px;
@@ -221,8 +221,12 @@ export const STYLE = `
 .mc-sheet-wrap { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .mc-workspace [data-mc-sheet="1"] { border: 1px solid var(--ed-line); border-radius: 6px; box-shadow: 0 2px 5px rgba(15,23,42,0.05), 0 14px 38px rgba(15,23,42,0.10); }
 #mc[data-chrome="dark"] .mc-workspace [data-mc-sheet="1"] { border-color: rgba(148,163,184,0.4); box-shadow: 0 0 0 1px rgba(15,23,42,0.4), 0 22px 58px rgba(0,0,0,0.36); }
-.mc-preview-body [data-mc-sheet="1"] { border: 1px solid var(--ed-line-2); border-radius: 8px; box-shadow: 0 18px 50px rgba(15,23,42,0.13); }
-#mc[data-chrome="dark"] .mc-preview-body [data-mc-sheet="1"] { border-color: rgba(148,163,184,0.4); box-shadow: 0 22px 58px rgba(0,0,0,0.4); }
+/* The preview body is the *sent* email's page: the theme's own page
+   background paints it edge to edge (set inline by renderPreviewModal) and
+   the sheet sits flush -- no dotted grid, no padding, no framing. What you
+   see is what exportHtml() gives the recipient. */
+.mc-preview-body [data-mc-sheet="1"] { border: 0; border-radius: 0; box-shadow: none; }
+#mc[data-chrome="dark"] .mc-preview-body [data-mc-sheet="1"] { border: 0; box-shadow: none; }
 
 /* Final component polish mirrored from the approved standalone editor. */
 #mc { --ed-success: #20a779; --ed-danger: #e05766; }
@@ -276,8 +280,7 @@ export const STYLE = `
 #mc .mc-canvas-stage { padding: 28px 40px 150px !important; }
 #mc .mc-workspace [data-mc-sheet="1"] { border: 1px solid rgba(15,23,42,.10); border-radius: 4px; background: #ffffff; box-shadow: 0 2px 5px rgba(15,23,42,.05), 0 14px 38px rgba(15,23,42,.10) !important; }
 #mc[data-chrome="dark"] .mc-workspace [data-mc-sheet="1"] { border-color: rgba(148,163,184,.46); box-shadow: 0 0 0 1px rgba(15,23,42,.48), 0 22px 58px rgba(0,0,0,.38) !important; }
-#mc .mc-preview-body [data-mc-sheet="1"] { border: 1px solid rgba(15,23,42,.12); border-radius: 10px; background: #ffffff; box-shadow: 0 18px 50px rgba(15,23,42,.13) !important; }
-#mc[data-chrome="dark"] .mc-preview-body [data-mc-sheet="1"] { border-color: rgba(203,213,225,.42); box-shadow: 0 0 0 1px rgba(15,23,42,.65), 0 24px 65px rgba(0,0,0,.40) !important; }
+#mc[data-chrome="dark"] .mc-preview-body [data-mc-sheet="1"] { border: 0; box-shadow: none !important; }
 #mc .mc-inspector { box-shadow: -10px 0 30px rgba(42,47,77,.04); color: var(--ed-panel-label); }
 #mc .mc-tabbar { grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); padding: 7px 8px 0; gap: 3px; border-bottom: 0 !important; background: var(--ed-panel) !important; overflow: visible; position: relative; z-index: 12; }
 #mc .mc-tabbar button { position: relative; min-width: 0; height: 39px; border-radius: 8px 8px 0 0 !important; padding: 0 !important; display: flex; align-items: center; justify-content: center; font-family: var(--ed-font) !important; }
@@ -398,12 +401,18 @@ export const STYLE = `
 #mc .mc-code-split { gap: 12px; padding: 12px; background: var(--ed-work); }
 #mc .mc-code-source, #mc .mc-code-preview { border: 1px solid var(--ed-line) !important; border-radius: 12px; overflow: hidden; background: var(--ed-panel) !important; }
 #mc .mc-pane-label { padding: 8px 13px !important; background: var(--ed-panel-2) !important; font-size: 9.5px !important; letter-spacing: .025em !important; text-transform: none !important; }
-#mc .mc-code-preview-body { padding: 14px !important; background: var(--ed-work); }
-#mc .mc-code-frame { border: 0 !important; border-radius: 9px; box-shadow: 0 5px 20px rgba(15,23,42,.10) !important; }
+/* The live preview is the email, not a card of it: at full width the frame
+   fills the pane and the document's own page background is the only surround.
+   Only the 390px phone width gets the mat and the card, where the inset frame
+   is what reads as a device. */
+#mc .mc-code-preview-body { padding: 0 !important; background: var(--ed-work); }
+#mc .mc-code-preview-body.is-device { padding: 14px !important; }
+#mc .mc-code-frame { border: 0 !important; border-radius: 0; box-shadow: none !important; }
+#mc .mc-code-preview-body.is-device .mc-code-frame { border-radius: 9px; box-shadow: 0 5px 20px rgba(15,23,42,.10) !important; }
 #mc .mc-code-footer { padding: 8px 16px !important; background: var(--ed-panel); font-family: var(--ed-font) !important; font-size: 9.5px !important; letter-spacing: 0 !important; }
 #mc .mc-preview-panel { grid-template-rows: 58px minmax(0,1fr) !important; }
 #mc .mc-preview-title { font-family: var(--ed-font); font-size: 12px !important; font-weight: 600; }
-#mc .mc-preview-body { padding: 32px 24px !important; background-color: var(--ed-work); background-image: radial-gradient(circle, var(--ed-grid) 1px, transparent 1.2px); background-size: 22px 22px; }
+#mc .mc-preview-body { padding: 0 !important; }
 #mc .mc-toast { border-radius: 10px; box-shadow: 0 12px 34px rgba(16,19,36,.28) !important; }
 #mc[data-chrome="dark"] .mc-shell { box-shadow: 0 24px 70px rgba(0,0,0,.44) !important; }
 #mc[data-chrome="dark"] .mc-header { background: rgba(25,28,41,.88) !important; }
@@ -457,4 +466,23 @@ export const STYLE = `
 /* The inspector inherits the active chrome palette. Keeping theme ownership
    at #mc makes the header, menus, every panel and every field switch together
    when light/dark changes, instead of leaving the side panel permanently dark. */
+
+/*
+ * The page section (render/canvas.js) -- the full-width area the email sits
+ * on, painted from the document's own bg/padY/padX. It only takes the
+ * editor's frame once it is actually visible: at the 0 default it hugs the
+ * sheet exactly, so the sheet keeps the frame and an untouched canvas is
+ * pixel-identical to before. Once there is padding the page becomes the
+ * outermost surface and owns the border and lift, and the sheet drops to a
+ * small card shadow so its glow does not spill past the page's edge.
+ */
+#mc .mc-page.is-padded { border-radius: 6px; }
+#mc .mc-workspace .mc-page.is-padded { border: 1px solid var(--ed-line); box-shadow: 0 2px 5px rgba(15,23,42,.05), 0 14px 38px rgba(15,23,42,.10); }
+#mc .mc-workspace .mc-page.is-padded [data-mc-sheet="1"] { box-shadow: 0 1px 3px rgba(15,23,42,.12) !important; }
+#mc[data-chrome="dark"] .mc-workspace .mc-page.is-padded { border-color: rgba(148,163,184,.46); box-shadow: 0 0 0 1px rgba(15,23,42,.48), 0 22px 58px rgba(0,0,0,.38); }
+#mc[data-chrome="dark"] .mc-workspace .mc-page.is-padded [data-mc-sheet="1"] { box-shadow: 0 1px 4px rgba(0,0,0,.35) !important; }
+#mc .mc-preview-body .mc-page.is-padded { border: 1px solid rgba(15,23,42,.12); border-radius: 10px; box-shadow: 0 18px 50px rgba(15,23,42,.13); }
+#mc .mc-preview-body .mc-page.is-padded [data-mc-sheet="1"] { box-shadow: 0 1px 3px rgba(15,23,42,.12) !important; }
+#mc[data-chrome="dark"] .mc-preview-body .mc-page.is-padded { border-color: rgba(203,213,225,.42); box-shadow: 0 0 0 1px rgba(15,23,42,.65), 0 24px 65px rgba(0,0,0,.40); }
+#mc[data-chrome="dark"] .mc-preview-body .mc-page.is-padded [data-mc-sheet="1"] { box-shadow: 0 1px 4px rgba(0,0,0,.35) !important; }
 `;

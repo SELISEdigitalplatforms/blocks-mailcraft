@@ -955,6 +955,28 @@ function themeFromParsedDoc(doc) {
   });
   const bestWidth = Object.keys(widthCounts).sort((a, b) => widthCounts[b] - widthCounts[a])[0];
   if (bestWidth) theme.width = Number(bestWidth);
+  // Page padding and content shape, read off the same content table the
+  // width vote just picked: the padding on the cell that centers it is the
+  // band the template sits in, and the table's own radius is the content
+  // column's corner. Without this an import flattened both, and the next
+  // export silently squared the template off and closed the gap around it.
+  if (bestWidth) {
+    const content = Array.from(body.querySelectorAll('table')).find((tb) => {
+      const w = tb.getAttribute('width') || (tb.style && tb.style.width) || '';
+      return w && !String(w).endsWith('%') && PX(w) === Number(bestWidth);
+    });
+    if (content) {
+      const r = PX(content.style && content.style.borderRadius);
+      if (r > 0) theme.radius = r;
+      const cell = content.closest ? content.closest('td') : null;
+      if (cell && cell.style) {
+        const padY = PX(cell.style.paddingTop);
+        const padX = PX(cell.style.paddingLeft);
+        if (padY > 0) theme.padY = padY;
+        if (padX > 0) theme.padX = padX;
+      }
+    }
+  }
   // Prefer the first *real* stack (has a comma or quotes) over a lone generic
   // keyword: builders wrap everything in a `font-family:sans-serif` shim div
   // with the actual `'DM Sans', Arial, ...` declared a level deeper.

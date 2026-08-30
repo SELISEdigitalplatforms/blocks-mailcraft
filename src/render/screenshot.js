@@ -80,7 +80,13 @@ export const captureTemplatePng = async function (core, mountInto, scale = 2) {
   const wrapper = document.createElement('div');
   // Off-screen but attached (fixed keeps it out of any scroll container's
   // scrollHeight, so capturing never moves the user's canvas position).
-  wrapper.style.cssText = `position: fixed; left: -100000px; top: 0; width: ${theme.width + pad * 2}px; background: ${theme.bg}; padding: ${pad}px; box-sizing: border-box; display: flex; justify-content: center;`;
+  // The document's own page padding sits inside renderDoc's page element, so
+  // the wrapper has to be wide enough for it -- sized off the content width
+  // alone, `max-width:100%` would shrink the sheet below `theme.width` by
+  // exactly the padding and the capture would come out narrower than the
+  // template really is.
+  const pageW = theme.width + (Number(theme.padX) || 0) * 2;
+  wrapper.style.cssText = `position: fixed; left: -100000px; top: 0; width: ${pageW + pad * 2}px; background: ${theme.bg}; padding: ${pad}px; box-sizing: border-box; display: flex; justify-content: center;`;
   wrapper.setAttribute('aria-hidden', 'true');
   // renderDoc sizes the sheet from `state.device`, so with the mobile toggle
   // on it would return a 375px sheet floating inside this desktop-width

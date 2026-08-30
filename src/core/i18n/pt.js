@@ -102,7 +102,6 @@ export const PT = {
   'storage.uploading': 'A carregar {count}…',
   'storage.errLoadFailed': 'Não foi possível carregar a biblioteca de ficheiros — {reason}',
   'storage.errNoLimits': 'Os carregamentos estão desativados: esta aplicação não definiu limites de carregamento.',
-  'storage.errNoAccept': 'Os carregamentos estão desativados: não foi permitido nenhum formato de ficheiro.',
   'storage.errNoMaxBytes': 'Os carregamentos estão desativados: não foi definido um tamanho máximo de ficheiro.',
   'storage.errTooLarge': '{name} tem {size} — o limite é {max}.',
   'storage.errFormat': '{name} é um ficheiro {type}, que não é permitido aqui.',
