@@ -6,9 +6,8 @@
 #                               the site has no index file, and index.html is
 #                               the homepage -- so it claims nothing)
 #   jekyll-optional-front-matter  .md files render without needing front matter
-#                               (see optional_front_matter below: README.md
-#                               is on its default skip list, and with
-#                               readme-index inert nothing else would render it)
+#                               (but not README.md -- it is on the plugin's
+#                               hardcoded blacklist; see `include` below)
 #   jekyll-relative-links       [DOCS.md](DOCS.md) rewrites to DOCS.html
 #   jekyll-titles-from-headings page titles come from the first H1
 #
@@ -34,17 +33,27 @@ defaults:
     values:
       layout: default
 
-# jekyll-optional-front-matter skips README.md by default, leaving it for
-# jekyll-readme-index -- which only claims a README on a site that has no
-# index page. This site has index.html, so the two plugins handed README.md
-# to each other and neither rendered it: /README.html was a 404 while every
-# other .md on the site (DOCS, CONTRIBUTING, SECURITY) converted normally,
-# and the file shipped as raw markdown at /README.md instead. An empty
-# exclude list hands it back to the converter. Front matter in README.md
-# would fix it too, but that file is also the npm and GitHub landing page,
-# where a stray `---` block is visible clutter.
-optional_front_matter:
-  exclude: []
+# Why README.md is listed here.
+#
+# jekyll-optional-front-matter carries a hardcoded FILENAME_BLACKLIST --
+# README, LICENCE, COPYING, CODE_OF_CONDUCT, CONTRIBUTING, the templates --
+# and never converts a file on it. jekyll-readme-index does not pick up the
+# slack: it only claims a README on a site with no index page, and this site
+# has index.html. So README.md shipped as a raw static file and /README.html
+# was a 404, while DOCS.md and SECURITY.md (not on the blacklist) converted
+# normally and CONTRIBUTING.md and CODE_OF_CONDUCT.md rendered because they
+# carry an empty `---` front matter block, which is the plugin's documented
+# escape hatch.
+#
+# The other escape hatch is this list: `blacklisted?` yields to anything
+# Jekyll's own `include` covers. It is the one used here because README.md is
+# also the npm and GitHub landing page, where a stray front matter block is
+# visible clutter -- npm's renderer does not strip it the way GitHub does.
+# `.htaccess` is Jekyll's stock value for this key, restated because setting
+# `include` replaces the default rather than extending it.
+include:
+  - README.md
+  - .htaccess
 
 exclude:
   - node_modules/
