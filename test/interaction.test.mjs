@@ -111,6 +111,56 @@ await it('rows reorder', async () => {
   assert.equal(el.getContent().rows[0].id, ids.at(-1), 'moved to the front');
 });
 
+await it('a canvas drop reads its index from the sheet, not the page wrapper', async () => {
+  const el = await mountEditor();
+  el.core.insertRow([100]);
+  el.core.insertRow([50, 50]);
+  await settle(2);
+  const sheet = q(el, '[data-mc-sheet]');
+  const page = q(el, '[data-mc-page]');
+  assert.ok(page && sheet && page !== sheet, 'the page wraps the sheet');
+  assert.equal(el.core.rowSlotHost(page), sheet, 'the page resolves to the sheet it wraps');
+  assert.equal(el.core.rowSlotHost(sheet), sheet, 'the sheet resolves to itself');
+  assert.equal(
+    el.core.indexFromPoint(el.core.rowSlotHost(page), 9999),
+    el.core.indexFromPoint(sheet, 9999),
+    'the drop index matches the one the drop line was measured against',
+  );
+});
+
+await it('a row dragged low on the canvas does not snap back to the top', async () => {
+  const el = await mountEditor();
+  el.core.insertRow([100]);
+  el.core.insertRow([50, 50]);
+  await settle(2);
+  const ids = el.getContent().rows.map((r) => r.id);
+  assert.ok(ids.length >= 2, 'two sections to reorder');
+  const page = q(el, '[data-mc-page]');
+  el.core.startDrag({ kind: 'move-row', id: ids[0] })(dragEvent('dragstart'));
+  page.dispatchEvent(dragEvent('dragover', 9999));
+  page.dispatchEvent(dragEvent('drop', 9999));
+  await settle(2);
+  const after = el.getContent().rows.map((r) => r.id);
+  assert.notEqual(after[0], ids[0], 'the dragged section left the top');
+  assert.equal(after.at(-1), ids[0], 'it landed at the drop point, at the end');
+});
+
+await it('a canvas drop wired without an index still resolves it from the sheet', async () => {
+  const el = await mountEditor();
+  el.core.insertRow([100]);
+  el.core.insertRow([50, 50]);
+  await settle(2);
+  const ids = el.getContent().rows.map((r) => r.id);
+  const page = q(el, '[data-mc-page]');
+  el.core.startDrag({ kind: 'move-row', id: ids[0] })(dragEvent('dragstart'));
+  // Called the way a host wiring `canvasDrop` onto its own element would:
+  // no index handed in, so the core has to derive one -- and it must derive
+  // it from the sheet the page wraps, not from the page's own children.
+  el.core.canvasDrop({ preventDefault() {}, currentTarget: page, clientY: 9999 });
+  await settle(2);
+  assert.equal(el.getContent().rows.at(-1).id, ids[0], 'the derived index matched the explicit one');
+});
+
 await it('a column drop is handled', async () => {
   const el = await mountEditor();
   el.core.insertRow([50, 50]);

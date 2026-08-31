@@ -3,7 +3,7 @@ import { mk, blk, mkRow, GROUPS, LAYOUTS, migrateDoc, normalizeDoc, blankDoc } f
 import { binder, decorate, group } from './binder.js';
 import { ALL_FOLDER_ID, normalizeAsset, resolveLimits, providerProblems } from './storage.js';
 import { validateFiles, limitsProblem } from './storage-limits.js';
-import { migrateTokens, cleanHtml, escHtml } from './sanitize.js';
+import { migrateTokens, cleanHtml, escHtml, linkHref } from './sanitize.js';
 import { buildHtml as buildHtmlFn } from './export.js';
 import { htmlToDoc } from './import-html.js';
 import { boxCss } from './layout-style.js';
@@ -490,11 +490,16 @@ export class EditorCore {
 
   applyLink = (b) => {
     const d = this.state.linkDraft; if (!d) return;
-    this.exec('createLink', d.href);
+    // Normalized here rather than at render: inline links live inside the
+    // block's own HTML, which nothing re-templates, so a bare `selise.ch`
+    // typed in this dialog would be stored -- and shipped -- as a relative
+    // URL that resolves against the mail client instead of the site.
+    const href = linkHref(d.href);
+    this.exec('createLink', href);
     const elNode = this.editEl;
     if (elNode) {
       elNode.querySelectorAll('a').forEach((a) => {
-        if (a.getAttribute('href') !== d.href) return;
+        if (a.getAttribute('href') !== href) return;
         if (d.blank) { a.setAttribute('target', '_blank'); a.setAttribute('rel', 'noopener'); }
         else { a.removeAttribute('target'); a.removeAttribute('rel'); }
       });
@@ -827,17 +832,39 @@ export class EditorCore {
     };
   }
 
-  canvasDragOver = (e) => {
+  /**
+   * The element whose children are the row slots, given whatever the drag
+   * listener was attached to. The row slots are children of the sheet, but the
+   * canvas's own listeners sit on the page wrapper around it, so that a drag
+   * held over the page's padding still counts as aimed at the template
+   * (canvas.js). Reading the page's children finds no slots at all, so an
+   * index derived from it came back 0 and every section landed at the top no
+   * matter where the drop line was shown. The canvas now passes its index
+   * outright; this keeps the derived path right for any other host wiring.
+   */
+  rowSlotHost(target) {
+    if (!target || !target.getAttribute) return target || null;
+    if (target.getAttribute('data-mc-sheet') === '1') return target;
+    return (target.querySelector && target.querySelector('[data-mc-sheet="1"]')) || target;
+  }
+
+  canvasDragOver = (e, index) => {
     const d = this.drag; if (!d) return;
     e.preventDefault();
-    const index = this.indexFromPoint(e.currentTarget, e.clientY);
-    if (this.state.rowDrop !== index) this.setState({ rowDrop: index, drop: null });
+    const at = typeof index === 'number' ? index : this.indexFromPoint(this.rowSlotHost(e.currentTarget), e.clientY);
+    if (this.state.rowDrop !== at) this.setState({ rowDrop: at, drop: null });
   };
 
-  canvasDrop = (e) => {
+  /**
+   * `index` is the slot the caller already highlighted. The canvas passes it
+   * so the drop lands where the line was drawn -- one measurement, not two of
+   * them racing. Omitted (a host wiring these onto its own element), the
+   * index is derived here instead.
+   */
+  canvasDrop = (e, index) => {
     const d = this.drag; if (!d) return;
     e.preventDefault();
-    const index = this.indexFromPoint(e.currentTarget, e.clientY);
+    index = typeof index === 'number' ? index : this.indexFromPoint(this.rowSlotHost(e.currentTarget), e.clientY);
     if (d.kind === 'row') this.insertRow(d.spans, index, d.html);
     else if (d.kind === 'move-row') this.moveRow(d.id, index);
     else if (d.kind === 'block') this.insertBlock(d.type, null, 0, index);

@@ -124,9 +124,20 @@ export const captureTemplatePng = async function (core, mountInto, scale = 2) {
       img.onerror = () => reject(new Error('SVG rasterization failed'));
       img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
     });
+    // WebKit fires `load` on an SVG-as-image before it is reliably
+    // drawable, and drawing on that tick yields a blank or half-laid-out
+    // frame. Same `decode()` guard the inner images get above.
+    if (img.decode) await img.decode().catch(() => {});
+    // Safari caps total canvas area, and past the cap it hands back a
+    // *blank* canvas that still encodes successfully -- a silently empty
+    // PNG with nothing thrown to catch. Long newsletters reach it easily
+    // at 2x (a 680x4000 template is 10.9M device pixels). Scale the
+    // capture down to fit instead of returning an empty image.
+    const MAX_CANVAS_AREA = 16e6;
+    const fit = Math.min(scale, Math.sqrt(MAX_CANVAS_AREA / Math.max(1, w * h)));
     const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(w * scale));
-    canvas.height = Math.max(1, Math.round(h * scale));
+    canvas.width = Math.max(1, Math.round(w * fit));
+    canvas.height = Math.max(1, Math.round(h * fit));
     const ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     return await new Promise((resolve, reject) => {

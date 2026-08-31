@@ -1,6 +1,7 @@
 import { icon, brandIcon, socialKey, SOCIAL_BRAND, contrastInk } from '../core/icons.js';
 import { pad } from '../core/layout-style.js';
 import { parseItems, cellsOf } from '../core/parse.js';
+import { linkHref } from '../core/sanitize.js';
 
 function el(tag, style, attrs) {
   const node = document.createElement(tag);
@@ -77,12 +78,17 @@ export function blockBody(b, theme, live, ctx) {
     }
     case 'image': {
       const wrap = el('div', { padding: pad(p), textAlign: p.align, fontSize: '0' }, attr);
-      if (p.href) {
+      const imgHref = linkHref(p.href);
+      if (imgHref) {
         // The % width must live on the anchor, not the img: a percentage on a
         // child of a shrink-to-fit inline-block resolves against the image's
         // own intrinsic size (i.e. not at all), which rendered every linked
         // logo/icon at full intrinsic width no matter what `width` said.
-        const a = el('a', { display: 'inline-block', width: p.width + '%' }, { href: p.href });
+        const a = el('a', { display: 'inline-block', width: p.width + '%' }, { href: imgHref });
+        // Same guard as every other anchor the canvas draws: without it a
+        // click on a linked logo navigates the host application away from the
+        // editor, taking the uncommitted document with it.
+        a.addEventListener('click', (e) => e.preventDefault());
         a.appendChild(el('img', { width: '100%', borderRadius: p.radius + 'px', display: 'block', border: '0' }, { src: p.src, alt: p.alt }));
         wrap.appendChild(a);
       } else {
@@ -100,7 +106,7 @@ export function blockBody(b, theme, live, ctx) {
         // email pattern; the color falls back to the label color so a bare
         // "outline thickness" bump looks right without a second step.
         border: p.borderW ? p.borderW + 'px ' + (p.borderStyle || 'solid') + ' ' + (p.borderColor || p.color) : '0',
-      }, { href: p.href, ...editableAttrs(live), text: p.label });
+      }, { href: linkHref(p.href), ...editableAttrs(live), text: p.label });
       a.addEventListener('click', (e) => e.preventDefault());
       // Button editing is deliberately plain: no focus-tracked `editing` state, no
       // paste handling, no floating RTE toolbar -- only its label commits on blur.
@@ -139,7 +145,7 @@ export function blockBody(b, theme, live, ctx) {
           borderRadius: shape === 'circle' ? '50%' : shape === 'square' ? Math.round(box * 0.28) + 'px' : '0',
           color: iconColor, background: badge ? source : 'transparent',
           border: shape === 'outline' ? '1px solid ' + source : '0',
-        }, { href: it.href, title: it.label });
+        }, { href: linkHref(it.href), title: it.label });
         a.addEventListener('click', (e) => e.preventDefault());
         let provided = null;
         if (ctx && ctx.iconProvider) { try { provided = ctx.iconProvider(key, { label: it.label, size: p.size, color: iconColor }); } catch { provided = null; } }
@@ -154,7 +160,7 @@ export function blockBody(b, theme, live, ctx) {
     }
     case 'video': {
       const wrap = el('div', { padding: '4px 0', textAlign: 'center' }, attr);
-      const a = el('a', { display: 'block', position: 'relative' }, { href: p.href });
+      const a = el('a', { display: 'block', position: 'relative' }, { href: linkHref(p.href) });
       a.addEventListener('click', (e) => e.preventDefault());
       a.appendChild(el('img', { width: '100%', display: 'block', border: '0' }, { src: p.src, alt: p.caption }));
       const badge = el('span', { position: 'absolute', inset: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' });
@@ -197,7 +203,7 @@ export function blockBody(b, theme, live, ctx) {
     case 'menu': {
       const wrap = el('div', { textAlign: p.align, padding: '10px 0' }, attr);
       parseItems(p.items).forEach((it) => {
-        const a = el('a', { color: p.color, fontSize: p.size + 'px', fontFamily: p.fontFamily || t.font, textDecoration: 'none', margin: '0 ' + p.gap / 2 + 'px', letterSpacing: '0.12em', textTransform: 'uppercase' }, { href: it.href, text: it.label });
+        const a = el('a', { color: p.color, fontSize: p.size + 'px', fontFamily: p.fontFamily || t.font, textDecoration: 'none', margin: '0 ' + p.gap / 2 + 'px', letterSpacing: '0.12em', textTransform: 'uppercase' }, { href: linkHref(it.href), text: it.label });
         a.addEventListener('click', (e) => e.preventDefault());
         wrap.appendChild(a);
       });

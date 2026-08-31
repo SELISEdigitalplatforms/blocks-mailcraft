@@ -129,7 +129,10 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
   -webkit-backdrop-filter: saturate(1.4) blur(12px);
   border-bottom: 1px solid var(--line-soft);
 }
-@supports not (backdrop-filter: blur(1px)) { .site-header { background: var(--bg); } }
+/* Both spellings: Safari 16-17 ships only `-webkit-backdrop-filter`, so a
+   test on the unprefixed property alone reported "unsupported" there and
+   flattened the header to opaque even though the blur above works. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .site-header { background: var(--bg); } }
 
 .bar {
   max-width: 1240px; margin: 0 auto; height: var(--header-h);

@@ -36,7 +36,7 @@ globalThis.document = { addEventListener() {}, removeEventListener() {}, };
 const { EditorCore, AI_GOALS, AI_TONES, AI_GOAL_VALUES } = await import(new URL('../src/core/editor-core.js', import.meta.url).href);
 const { mk, mkRow, blk, blankDoc, normalizeDoc, migrateDoc, LAYOUTS, GROUPS } = await import(new URL('../src/core/blocks.js', import.meta.url).href);
 const { boxCss, rowPad, rowMargin, rowBorderCss } = await import(new URL('../src/core/layout-style.js', import.meta.url).href);
-const { cssUrl, escHtml, migrateTokens, scopeCss } = await import(new URL('../src/core/sanitize.js', import.meta.url).href);
+const { cssUrl, linkHref, escHtml, migrateTokens, scopeCss } = await import(new URL('../src/core/sanitize.js', import.meta.url).href);
 const { vars, TOKEN, DEFAULT_VARS, INSERT_KEYS } = await import(new URL('../src/core/variables.js', import.meta.url).href);
 const { THEME } = await import(new URL('../src/core/theme.js', import.meta.url).href);
 const { normalizeAsset, resolveLimits, providerProblems, ALL_FOLDER_ID } = await import(new URL('../src/core/storage.js', import.meta.url).href);
@@ -406,6 +406,34 @@ await it('cssUrl percent-encodes for both CSS and attribute contexts and allowli
   assert.equal(cssUrl('images/x.png'), 'images/x.png', 'relative paths are fine');
   assert.equal(cssUrl('javascript:alert(1)'), '', 'script scheme dropped');
   assert.equal(cssUrl(''), '');
+});
+
+await it('linkHref gives a bare host a scheme so the click is not resolved as relative', async () => {
+  assert.equal(linkHref('selise.ch'), 'https://selise.ch');
+  assert.equal(linkHref('www.selise.ch/pricing'), 'https://www.selise.ch/pricing');
+  assert.equal(linkHref('  selise.ch  '), 'https://selise.ch', 'trimmed first');
+  assert.equal(linkHref('selise.ch:8080/x'), 'https://selise.ch:8080/x', 'host:port is not a scheme');
+  assert.equal(linkHref('//cdn.selise.ch/x'), 'https://cdn.selise.ch/x', 'protocol-relative pinned');
+  assert.equal(linkHref('hello@selise.ch'), 'mailto:hello@selise.ch');
+});
+
+await it('linkHref leaves anything already addressable exactly as authored', async () => {
+  assert.equal(linkHref('https://selise.ch'), 'https://selise.ch');
+  assert.equal(linkHref('http://selise.ch'), 'http://selise.ch');
+  assert.equal(linkHref('mailto:hi@selise.ch'), 'mailto:hi@selise.ch');
+  assert.equal(linkHref('tel:+41000'), 'tel:+41000');
+  assert.equal(linkHref('#top'), '#top', 'in-page anchor');
+  assert.equal(linkHref('/reset'), '/reset', 'rooted path');
+  assert.equal(linkHref('{{ResetUrl}}'), '{{ResetUrl}}', 'a merge tag is the whole URL');
+  assert.equal(linkHref('https://{{HostName}}/reset'), 'https://{{HostName}}/reset');
+});
+
+await it('linkHref drops schemes that are not link targets', async () => {
+  assert.equal(linkHref('javascript:alert(1)'), '');
+  assert.equal(linkHref('data:text/html,<script>'), '');
+  assert.equal(linkHref(''), '');
+  assert.equal(linkHref(null), '');
+  assert.equal(linkHref(undefined), '');
 });
 
 await it('escHtml escapes the three characters that break markup', async () => {

@@ -231,7 +231,11 @@ export function renderDoc(core, live) {
       showLine(rowDropTracker, rowLines[index]);
     });
     page.addEventListener('dragleave', (e) => { if (e.target === root || e.target === page) hideActive(rowDropTracker); });
-    page.addEventListener('drop', (e) => { hideActive(rowDropTracker); core.canvasDrop(e); });
+    // Measured against `root`, exactly as the line above it was: the slots are
+    // the sheet's children, not the page's, and deriving the index a second
+    // time from the event's own target is what used to send every dropped
+    // section to index 0 while the line sat where the pointer actually was.
+    page.addEventListener('drop', (e) => { hideActive(rowDropTracker); core.canvasDrop(e, core.indexFromPoint(root, e.clientY)); });
   }
 
   d.rows.forEach((r, ri) => {

@@ -67,6 +67,35 @@ await it('clicking a block on the canvas selects it', async () => {
   assert.ok(el.core.state.sel, 'something got selected');
 });
 
+await it('an image block with a Link URL renders an anchor, scheme-corrected', async () => {
+  const el = await mountEditor();
+  el.core.insertBlock('image');
+  await settle(2);
+  const block = el.getContent().rows.flatMap((r) => r.cols.flatMap((c) => c.blocks)).find((b) => b.type === 'image');
+  assert.ok(block, 'an image block');
+  assert.equal(qa(el, '[data-mc-content] a').length, 0, 'unlinked image is a bare <img>');
+  // What the inspector's Link URL field does, typed the way people type it.
+  el.core.setProp(block.id, 'href', 'selise.ch');
+  await settle(2);
+  const a = q(el, '[data-mc-content] a');
+  assert.ok(a, 'the image is wrapped in an anchor');
+  assert.equal(a.getAttribute('href'), 'https://selise.ch', 'a bare host is not shipped as a relative URL');
+  assert.ok(a.querySelector('img'), 'the img is inside the anchor');
+  assert.match(el.exportHtml(), /<a[^>]+href="https:\/\/selise\.ch"[^>]*>\s*<img/, 'and the export carries it');
+});
+
+await it('clicking a linked image on the canvas does not navigate the host away', async () => {
+  const el = await mountEditor();
+  el.core.insertBlock('image');
+  await settle(2);
+  const block = el.getContent().rows.flatMap((r) => r.cols.flatMap((c) => c.blocks)).find((b) => b.type === 'image');
+  el.core.setProp(block.id, 'href', 'https://selise.ch');
+  await settle(2);
+  const ev = new (win().MouseEvent)('click', { bubbles: true, cancelable: true });
+  q(el, '[data-mc-content] a').dispatchEvent(ev);
+  assert.equal(ev.defaultPrevented, true, 'the anchor swallows its own click');
+});
+
 await it('the mobile device toggle narrows the sheet', async () => {
   const el = await mountEditor();
   el.importHtml(EMAIL);

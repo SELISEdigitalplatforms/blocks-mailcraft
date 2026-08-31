@@ -1,5 +1,6 @@
 import { icon, brandIcon, socialKey, SOCIAL_BRAND, contrastInk } from '../core/icons.js';
 import { parseItems } from '../core/parse.js';
+import { linkHref } from '../core/sanitize.js';
 
 function el(tag, style, attrs) {
   const node = document.createElement(tag);
@@ -226,7 +227,14 @@ function renderRichLinks(f) {
     const urlCommit = typeCommit((v) => change(i, (a) => a.setAttribute('href', v)));
     url.addEventListener('input', (e) => urlCommit.call(e.target.value));
     url.addEventListener('focus', () => { url.style.borderColor = 'var(--ed-accent)'; url.style.outline = 'none'; });
-    url.addEventListener('blur', () => { url.style.borderColor = 'var(--ed-line)'; urlCommit.flush(); });
+    url.addEventListener('blur', () => {
+      url.style.borderColor = 'var(--ed-line)';
+      // Scheme normalization happens on the way out, never per keystroke: a
+      // half-typed "h" rewritten to "https://h" under the caret is unusable.
+      url.value = linkHref(url.value);
+      urlCommit.call(url.value);
+      urlCommit.flush();
+    });
 
     const targetLabel = el('label', { display: 'flex', alignItems: 'center', gap: '6px', marginTop: '7px', width: 'fit-content', color: 'var(--ed-muted)', cursor: 'pointer', fontFamily: 'var(--ed-font)', fontSize: '10.5px', fontWeight: '500' });
     const target = el('input', { accentColor: 'var(--ed-accent)', cursor: 'pointer' }, { type: 'checkbox', 'data-focus-key': `f${f.key}-link-target-${i}` });

@@ -131,6 +131,40 @@ export const cssUrl = (u) => {
   return raw.replace(/["'()\\]|\s/g, (c) => CSS_URL_ESCAPE[c] || '%20');
 };
 
+/**
+ * A link target on its way into an anchor. Two jobs, and both of them showed
+ * up as "the link does not work" rather than as anything that errors:
+ *
+ *   - A bare host (`selise.ch`, `www.selise.ch/pricing`) gets `https://`.
+ *     Typed with no scheme it is a *relative* URL, so the mail client
+ *     resolves it against its own origin and the click lands nowhere -- the
+ *     single most common way an authored link ships broken, and invisible in
+ *     the editor because the canvas never follows it.
+ *   - Schemes are allowlisted the way `cssUrl` allowlists image sources, so
+ *     `javascript:` resolves to nothing instead of becoming a click target.
+ *
+ * Left exactly as typed: anything already carrying an allowed scheme, an
+ * in-page `#anchor`, a rooted `/path`, and anything opening with a merge tag
+ * -- `{{ResetUrl}}` is a whole URL the host substitutes later, so prefixing
+ * it would corrupt what reaches the template engine. A bare `name@host.tld`
+ * becomes `mailto:`, which is the only thing it could have meant.
+ */
+export const linkHref = (u) => {
+  const raw = String(u == null ? '' : u).trim();
+  if (!raw) return '';
+  const scheme = raw.match(/^([a-z][a-z0-9+.-]*):/i);
+  if (scheme) {
+    if (/^(https?|mailto|tel)$/i.test(scheme[1])) return raw;
+    // `selise.ch:8080/x` matches the scheme shape but is a host and a port;
+    // it falls through to be prefixed rather than dropped.
+    if (!/^[a-z][a-z0-9+.-]*:\d/i.test(raw)) return '';
+  }
+  if (raw.startsWith('//')) return 'https:' + raw;
+  if (/^[#/]/.test(raw) || raw.startsWith('{{')) return raw;
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) return 'mailto:' + raw;
+  return 'https://' + raw;
+};
+
 export const escHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /** Minimal HTML syntax highlighter for the code view. */

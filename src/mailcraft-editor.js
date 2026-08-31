@@ -495,7 +495,15 @@ export class MailCraftEditor extends ElementBase {
   async copyScreenshot(blob) {
     const t = this.core.t;
     try {
-      const png = blob || await this.screenshotPng();
+      // Safari only honours `clipboard.write()` while the user gesture is
+      // still live, and awaiting the capture first (per-image fetch +
+      // inline, decode, rasterize, PNG encode) always outlives it --
+      // NotAllowedError on every attempt, where Chromium is lenient and
+      // lets it through. Handing ClipboardItem the *promise* is the
+      // supported shape for exactly this: the write is issued
+      // synchronously with the gesture and the capture resolves inside
+      // it. Chromium accepts the same form, so there is no branch here.
+      const png = blob ? Promise.resolve(blob) : this.screenshotPng();
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
       this.core.flash(t('toast.pngCopied'));
     } catch {
@@ -1221,6 +1229,11 @@ export class MailCraftEditor extends ElementBase {
       tile.addEventListener('mouseleave', () => { tile.style.borderColor = 'var(--ed-line)'; });
       tile.addEventListener('dragstart', this.core.startDrag({ kind: 'asset', assetId: a.id }));
       tile.addEventListener('dragend', () => { this.core.drag = null; this.core.setState({ drop: null, rowDrop: null }); });
+      // Touch Safari never fires HTML5 drag events, so drag alone left
+      // these tiles unusable on iOS. Click is the same fallback the
+      // library modal's tiles already carry; a completed drag ends in
+      // `dragend`, not `click`, so the two do not both fire.
+      tile.addEventListener('click', () => this.core.useAsset(a));
       tile.appendChild(elS('div', `width: 100%; height: 64px; background-image: url("${a.url}"); background-size: cover; background-position: center; background-color: var(--ed-work);`, { role: 'img', 'aria-label': a.name }));
       tile.appendChild(elS('div', 'font-family: ui-monospace, monospace; font-size: 9px; color: var(--ed-muted); padding: 4px 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;', { text: a.name }));
       grid.appendChild(tile);
