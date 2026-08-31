@@ -246,7 +246,11 @@ function classifyButton(el) {
     // offers, and the wrapper is also what carries the alignment.
     if (!a) {
       pillTable = onlyChild(el, 'TABLE');
-      const cells = pillTable ? pillTable.querySelectorAll('td') : [];
+      // Direct row cells only. A descendant search would count the `<td>`s
+      // inside whatever the cell contains, so a layout row holding one block
+      // could look like a one-cell button table -- or stop looking like one
+      // the moment the block itself contained a table.
+      const cells = pillTable ? pillTable.querySelectorAll(':scope > tbody > tr > td, :scope > tr > td') : [];
       if (cells.length === 1) a = onlyChild(cells[0], 'A');
       if (!a) pillTable = null;
     }
@@ -674,6 +678,66 @@ function spansFromCells(cells, tableWidthPx) {
  * false positive welds unrelated sections into one row, which the user then
  * has to take apart by hand. Every one of these has to hold.
  */
+/*
+ * A column's share of its row is not always in its inline style.
+ *
+ * MJML writes the column as `width:100%` inline and puts the real share in a
+ * class rule inside `@media only screen and (min-width:480px)` -- a *desktop*
+ * query, so it carries the layout rather than overriding it. `css-cascade.js`
+ * strips every at-rule before folding, by design (a mobile override cannot be
+ * represented in the model), which means that share never reaches the element
+ * and three columns looked like three widthless divs.
+ *
+ * So the stylesheets are read once per document for `.class { width: N% }`,
+ * from top-level rules and from `min-width` blocks -- never from `max-width`
+ * blocks, which are the mobile overrides the cascade is right to drop.
+ */
+const CLASS_WIDTHS = new WeakMap();
+
+function scanWidthRules(css, map) {
+  let i = 0;
+  while (i < css.length) {
+    const at = css.indexOf('@', i);
+    const plain = css.slice(i, at < 0 ? css.length : at);
+    plain.replace(/([^{}]+)\{([^{}]*)\}/g, (m0, sel, decl) => {
+      const w = decl.match(/(?:^|;)\s*width\s*:\s*([\d.]+)%/i);
+      if (w) {
+        sel.split(',').forEach((one) => {
+          const cm = one.trim().match(/^\.([-\w]+)$/);
+          if (cm && !map[cm[1]]) map[cm[1]] = parseFloat(w[1]);
+        });
+      }
+      return m0;
+    });
+    if (at < 0) break;
+    const brace = css.indexOf('{', at);
+    if (brace < 0) break;
+    const prelude = css.slice(at, brace);
+    let depth = 0;
+    let j = brace;
+    for (; j < css.length; j += 1) {
+      if (css[j] === '{') depth += 1;
+      else if (css[j] === '}') { depth -= 1; if (!depth) break; }
+    }
+    // `max-width` is a narrow-screen override, which says nothing about the
+    // desktop layout this is trying to recover.
+    if (!/max-width/i.test(prelude)) scanWidthRules(css.slice(brace + 1, j), map);
+    i = j + 1;
+  }
+}
+
+function classWidths(doc) {
+  if (!doc || !doc.querySelectorAll) return {};
+  const hit = CLASS_WIDTHS.get(doc);
+  if (hit) return hit;
+  const map = {};
+  Array.from(doc.querySelectorAll('style')).forEach((st) => {
+    scanWidthRules(String(st.textContent || '').replace(/\/\*[\s\S]*?\*\//g, ''), map);
+  });
+  CLASS_WIDTHS.set(doc, map);
+  return map;
+}
+
 function inlineColumnGroup(nodes) {
   const kids = Array.from(nodes).filter((n) => {
     if (n.nodeType === 8) return false;                                  // the MSO conditionals themselves
@@ -700,12 +764,21 @@ function inlineColumnGroup(nodes) {
     if (mw.endsWith('%')) return PX(mw);
     const w = s.width || '';
     if (w.endsWith('%') && PX(w) < 100) return PX(w);
+    // Nothing inline: the share may be carried by one of the element's
+    // classes (see classWidths).
+    const byClass = classWidths(k.ownerDocument);
+    const named = ((k.getAttribute && k.getAttribute('class')) || '').split(/\s+/);
+    for (let i = 0; i < named.length; i += 1) {
+      const v = byClass[named[i]];
+      if (v && v < 100) return v;
+    }
     return 0;
   };
   const shares = kids.map(shareOf);
   if (!shares.every((w) => w > 0)) return null;
   const total = shares.reduce((a, b) => a + b, 0);
   if (total < 90 || total > 110) return null;
+  kids.shares = shares;
   return kids;
 }
 
@@ -713,6 +786,12 @@ function inlineColumnGroup(nodes) {
 function unwrapNestedLayout(td) {
   const only = onlyChild(td, 'TABLE');
   if (!only) return null;
+  // Not every single-row table is layout. A bulletproof button is a one-cell
+  // table too, and reading it as a row made its cell the row's `bgSource` --
+  // so a pink button in a white section repainted the whole band pink and
+  // the section's own background was lost. A component table is one block,
+  // never a row; the same guard covers a social strip built the same way.
+  if (classifyButton(td) || classifySocial(only)) return null;
   const trs = only.querySelectorAll(':scope > tbody > tr, :scope > tr');
   if (trs.length !== 1) return null;
   if (only.querySelector('th')) return null;
@@ -756,6 +835,39 @@ function bgOf(el) {
 
 function padOf(el) {
   return el.style ? paddingOf(el.style) : null;
+}
+
+/*
+ * One column of a row, on its own.
+ *
+ * The same container the multi-column detector groups, but appearing singly --
+ * a full-width MJML section is one of these. It matters because of what is
+ * *inside* it: a table whose every `<tr>` is one block. The generic walk turns
+ * every `<tr>` into a MailCraft row, so a section holding a heading and a
+ * subheading came back as two rows, each repainted with the section's
+ * background and each carrying the inner cell's padding while the section's
+ * own padding was dropped. A source `<tr>` inside a column is a block slot,
+ * not a row.
+ *
+ * Recognising the boundary keeps the column's blocks together in one row, and
+ * lets the section's `<td>` supply that row's padding, which is where it
+ * belonged all along. `tr -> row` is untouched everywhere else, which is what
+ * keeps MailCraft's own export round-tripping.
+ */
+function isColumnContainer(el) {
+  if (!el || el.nodeType !== 1 || el.tagName !== 'DIV') return false;
+  const s = el.style || {};
+  const sideBySide = /inline-block|inline-flex/.test(s.display || '') || /^(left|right)$/.test(s.cssFloat || s.float || '');
+  if (!sideBySide) return false;
+  if (!(s.width || s.maxWidth)) return false;
+  // A column holds its blocks in a table; a lone inline-block div with no
+  // table is a badge or a pill, and is content in its own right.
+  return Array.from(el.children).some((c) => c.tagName === 'TABLE');
+}
+
+/** Every block a set of rows holds, in order -- a MailCraft column is a flat list. */
+function blocksOfRows(rows) {
+  return rows.reduce((acc, r) => acc.concat(r.cols.reduce((a, c) => a.concat(c.blocks), [])), []);
 }
 
 /** A div/center that itself nests a div/table/center is acting as a structural container (a section wrapper, an outer page wrapper holding several sections) rather than as one piece of content -- its children need to be walked in their own right, not folded into one block. A div holding only inline content (text, spans, an image not otherwise recognized) is real content and is left to `blocksFromNodes`. */
@@ -1040,15 +1152,18 @@ function collectRows(nodes) {
    */
   const columns = inlineColumnGroup(nodes);
   if (columns) {
-    const row = mkRow(spansFromCells(columns, 0));
+    // The resolved shares win over the inline widths: a CSS-layout column is
+    // `width:100%` inline, so reading the elements again would score every
+    // column at 100 and fall back to an even split -- right for 33/33/34,
+    // wrong for 40/60.
+    const row = mkRow(columns.shares ? normalizeSpans(columns.shares) : spansFromCells(columns, 0));
     row.props.py = 0; row.props.px = 0; row.props.gap = 0;
     columns.forEach((k, i) => {
       // A MailCraft column holds a flat list of blocks, so whatever the
       // column div decomposes into is flattened into it. Recursing through
       // collectRows rather than blocksFromNodes is what lets a column hold a
       // content table (the usual MJML shape) instead of one opaque blob.
-      row.cols[i].blocks = collectRows(Array.from(k.childNodes))
-        .reduce((acc, r) => acc.concat(r.cols.reduce((a, c) => a.concat(c.blocks), [])), []);
+      row.cols[i].blocks = blocksOfRows(collectRows(Array.from(k.childNodes)));
       const cbg = bgOf(k); if (cbg) row.cols[i].bg = cbg;
       const crad = radiusOf(k.style); if (crad) row.cols[i].radius = crad;
       const cpd = padOf(k); if (cpd) { row.cols[i].padY = cpd.py; row.cols[i].padX = cpd.px; }
@@ -1073,6 +1188,18 @@ function collectRows(nodes) {
     if (n.nodeType === 8) return; // HTML comments (Outlook/MSO conditionals) -- inert
     if (n.nodeType === 1 && /^(SCRIPT|STYLE)$/.test(n.tagName)) return;
     if (n.nodeType === 1 && isHidden(n)) return;
+    // A lone column: its blocks belong to one row, not one row each.
+    if (n.nodeType === 1 && isColumnContainer(n) && !classifyNode(unwrapBoxDiv(n))) {
+      flushBuf();
+      const blocks = blocksOfRows(collectRows(Array.from(n.childNodes)));
+      if (blocks.length) {
+        const row = mkRow([100]);
+        row.props.py = 0; row.props.px = 0; row.props.gap = 0;
+        row.cols[0].blocks = blocks;
+        rows.push(...applyBgImage(applyFrame(applyPad(applyBg([row], bgOf(n)), padOf(n)), n), n));
+        return;
+      }
+    }
     if (n.nodeType === 1 && (n.tagName === 'DIV' || n.tagName === 'CENTER') && looksLikeContainer(n) && !classifyNode(unwrapBoxDiv(n))) {
       flushBuf();
       const inner = collectRows(Array.from(n.childNodes));

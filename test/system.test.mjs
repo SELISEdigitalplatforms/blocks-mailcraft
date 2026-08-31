@@ -727,5 +727,20 @@ await it('an explicit new-model choice is never overwritten by the legacy prop',
   assert.equal(migrateDoc({ theme: THEME(), rows: [row] }).rows[0].props.mobileCols, 2);
 });
 
+await it('a href that is a merge placeholder is handed back untouched', async () => {
+  // Only `{{ }}` used to be, so `[Survey URL]` came back as
+  // `https://[Survey URL]` -- which the sending engine expands into
+  // `https://https://...` and the link is dead.
+  assert.equal(linkHref('[Survey URL]'), '[Survey URL]');
+  assert.equal(linkHref('{{ url }}'), '{{ url }}');
+  assert.equal(linkHref('*|ARCHIVE|*'), '*|ARCHIVE|*');
+  assert.equal(linkHref('%%unsub%%'), '%%unsub%%');
+  assert.equal(linkHref('${link}'), '${link}');
+});
+
+await it('a real URL that merely contains a placeholder still gets its scheme', async () => {
+  assert.equal(linkHref('example.com/{{id}}'), 'https://example.com/{{id}}', 'anchored at the start, not anywhere');
+});
+
 console.log(`\n${passed} passed, ${failed} failed.`);
 if (failed) process.exit(1);

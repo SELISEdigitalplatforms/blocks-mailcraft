@@ -367,6 +367,85 @@ await it('classic table columns still work exactly as before', async () => {
   assert.deepEqual(rows.map((r) => r.cols.map((c) => c.span)), [[50, 50]]);
 });
 
+/*
+ * Row -> column -> blocks, preserved.
+ *
+ * A `<tr>` inside a column is a block slot, not a row. Anchoring the row on
+ * the `<tr>` meant one section holding a heading and a subheading came back
+ * as two rows -- each repainted with the section's background, each carrying
+ * the inner cell's padding while the section's own padding was dropped, and
+ * with the column itself gone. `tr -> row` still holds everywhere else, which
+ * is what keeps MailCraft's own export round-tripping.
+ */
+const mjCol = (cls, inline, blocks) => `<div class="${cls}" style="${inline}">`
+  + `<table border="0" cellpadding="0" cellspacing="0" role="presentation" width="100%"><tbody>${blocks}</tbody></table></div>`;
+const mjBlock = (size, text) => `<tr><td align="center" style="padding:10px 25px;">`
+  + `<div style="font-family:Arial;font-size:${size}px;line-height:1;color:#374151;">${text}</div></td></tr>`;
+const mjSection = (bg, pad, cols) => `<!doctype html><html><head><style>
+@media only screen and (min-width:480px) {
+  .mj-column-per-100 { width: 100% !important; max-width: 100%; }
+  .mj-column-per-33-33 { width: 33.33% !important; max-width: 33.33%; }
+}
+</style></head><body><div style="background:${bg};margin:0px auto;max-width:600px;">
+<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background:${bg};width:100%;"><tbody><tr>
+<td style="direction:ltr;font-size:0px;padding:${pad};text-align:center;">${cols}</td>
+</tr></tbody></table></div></body></html>`;
+const IB100 = 'font-size:0px;text-align:left;display:inline-block;vertical-align:top;width:100%;';
+
+await it("a column's blocks stay in one row instead of becoming a row each", async () => {
+  const rows = rowsOf(mjSection('#DB2777', '40px 20px', mjCol('mj-column-per-100', IB100, mjBlock(28, 'Your Opinion Matters') + mjBlock(16, 'Help us improve'))));
+  assert.equal(rows.length, 1, 'one section, one row');
+  assert.equal(rows[0].cols.length, 1);
+  assert.equal(rows[0].cols[0].blocks.length, 2, 'both blocks in the one column');
+});
+
+await it("the section's own padding becomes the row's, not the inner cell's", async () => {
+  const rows = rowsOf(mjSection('#DB2777', '40px 20px', mjCol('mj-column-per-100', IB100, mjBlock(28, 'A'))));
+  // Anchored on the <tr>, the inner cell's 10px/25px won and the section's
+  // real 40px/20px was dropped -- roughly half the intended inset.
+  assert.equal(rows[0].props.py, 40);
+  assert.equal(rows[0].props.px, 20);
+});
+
+await it('a share declared only by a class in a desktop media query is still found', async () => {
+  // MJML writes `width:100%` inline and the real 33.33% in a
+  // `@media (min-width:480px)` rule, which the cascade folder strips.
+  const three = [1, 2, 3].map(() => mjCol('mj-column-per-33-33', IB100, mjBlock(32, 'x'))).join('');
+  const rows = rowsOf(mjSection('#FDF2F8', '30px 20px', three));
+  assert.equal(rows.length, 1, 'one row, not three and not six');
+  assert.deepEqual(rows[0].cols.map((c) => c.span), [33, 33, 34]);
+  rows[0].cols.forEach((c) => assert.equal(c.blocks.length, 1));
+});
+
+await it('a mobile-only override is never mistaken for the layout', async () => {
+  const src = mjSection('#fff', '10px', [1, 2].map(() => mjCol('narrow', IB100, mjBlock(16, 'x'))).join(''))
+    .replace('@media only screen and (min-width:480px)', '@media only screen and (max-width:480px)')
+    .replace('.mj-column-per-100', '.narrow');
+  // The only rule that could supply a share sits in a max-width block, which
+  // describes the narrow screen, not the desktop layout.
+  assert.equal(rowsOf(src).length, 2, 'left stacked rather than guessed at');
+});
+
+await it('a bulletproof button is one block, never a layout row of its own', async () => {
+  const button = '<tr><td align="center" style="padding:20px 0;">'
+    + '<table border="0" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:separate;"><tr>'
+    + '<td align="center" bgcolor="#DB2777" style="border-radius:6px;background:#DB2777;">'
+    + '<a href="https://example.com" style="display:inline-block;background:#DB2777;color:#ffffff;padding:10px 25px;">Take Survey</a>'
+    + '</td></tr></table></td></tr>';
+  const rows = rowsOf(mjSection('#ffffff', '40px 20px', mjCol('mj-column-per-100', IB100, button)));
+  assert.equal(rows.length, 1);
+  // Read as a layout row, the button's cell became the row's colour source
+  // and repainted a white band pink.
+  assert.equal(rows[0].props.bg, '#ffffff', 'the section keeps its own background');
+  assert.equal(rows[0].cols[0].blocks[0].type, 'button');
+});
+
+await it('a genuine layout table still gives one row per tr', async () => {
+  const rows = rowsOf(email('<tr><td style="padding:10px 25px"><p style="font-size:14px">One</p></td></tr>'
+    + '<tr><td style="padding:10px 25px"><p style="font-size:14px">Two</p></td></tr>'));
+  assert.equal(rows.length, 2, 'tr -> row is untouched outside a column');
+});
+
 console.log(`\n${passed} passed, ${failed} failed.`);
 closeDom();
 process.exit(failed ? 1 : 0);

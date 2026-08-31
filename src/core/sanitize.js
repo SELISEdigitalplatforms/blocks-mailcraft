@@ -160,7 +160,14 @@ export const linkHref = (u) => {
     if (!/^[a-z][a-z0-9+.-]*:\d/i.test(raw)) return '';
   }
   if (raw.startsWith('//')) return 'https:' + raw;
-  if (/^[#/]/.test(raw) || raw.startsWith('{{')) return raw;
+  // A href that *is* a merge placeholder is handed back untouched. Only
+  // `{{ }}` used to be, so `[Survey URL]` -- and Mailchimp's `*|URL|*`, and
+  // `%%url%%`, and `${url}` -- came back as `https://[Survey URL]`, which the
+  // sending engine then expands into `https://https://...` and the link is
+  // dead. Anchored to the start on purpose: `example.com/{{id}}` is a real
+  // relative URL and still needs its scheme.
+  if (/^(?:\{\{|\[|%%|\*\||\$\{)/.test(raw)) return raw;
+  if (/^[#/]/.test(raw)) return raw;
   if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) return 'mailto:' + raw;
   return 'https://' + raw;
 };
