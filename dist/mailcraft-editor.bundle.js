@@ -352,7 +352,12 @@ unsubscribe_url`,Z=k=>"{{ "+k+" }}";function te(k){return(Array.isArray(k)?k:Str
 #mc .mc-workspace [data-mc-sheet="1"] { border: 1px solid rgba(15,23,42,.10); border-radius: 4px; background: #ffffff; box-shadow: 0 2px 5px rgba(15,23,42,.05), 0 14px 38px rgba(15,23,42,.10) !important; }
 #mc[data-chrome="dark"] .mc-workspace [data-mc-sheet="1"] { border-color: rgba(148,163,184,.46); box-shadow: 0 0 0 1px rgba(15,23,42,.48), 0 22px 58px rgba(0,0,0,.38) !important; }
 #mc[data-chrome="dark"] .mc-preview-body [data-mc-sheet="1"] { border: 0; box-shadow: none !important; }
-#mc .mc-inspector { box-shadow: -10px 0 30px rgba(42,47,77,.04); color: var(--ed-panel-label); }
+/* A real elevation, not a hint: at .04 the panel read as flush with the
+   canvas, which is exactly what its border already says -- the shadow is
+   there to lift the settings panel above the workspace. Dark chrome needs
+   its own, stronger pass: a dark shadow on a dark ground disappears. */
+#mc .mc-inspector { box-shadow: -14px 0 34px rgba(15,23,42,.09), -2px 0 8px rgba(15,23,42,.05); color: var(--ed-panel-label); }
+#mc[data-chrome="dark"] .mc-inspector { box-shadow: -14px 0 34px rgba(0,0,0,.42), -2px 0 8px rgba(0,0,0,.28); }
 #mc .mc-tabbar { grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); padding: 7px 8px 0; gap: 3px; border-bottom: 0 !important; background: var(--ed-panel) !important; overflow: visible; position: relative; z-index: 12; }
 #mc .mc-tabbar button { position: relative; min-width: 0; height: 39px; border-radius: 8px 8px 0 0 !important; padding: 0 !important; display: flex; align-items: center; justify-content: center; font-family: var(--ed-font) !important; }
 #mc .mc-tabbar button svg { width: 16px; height: 16px; display: block; }
