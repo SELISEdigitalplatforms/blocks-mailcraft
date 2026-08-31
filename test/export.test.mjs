@@ -212,6 +212,15 @@ await it('a blank expression emits no tag at all', async () => {
   assert.equal(/\{\{\/if\}\}/.test(html), false, 'its end marker is skipped too');
 });
 
+await it('the canvas drop shadow rides the content table, only when asked', async () => {
+  const plain = render(docOf([mk('text')]));
+  assert.equal(/box-shadow/.test(plain), false, 'no shadow with theme.shadow unset');
+  const doc = docOf([mk('text')]);
+  doc.theme = Object.assign({}, THEME, { shadow: '0 8px 28px rgba(23,32,51,0.14)' });
+  const html = buildHtml({ doc }, stubRoot({}), boxCss);
+  assert.match(html, /width:620px;max-width:100%[^"]*box-shadow:0 8px 28px rgba\(23,32,51,0\.14\)/);
+});
+
 await it('the content-area border rides the content table, only when asked', async () => {
   const plain = render(docOf([mk('text')]));
   assert.equal(/max-width:100%[^"]*border:/.test(plain), false, 'no border style with borderW unset');

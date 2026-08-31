@@ -442,6 +442,21 @@ function logicMarkersOf(text) {
   return out;
 }
 
+/** Whether an element (or the transparent single-child chain under it) carries its own padding -- the shape the exporter writes for a block's py/px, and a builder section's own spacing. Such a wrapper is one block, never part of a text run. */
+function hasOwnRunPad(el) {
+  let e = el;
+  if (e.style && paddingOf(e.style)) return true;
+  while (
+    e.children && e.children.length === 1
+    && !INLINE_TAGS.test(e.firstElementChild.tagName)
+    && (e.textContent || '') === (e.firstElementChild.textContent || '')
+  ) {
+    e = e.firstElementChild;
+    if (e.style && paddingOf(e.style)) return true;
+  }
+  return false;
+}
+
 function blocksFromNodes(nodes) {
   const out = [];
   let buf = [];
@@ -458,6 +473,11 @@ function blocksFromNodes(nodes) {
         // first-element-only read never saw. Per-element differences inside
         // the run survive as the inline styles `cleanImportHtml` now keeps.
         let baseEl = INLINE_TAGS.test(bufFirstEl.tagName) ? (bufFirstEl.parentElement || bufFirstEl) : bufFirstEl;
+        // The run's own spacing: the exporter writes a text block's py/px as
+        // padding on the wrapper div the descent below walks straight past
+        // (it lands on the <p>), so a padded block came back at the default
+        // 10px/0 on every save. First padding on the wrapper chain wins.
+        let runPad = paddingOf(baseEl.style);
         // Then descend through transparent single-child wrappers: builders
         // nest a `font-family:sans-serif` shim div around the div that
         // carries the real typography, and `inheritedStyle` below walks *up*
@@ -467,7 +487,8 @@ function blocksFromNodes(nodes) {
           baseEl.children.length === 1
           && !INLINE_TAGS.test(baseEl.firstElementChild.tagName)
           && (baseEl.textContent || '') === (baseEl.firstElementChild.textContent || '')
-        ) baseEl = baseEl.firstElementChild;
+        ) { baseEl = baseEl.firstElementChild; if (!runPad) runPad = paddingOf(baseEl.style); }
+        if (runPad) { over.py = runPad.py; over.px = runPad.px; }
         const size = fontPx(inheritedStyle(baseEl, 'fontSize')); if (size) over.size = size;
         const color = inheritedStyle(baseEl, 'color'); if (color) over.color = color;
         over.align = textAlignOf(baseEl);
@@ -513,8 +534,14 @@ function blocksFromNodes(nodes) {
       return;
     }
     if (isStructural(target)) { flush(); out.push(blk('html', { code: n.outerHTML })); return; }
+    // A wrapper carrying its own padding is a block boundary, not part of a
+    // run: the exporter writes every text block as exactly such a padded div,
+    // and buffering two of them together merged neighbouring blocks into one
+    // -- the second lost its padding, size, everything -- on every save.
+    if (n.nodeType === 1 && !INLINE_TAGS.test(target.tagName) && hasOwnRunPad(target) && buf.length) flush();
     if (!bufFirstEl) bufFirstEl = target;
     buf.push(n.outerHTML);
+    if (n.nodeType === 1 && !INLINE_TAGS.test(target.tagName) && hasOwnRunPad(target)) flush();
   });
   flush();
   return out;
@@ -570,16 +597,26 @@ function isPassthroughTable(tb) {
   return cells.length === 1;
 }
 
+/** CSSOM hands colors back as `rgb(r, g, b)` even when the source (and the
+ * user's own value) was hex -- so every save visibly rewrote colour fields.
+ * Solid rgb() flattens back to hex; anything else (rgba, keywords,
+ * `transparent`) passes through untouched. */
+function hexOf(value) {
+  const m = /^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/.exec(String(value == null ? '' : value).trim());
+  if (!m) return value;
+  return '#' + [m[1], m[2], m[3]].map((n) => Number(n).toString(16).padStart(2, '0')).join('');
+}
+
 function bgOf(el) {
   const st = el.style;
-  if (st && st.backgroundColor) return st.backgroundColor;
+  if (st && st.backgroundColor) return hexOf(st.backgroundColor);
   // The `background` shorthand is only a usable *color* when it holds no
   // image/gradient -- browsers populate `backgroundColor` from a shorthand
   // that includes a color, so reaching here with a url() means there is no
   // color to take (and taking the raw string set broken values).
   const short = (st && st.background) || '';
-  if (short && short.indexOf('url(') < 0 && short.indexOf('gradient(') < 0) return short;
-  return (el.getAttribute && el.getAttribute('bgcolor')) || '';
+  if (short && short.indexOf('url(') < 0 && short.indexOf('gradient(') < 0) return hexOf(short);
+  return hexOf((el.getAttribute && el.getAttribute('bgcolor')) || '');
 }
 
 function padOf(el) {
@@ -604,7 +641,7 @@ function applyPad(rows, pad) {
 
 /** Longhand side colors are always a single value; the `borderColor` shorthand reads back as a per-side list when the sides differ (`rgb(...) rgb(...) currentcolor`), which is not a usable color. */
 function borderColorOf(st) {
-  const ok = (v) => (v && v !== 'currentcolor' ? v : '');
+  const ok = (v) => (v && v !== 'currentcolor' ? hexOf(v) : '');
   return ok(st.borderTopColor) || ok(st.borderLeftColor) || ok(st.borderRightColor) || ok(st.borderBottomColor) || '';
 }
 
@@ -940,7 +977,7 @@ function collectRows(nodes) {
 function themeFromParsedDoc(doc) {
   const theme = {};
   const body = doc.body;
-  let bg = (body.style && (body.style.backgroundColor || body.style.background)) || body.getAttribute('bgcolor') || '';
+  let bg = hexOf((body.style && (body.style.backgroundColor || body.style.background)) || body.getAttribute('bgcolor') || '');
   if (!bg) {
     const outer = body.querySelector('table');
     if (outer) bg = bgOf(outer) || (outer.querySelector('td') ? bgOf(outer.querySelector('td')) : '');
@@ -986,12 +1023,26 @@ function themeFromParsedDoc(doc) {
         theme.borderStyle = borderStyleOf(content.style);
         theme.borderColor = borderColorOf(content.style) || '';
       }
+      const sh = content.style && content.style.boxShadow;
+      if (sh && sh !== 'none') theme.shadow = sh;
+      // CLAIMED MEANS CONSUMED. These styles now live on the theme; leaving
+      // them on the node let the row walker's card-folding (applyFrame /
+      // applyPad) absorb the very same border, radius, shadow and page
+      // padding into the rows -- so one save doubled every frame the user
+      // had set at canvas level. htmlToDoc runs this pass before the row
+      // pass for exactly this reason.
+      if (content.style) {
+        content.style.border = '';
+        content.style.borderRadius = '';
+        content.style.boxShadow = '';
+      }
       const cell = content.closest ? content.closest('td') : null;
       if (cell && cell.style) {
         const padY = PX(cell.style.paddingTop);
         const padX = PX(cell.style.paddingLeft);
         if (padY > 0) theme.padY = padY;
         if (padX > 0) theme.padX = padX;
+        cell.style.padding = '';
       }
     }
   }
@@ -1018,8 +1069,8 @@ function themeFromParsedDoc(doc) {
     linkCounts[c] = (linkCounts[c] || 0) + 1;
   });
   const link = Object.keys(linkCounts).sort((a, b) => linkCounts[b] - linkCounts[a])[0];
-  if (link) theme.link = link;
-  if (body.style && body.style.color) theme.text = body.style.color;
+  if (link) theme.link = hexOf(link);
+  if (body.style && body.style.color) theme.text = hexOf(body.style.color);
   return theme;
 }
 
@@ -1057,7 +1108,10 @@ export function htmlToDoc(src) {
   // (never-inlined exports, hand-written emails) classify like inlined ones.
   // Best-effort: a pathological stylesheet must never block the import.
   try { inlineStylesheets(doc); } catch { /* proceed with inline styles only */ }
-  return { rows: collectRows(Array.from(doc.body.childNodes)), theme: themeFromParsedDoc(doc) };
+  // Theme first: themeFromParsedDoc consumes the styles it claims off the
+  // scaffold nodes, and the row walker must see the cleaned DOM.
+  const theme = themeFromParsedDoc(doc);
+  return { rows: collectRows(Array.from(doc.body.childNodes)), theme };
 }
 
 export function htmlToRows(src) {

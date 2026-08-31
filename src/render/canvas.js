@@ -186,6 +186,8 @@ export function renderDoc(core, live) {
     // Same contract for the full content-area border: set only when asked,
     // so the chrome's own subtle frame keeps marking the sheet otherwise.
     border: borderW ? borderW + 'px ' + (theme.borderStyle || 'solid') + ' ' + (theme.borderColor || '#e2e2e5') : '',
+    // And for the canvas-wide drop shadow -- unset keeps the chrome's own.
+    boxShadow: theme.shadow || '',
     // Clipping the rows to that corner is right for the sent email (export
     // emits `overflow:hidden` alongside the radius) and for the static
     // preview, but not for the editable canvas: the sheet is also what the

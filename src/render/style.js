@@ -304,6 +304,10 @@ export const STYLE = `
 #mc .mc-inspector .mc-section-body { padding: 12px 14px 16px !important; }
 #mc .mc-inspector .mc-section-body > :first-child { margin-top: 0 !important; }
 #mc .mc-field-list { display: grid; align-content: start; gap: 12px; }
+/* The author display:grid above beats the UA rule [hidden]{display:none},
+   which is exactly how the accordion silently stopped collapsing: the bar
+   toggled the hidden attribute and the grid stayed painted. Hidden wins. */
+#mc .mc-field-list[hidden], #mc .mc-section-body[hidden] { display: none !important; }
 #mc .mc-field-list .mc-field { min-width: 0; }
 #mc .mc-field-list .mc-field-row {
   display: grid !important; grid-template-columns: minmax(0, 1fr) 168px;

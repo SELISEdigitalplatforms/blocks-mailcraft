@@ -93,6 +93,10 @@ export function buildHtml(state, root, boxCss) {
     if (!el) return '';
     return el.outerHTML
       .replace(/\scontenteditable="[^"]*"/g, '')
+      // Editor bookkeeping (caret restoration): a fresh random id every
+      // import, so leaving it in shipped mail also made export -> import ->
+      // export never converge byte-for-byte.
+      .replace(/\sdata-focus-key="[^"]*"/g, '')
       .replace(/\sdata-mc-[a-z-]+="[^"]*"/g, '')
       .replace(/\sspellcheck="[^"]*"/g, '')
       .replace(/\sdata-(?:gramm|gramm_editor|enable-grammarly|lt-active)="[^"]*"/g, '')
@@ -157,6 +161,9 @@ export function buildHtml(state, root, boxCss) {
   // `overflow:hidden` is what actually clips a row's own background to the
   // rounded corner; without it the first and last rows paint square over it.
   const contentShape = (t.radius ? 'border-radius:' + t.radius + 'px;overflow:hidden;' : '')
-    + (t.borderW ? 'border:' + t.borderW + 'px ' + (t.borderStyle || 'solid') + ' ' + (t.borderColor || '#e2e2e5') + ';' : '');
+    + (t.borderW ? 'border:' + t.borderW + 'px ' + (t.borderStyle || 'solid') + ' ' + (t.borderColor || '#e2e2e5') + ';' : '')
+    // Patchy in mail clients (Outlook drops it), but honest: what the user
+    // styled ships, and capable clients render it.
+    + (t.shadow ? 'box-shadow:' + t.shadow + ';' : '');
   return '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<meta name="color-scheme" content="light dark">\n<title>' + 'Email' + '</title>\n</head>\n<body style="margin:0;padding:0;background:' + pageBg + ';font-family:' + t.font.replace(/"/g, "'") + ';color:' + t.text + ';-webkit-font-smoothing:antialiased;">\n<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:' + pageBg + ';">\n  <tr><td align="center" style="padding:' + pagePad + ';">\n    <table role="presentation" width="' + t.width + '" cellpadding="0" cellspacing="0" border="0" style="width:' + t.width + 'px;max-width:100%;background:' + (t.contentBg || 'transparent') + ';' + contentShape + '">\n' + rows + '\n    </table>\n  </td></tr>\n</table>\n</body>\n</html>';
 }

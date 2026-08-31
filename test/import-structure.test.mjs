@@ -258,6 +258,36 @@ await it('a transparent content area survives the export -> import round trip', 
   assert.match(String(solid.theme.contentBg).toLowerCase(), /#ffffff|rgb\(255,\s*255,\s*255\)/, 'a solid colour still round-trips');
 });
 
+await it('theme styling is claimed once -- never folded into the rows as well', async () => {
+  // The exporter writes the content border/radius/shadow on the content
+  // table and the page padding on its centering cell. The theme pass claims
+  // AND consumes them; before it did, the row walker's card-folding absorbed
+  // the same values into every row, so each save visibly doubled the frame.
+  const html = '<!doctype html><html><body style="background:#eef2f7">'
+    + '<table role="presentation" width="100%"><tr><td align="center" style="padding:24px 16px;">'
+    + '<table role="presentation" width="600" style="width:600px;background:#ffffff;border:3px dashed #123456;border-radius:12px;box-shadow:0 8px 28px rgba(23,32,51,0.14)">'
+    + '<tr><td style="padding:10px"><p>one</p></td></tr><tr><td style="padding:10px"><p>two</p></td></tr>'
+    + '</table></td></tr></table></body></html>';
+  const doc = htmlToDoc(html);
+  assert.equal(doc.theme.borderW, 3, 'border claimed by the theme');
+  assert.equal(doc.theme.radius, 12, 'radius claimed by the theme');
+  assert.equal(doc.theme.padY, 24, 'page padding claimed by the theme');
+  assert.equal(doc.theme.padX, 16);
+  assert.equal(doc.theme.shadow, '0 8px 28px rgba(23,32,51,0.14)', 'shadow claimed by the theme');
+  doc.rows.forEach((row, i) => {
+    assert.equal(row.props.border || 0, 0, 'row ' + i + ' inherits no theme border');
+    assert.equal(row.props.radius || 0, 0, 'row ' + i + ' inherits no theme radius');
+    assert.equal(row.props.shadow || '', '', 'row ' + i + ' inherits no theme shadow');
+    assert.equal(row.props.py, 10, 'row ' + i + ' keeps its own real padding, not the page band');
+  });
+});
+
+await it('imported colors come back as hex, not CSSOM rgb()', async () => {
+  const doc = htmlToDoc(email('<tr><td><p>hello</p></td></tr>', 'background:rgb(238, 242, 247)'));
+  assert.equal(doc.theme.bg, '#eef2f7');
+  assert.match(String(doc.theme.contentBg), /^#f{6}$|^#ffffff$/i);
+});
+
 await it('a content-area border survives the export -> import round trip', async () => {
   const doc = htmlToDoc(email('<tr><td><p>hello</p></td></tr>').replace(
     'style="width:600px;background:#ffffff"',

@@ -107,6 +107,23 @@ for (const tab of ['design', 'blocks', 'rows', 'layers', 'files', 'data', 'theme
  * one value a page or content background most often wants was unreachable
  * from the panel even though the exporter has always passed it through.
  */
+await it('a section bar actually collapses its body', async () => {
+  // The panel's own `display: grid` used to beat the UA's [hidden] rule, so
+  // the accordion toggled state while everything stayed visible.
+  const el = await mountEditor();
+  el.importHtml(EMAIL);
+  await settle();
+  el.core.setState({ tab: 'theme' });
+  await settle();
+  const bar = q(el, '.mc-section-bar');
+  const body = bar.nextElementSibling;
+  assert.equal(body.hidden, false);
+  bar.dispatchEvent(new (win().MouseEvent)('click', { bubbles: true }));
+  assert.equal(body.hidden, true, 'the body carries [hidden]');
+  bar.dispatchEvent(new (win().MouseEvent)('click', { bubbles: true }));
+  assert.equal(body.hidden, false, 'and toggles back');
+});
+
 await it('the canvas tab offers the page padding and content radius steppers', async () => {
   const el = await mountEditor();
   el.importHtml(EMAIL);
@@ -114,7 +131,7 @@ await it('the canvas tab offers the page padding and content radius steppers', a
   el.core.setState({ tab: 'theme' });
   await settle();
   const labels = () => qa(el, '.mc-inspector .mc-field-label, .mc-inspector label').map((n) => n.textContent.trim());
-  ['Page background color', 'Top & bottom', 'Sides', 'Corner radius', 'Border thickness'].forEach((name) => {
+  ['Page background color', 'Top & bottom', 'Sides', 'Corner radius', 'Border thickness', 'Drop shadow'].forEach((name) => {
     assert.ok(labels().some((l) => l.indexOf(name) > -1), 'the panel offers ' + name);
   });
   // Style and colour reveal only once there is a border to style, like the
@@ -287,6 +304,23 @@ await it('a transparent page keeps the preview overlay opaque', async () => {
   assert.ok(body.style.background, 'a set page colour paints the body inline over the fallback');
   el.core.setState({ previewOpen: false });
   await settle();
+});
+
+await it('every shipped template is a save round-trip fixed point', async () => {
+  // The strongest anti-drift guard there is: export -> import -> export must
+  // be byte-identical. Anything that leaks styling between levels, loses a
+  // block's own spacing, merges neighbours, or ships an unstable editor
+  // attribute breaks this on a real template.
+  const fs = await import('node:fs');
+  const el = await mountEditor();
+  for (const f of fs.readdirSync(new URL('../examples/templates', import.meta.url))) {
+    el.importHtml(fs.readFileSync(new URL('../examples/templates/' + f, import.meta.url), 'utf8'));
+    await settle();
+    const h1 = el.exportHtml();
+    el.importHtml(h1);
+    await settle();
+    assert.equal(el.exportHtml(), h1, f + ' converges after one save');
+  }
 });
 
 await it('the code modal round-trips the document through html', async () => {

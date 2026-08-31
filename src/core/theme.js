@@ -12,4 +12,4 @@
  * accept the literal `transparent` (and any rgba()/#rrggbbaa value) as well
  * as a hex colour.
  */
-export const THEME = () => ({ bg: '#eef2f7', contentBg: '#ffffff', width: 620, padY: 0, padX: 0, radius: 0, borderW: 0, borderStyle: 'solid', borderColor: '#e2e2e5', font: '"Helvetica Neue", Helvetica, Arial, sans-serif', text: '#172033', link: '#0065b3' });
+export const THEME = () => ({ bg: '#eef2f7', contentBg: '#ffffff', width: 620, padY: 0, padX: 0, radius: 0, borderW: 0, borderStyle: 'solid', borderColor: '#e2e2e5', shadow: '', font: '"Helvetica Neue", Helvetica, Arial, sans-serif', text: '#172033', link: '#0065b3' });

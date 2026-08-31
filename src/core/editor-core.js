@@ -1501,6 +1501,12 @@ export class EditorCore {
       B.color('Content area background color', 'contentBg', { transparent: true, solid: '#ffffff' }),
       B.range('Corner radius', 'radius', 0, 48, 1, 'px'),
       B.range('Border thickness', 'borderW', 0, 12, 1, 'px'),
+      B.sel('Drop shadow', 'shadow', [
+        { value: '', label: 'None' },
+        { value: '0 2px 8px rgba(23,32,51,0.08)', label: 'Soft' },
+        { value: '0 8px 28px rgba(23,32,51,0.14)', label: 'Medium' },
+        { value: '0 18px 48px rgba(23,32,51,0.22)', label: 'Deep' },
+      ]),
     ].concat(this.state.doc.theme.borderW ? [
       B.sel('Border style', 'borderStyle', BORDER_STYLES),
       B.color('Border color', 'borderColor'),
