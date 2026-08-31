@@ -60,7 +60,14 @@ export const mkRow = (spans, blocks) => ({
     border: 0, borderStyle: 'solid', lineColor: '#e2e2e5', bTop: true, bRight: true, bBottom: true, bLeft: true, radius: 0, shadow: '', maxW: 100,
     mt: 0, mr: 0, mb: 0, ml: 0,
     layout: 'columns', flexDir: 'row', justify: 'flex-start', alignItems: 'stretch', wrap: true, gridCols: 2,
-    py: 20, px: 24, padSplit: false, gap: 20, valign: 'top', stackMobile: true,
+    py: 20, px: 24, padSplit: false, gap: 20, valign: 'top',
+    // What this row does on a narrow screen. `mobileCols` is the number of
+    // columns it keeps there -- 1 stacks (the old `stackMobile: true`), 2 makes
+    // a two-up grid, 'keep' leaves the desktop layout alone (the old
+    // `stackMobile: false`). `mobileOrder: 'reverse'` flips the visual order,
+    // which is how an alternating image/text strip keeps the image on top of
+    // every band once stacked. Saved documents are mapped over in migrateDoc.
+    mobileCols: 1, mobileOrder: 'normal',
   },
   cols: spans.map((s, i) => ({ id: uid(), span: s, blocks: i === 0 && blocks ? blocks : [] })),
 });
@@ -210,6 +217,13 @@ export function migrateDoc(doc) {
       // 'square' choice rather than silently becoming an unrecognized value.
       c.blocks.forEach((b) => { if (b.type === 'social' && b.props.shape === 'solid') b.props.shape = 'square'; });
     });
+    // Mobile behaviour used to be one boolean, `stackMobile`. Mapped before
+    // the defaults are applied, or every document saved before this build
+    // would take `mobileCols: 1` from the defaults and a row that had
+    // deliberately opted out of stacking would start stacking.
+    if (r.props.mobileCols === undefined && r.props.stackMobile !== undefined) {
+      r.props.mobileCols = r.props.stackMobile === false ? 'keep' : 1;
+    }
     Object.keys(defaults).forEach((k) => { if (r.props[k] === undefined) r.props[k] = defaults[k]; });
     if (hadBlocks && !r.cols.some((c) => c.blocks.length)) emptied.push(r.id);
   });

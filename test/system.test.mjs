@@ -692,5 +692,40 @@ await it('the footer resolves every shape a host configures it with', () => {
   }
 });
 
+/*
+ * Mobile behaviour used to be the boolean `stackMobile`. Every saved document
+ * still carries it, so the mapping onto `mobileCols` has to happen before row
+ * defaults are applied -- otherwise a row that had deliberately opted out of
+ * stacking would take `mobileCols: 1` from the defaults and start stacking.
+ */
+await it('a row that opted out of stacking keeps that meaning under the new model', async () => {
+  const row = mkRow([50, 50], [mk('text')]);
+  delete row.props.mobileCols;
+  row.props.stackMobile = false;
+  const doc = migrateDoc({ theme: THEME(), rows: [row] });
+  assert.equal(doc.rows[0].props.mobileCols, 'keep');
+});
+
+await it('a row that stacked still stacks', async () => {
+  const row = mkRow([50, 50], [mk('text')]);
+  delete row.props.mobileCols;
+  row.props.stackMobile = true;
+  assert.equal(migrateDoc({ theme: THEME(), rows: [row] }).rows[0].props.mobileCols, 1);
+});
+
+await it('a document predating the toggle entirely gets the stacking default', async () => {
+  const row = mkRow([50, 50], [mk('text')]);
+  delete row.props.mobileCols;
+  delete row.props.stackMobile;
+  assert.equal(migrateDoc({ theme: THEME(), rows: [row] }).rows[0].props.mobileCols, 1);
+});
+
+await it('an explicit new-model choice is never overwritten by the legacy prop', async () => {
+  const row = mkRow([50, 50], [mk('text')]);
+  row.props.mobileCols = 2;
+  row.props.stackMobile = false;
+  assert.equal(migrateDoc({ theme: THEME(), rows: [row] }).rows[0].props.mobileCols, 2);
+});
+
 console.log(`\n${passed} passed, ${failed} failed.`);
 if (failed) process.exit(1);

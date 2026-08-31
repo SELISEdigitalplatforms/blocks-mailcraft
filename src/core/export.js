@@ -153,8 +153,50 @@ export function buildHtml(state, root, boxCss) {
       .replace(/\sdata-(?:gramm|gramm_editor|enable-grammarly|lt-active)="[^"]*"/g, '')
       .replace(/\sdraggable="[^"]*"/g, '');
   };
+  /*
+   * Which mobile rules this document actually needs. Only the ones a row (or
+   * a block) asks for are emitted, and rows that ask for the same thing share
+   * one class -- so a template that never leaves the defaults ships exactly
+   * the stylesheet it shipped before this feature existed, and one that uses
+   * every mode still ships a handful of rules rather than BEE's one selector
+   * per block with no deduplication.
+   */
+  const need = { stack: false, twoUp: false, reverse: false, hideM: false, hideD: false };
+  /**
+   * One decision per row, made once: what goes on the row box (`<tr>`, or the
+   * flex/grid wrapper) and what goes on each cell.
+   *
+   * The plain one-up stack keeps the exact markup and rule it had before this
+   * feature -- `mc-col` on the cells, no flex anywhere -- so the overwhelmingly
+   * common case cannot regress, and if a sanitiser ever strips `display:flex`
+   * the fancy modes degrade to the desktop layout rather than taking ordinary
+   * stacking down with them.
+   */
+  const mobilePlan = (rp, cols) => {
+    const mode = rp.mobileCols === undefined ? 1 : rp.mobileCols;
+    if (cols < 2 || mode === 'keep') return { row: '', cell: '' };
+    const rowCls = [];
+    // Two-up and reverse both need the row to become a flex container, which
+    // is safe precisely because it only ever runs inside the media query: a
+    // client that cannot do flex is a client that ignored the query and is
+    // still being shown the desktop table.
+    if (String(mode) === '2') { rowCls.push('mc-2up'); need.twoUp = true; }
+    if (rp.mobileOrder === 'reverse') { rowCls.push('mc-rev'); need.reverse = true; }
+    // Cells only carry `mc-col` in one-up; in two-up the row's own rule sizes
+    // them, so the two never fight over width.
+    const cell = String(mode) === '2' ? '' : 'mc-col';
+    if (cell) need.stack = true;
+    return { row: rowCls.join(' '), cell };
+  };
+  /** Per-block device visibility. Absent means "all devices", so nothing is emitted. */
+  const visClass = (bp) => {
+    if (bp.vis === 'desktop') { need.hideM = true; return ' class="mc-only-d"'; }
+    if (bp.vis === 'mobile') { need.hideD = true; return ' class="mc-only-m"'; }
+    return '';
+  };
   const rows = d.rows.map((r) => {
     const rp = r.props;
+    const plan = mobilePlan(rp, r.cols.length);
     // A row holding nothing but logic markers exists to wrap the *sections*
     // around it (drop a Condition onto the canvas above and below a group of
     // rows). Emitting its <tr> scaffolding would leave an empty padded band
@@ -170,7 +212,7 @@ export function buildHtml(state, root, boxCss) {
       if (b.type === 'html') return b.props.code || '';
       if (b.type === 'svg') return '<div style="text-align:' + b.props.align + ';padding:' + b.props.py + 'px 0">' + (b.props.code || '') + '</div>';
       if (b.type === 'condition' || b.type === 'loop') return logic.emit.get(b.id) || '';
-      return '<div style="' + boxCss(b.props) + '">' + grab(b.id) + '</div>';
+      return '<div' + visClass(b.props) + ' style="' + boxCss(b.props) + '">' + grab(b.id) + '</div>';
     }).filter(Boolean).join('\n            ') || '&nbsp;';
     const cells = r.cols.map((c) => {
       // Column-level styling (bg/radius/inner padding) renders as a wrapper
@@ -179,24 +221,21 @@ export function buildHtml(state, root, boxCss) {
       const inner = (c.bg || c.border || c.radius || c.padY || c.padX)
         ? '<div style="background:' + (c.bg || 'transparent') + ';' + (c.border ? 'border:' + c.border + 'px ' + (c.borderStyle || 'solid') + ' ' + (c.lineColor || '#e2e2e5') + ';' : '') + 'border-radius:' + (c.radius || 0) + 'px;padding:' + (c.padY || 0) + 'px ' + (c.padX || 0) + 'px">\n            ' + colInner(c) + '\n            </div>'
         : colInner(c);
-      // `mc-col` is what the stylesheet's one media query targets to stack
-      // this cell under its neighbour on a narrow screen -- the behaviour the
-      // row's "Stack columns on mobile" toggle has always promised. Only
-      // emitted where it can do something: a lone column is already full
-      // width, and a row that opted out keeps its side-by-side cells.
-      const stack = rp.stackMobile !== false && r.cols.length > 1;
-      return '<td' + (stack ? ' class="mc-col"' : '') + ' width="' + c.span + '%" valign="' + rp.valign + '" style="padding:0 ' + Math.round(rp.gap / 2) + 'px;">\n            ' + inner + '\n          </td>';
+      return '<td' + (plan.cell ? ' class="' + plan.cell + '"' : '') + ' width="' + c.span + '%" valign="' + rp.valign + '" style="padding:0 ' + Math.round(rp.gap / 2) + 'px;">\n            ' + inner + '\n          </td>';
     }).join('\n          ');
-    // The CSS-layout rows stack through the same query, via the wrapper: one
-    // class on the flex/grid container is enough to turn either into a single
-    // column, so the markup stays exactly as it was for every wide client.
-    const stackWrap = rp.stackMobile !== false && r.cols.length > 1 ? ' class="mc-stack"' : '';
+    // The CSS-layout rows reach the same behaviour through their wrapper: one
+    // class on the flex/grid container, so the markup stays exactly as it was
+    // for every wide client.
+    const wrapCls = [plan.cell ? 'mc-stack' : '', plan.row].filter(Boolean).join(' ');
+    const stackWrap = wrapCls ? ' class="' + wrapCls + '"' : '';
     const cssBody = rp.layout === 'grid'
       ? '<div' + stackWrap + ' style="display:grid;grid-template-columns:repeat(' + (rp.gridCols || 2) + ',minmax(0,1fr));gap:' + rp.gap + 'px">\n            ' + r.cols.map((c) => '<div>' + colInner(c) + '</div>').join('\n            ') + '\n          </div>'
       : '<div' + stackWrap + ' style="display:flex;flex-direction:' + (rp.flexDir || 'row') + ';justify-content:' + (rp.justify || 'flex-start') + ';align-items:' + (rp.alignItems || 'stretch') + ';flex-wrap:' + (rp.wrap ? 'wrap' : 'nowrap') + ';gap:' + rp.gap + 'px">\n            ' + r.cols.map((c) => '<div style="flex:' + c.span + ' 1 auto;min-width:0">' + colInner(c) + '</div>').join('\n            ') + '\n          </div>';
     const body = rp.layout && rp.layout !== 'columns'
       ? cssBody
-      : '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>\n          ' + cells + '\n          </tr></table>';
+      // The `<tr>` is what becomes the flex container for two-up and reverse;
+      // in the default one-up stack it carries no class at all, exactly as before.
+      : '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr' + (plan.row ? ' class="' + plan.row + '"' : '') + '>\n          ' + cells + '\n          </tr></table>';
     const tdBg = rp.bgImage
       ? 'background-color:' + (rp.bg || t.contentBg || 'transparent') + ';background-image:' + (rp.overlay ? 'linear-gradient(rgba(20,22,24,' + (rp.overlay / 100) + '),rgba(20,22,24,' + (rp.overlay / 100) + ')),' : '') + 'url(&quot;' + cssUrl(rp.bgImage) + '&quot;);background-size:' + (rp.bgSize || 'cover') + ';background-position:' + (rp.bgPos || 'center') + ';background-repeat:' + (rp.bgRepeat || 'no-repeat') + ';'
       // Falls all the way through to `transparent`: a row inherits the
@@ -268,10 +307,37 @@ export function buildHtml(state, root, boxCss) {
     + '   surrounding text; links the template actually declares are untouched,\n'
     + '   because they carry their own inline colour. */\n'
     + 'a[x-apple-data-detectors] { color:inherit !important; text-decoration:none !important; }\n'
+    /*
+     * No `p { line-height: inherit }` here, though it is standard in
+     * hand-written email and BEE emits it. This document is also an *input*:
+     * core/css-cascade.js folds every non-`@media` rule into inline styles on
+     * import, so that one rule came back stamped on every paragraph and an
+     * export -> import -> export cycle stopped converging. The pixel
+     * line-heights it would have protected are already inline on the block
+     * that owns them, which is the stronger guarantee anyway.
+     */
+    // A mobile-only block has to be hidden here, outside the query, because
+    // Classic Outlook never reads the query -- `display:none` alone would
+    // leave it visible in exactly the client that cannot be told otherwise.
+    // `mso-hide` is the half Word understands; the rest is for everyone else.
+    + (need.hideD ? '.mc-only-m, .mc-only-m table { mso-hide:all; display:none; max-height:0; overflow:hidden; }\n' : '')
     + '@media only screen and (max-width:' + t.width + 'px) {\n'
-    + '  .mc-col { display:block !important; width:100% !important; padding-left:0 !important; padding-right:0 !important; }\n'
-    + '  .mc-stack { display:block !important; }\n'
-    + '  .mc-stack > div { width:100% !important; }\n'
+    + (need.stack ? '  .mc-col { display:block !important; width:100% !important; padding-left:0 !important; padding-right:0 !important; }\n'
+      + '  .mc-stack { display:block !important; }\n'
+      + '  .mc-stack > div { width:100% !important; }\n' : '')
+    // Two-up: the row becomes a flex container and each cell takes half.
+    // `box-sizing` is load-bearing -- with the default content box, a cell's
+    // own padding pushes 50% over the line and every cell wraps to its own row.
+    + (need.twoUp ? '  .mc-2up { display:flex !important; flex-wrap:wrap !important; }\n'
+      + '  .mc-2up > td, .mc-2up > div { box-sizing:border-box !important; flex:0 0 50% !important; max-width:50% !important; }\n' : '')
+    // Reverse: `column-reverse` flips a stack of any depth, where the usual
+    // `table-header-group` trick has only two usable slots and so cannot
+    // reverse a three- or four-column row at all. Two-up reverses along both
+    // axes so the last cell ends up first.
+    + (need.reverse ? '  .mc-rev { display:flex !important; flex-wrap:wrap !important; flex-direction:column-reverse !important; }\n'
+      + '  .mc-2up.mc-rev { flex-direction:row-reverse !important; flex-wrap:wrap-reverse !important; }\n' : '')
+    + (need.hideM ? '  .mc-only-d, .mc-only-d table { display:none !important; max-height:0 !important; overflow:hidden !important; }\n' : '')
+    + (need.hideD ? '  .mc-only-m, .mc-only-m table { display:block !important; max-height:none !important; overflow:visible !important; }\n' : '')
     + '  img { max-width:100% !important; height:auto !important; }\n'
     + '}\n</style>';
   /*

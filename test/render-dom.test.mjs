@@ -587,6 +587,60 @@ await it('a button renders as a one-cell table, which Word can pad and paint', a
   assert.ok(a.style.background, 'which keeps its own paint too, so classifyButton still sees a pill');
 });
 
+console.log();
+console.log('Mobile preview tells the truth');
+
+/** Mounts a document of one row with the given mobile props, in the given device. */
+async function previewRow(props, device, spans = [50, 50]) {
+  const el = await mountEditor();
+  el.core.insertRow(spans);
+  await settle(2);
+  const row = el.getContent().rows.at(-1);
+  Object.keys(props).forEach((k) => el.core.setProp(row.id, k, props[k]));
+  el.core.setState({ device });
+  await settle(2);
+  const sheet = q(el, '[data-mc-sheet]');
+  return { el, sheet, row };
+}
+
+await it('the desktop preview is untouched by any mobile setting', async () => {
+  const { sheet } = await previewRow({ mobileCols: 2, mobileOrder: 'reverse' }, 'desktop');
+  const wraps = qa({ shadowRoot: sheet }, 'div').filter((d) => d.style.display === 'flex' && d.style.flexDirection);
+  assert.equal(wraps.filter((d) => /reverse/.test(d.style.flexDirection)).length, 0, 'nothing reverses on desktop');
+});
+
+await it('the mobile preview reverses where the sent email reverses', async () => {
+  const { sheet } = await previewRow({ mobileOrder: 'reverse' }, 'mobile');
+  const rev = Array.from(sheet.querySelectorAll('div')).find((d) => d.style.flexDirection === 'column-reverse');
+  assert.ok(rev, 'the row is drawn reversed, matching the exported .mc-rev rule');
+});
+
+await it('the mobile preview lays out two-up where the sent email does', async () => {
+  const { sheet } = await previewRow({ mobileCols: 2 }, 'mobile');
+  const half = Array.from(sheet.querySelectorAll('div')).filter((d) => d.style.maxWidth === '50%' && d.style.boxSizing === 'border-box');
+  assert.ok(half.length >= 2, 'columns take half each, box-sized so their padding cannot wrap them');
+});
+
+await it('a row that keeps its columns is left alone on mobile', async () => {
+  const { sheet } = await previewRow({ mobileCols: 'keep' }, 'mobile');
+  const stacked = Array.from(sheet.querySelectorAll('div')).filter((d) => d.style.display === 'block' && d.style.flexDirection);
+  assert.equal(stacked.length, 0);
+});
+
+await it('a block the current device would not receive is faded, not removed, while editing', async () => {
+  const el = await mountEditor();
+  el.core.insertBlock('text');
+  await settle(2);
+  const block = el.getContent().rows.flatMap((r) => r.cols.flatMap((c) => c.blocks))[0];
+  el.core.setProp(block.id, 'vis', 'mobile');
+  await settle(2);
+  const node = q(el, `[data-mc-content="${block.id}"]`);
+  // Hiding it outright would leave a block that cannot be selected, moved,
+  // or set back to "all devices".
+  assert.ok(node, 'still in the canvas');
+  assert.equal(node.closest('[data-mc-slot]').style.opacity, '0.4', 'but visibly not shipping here');
+});
+
 console.log(`\n${passed} passed, ${failed} failed.`);
 closeDom();
 process.exit(failed ? 1 : 0);

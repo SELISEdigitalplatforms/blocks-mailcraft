@@ -269,21 +269,50 @@ export function renderDoc(core, live) {
       rowEl.appendChild(grip);
     }
 
-    // The mobile preview stacks exactly where the sent email stacks. The
-    // device switch used to do nothing but narrow the sheet to 375px, so a
-    // 4-column row previewed as four 60px slivers -- a layout no recipient
-    // would ever see, since the exported stylesheet now collapses that row to
-    // one column below the content width. Previewing the wide layout at a
-    // narrow width was showing a page that does not exist.
-    const stacked = core.state.device === 'mobile' && r.props.stackMobile !== false && r.cols.length > 1;
-    const colsEl = el('div', stacked ? { display: 'block' } : colsWrap(r.props));
+    /*
+     * The mobile preview lays out exactly the way the sent email does. The
+     * device switch used to do nothing but narrow the sheet to 375px, so a
+     * 4-column row previewed as four 60px slivers -- a layout no recipient
+     * would ever see, since the exported stylesheet collapses that row below
+     * the content width. Previewing the wide layout at a narrow width was
+     * showing a page that does not exist.
+     *
+     * The three modes mirror `mobilePlan` in core/export.js: one-up stack,
+     * two-up grid, or the desktop layout kept as-is. Reverse flips the order,
+     * which is why this uses flex here too -- the same mechanism the media
+     * query uses, so the preview cannot drift from the output.
+     */
+    const mobile = core.state.device === 'mobile' && r.cols.length > 1;
+    const mMode = r.props.mobileCols === undefined ? 1 : r.props.mobileCols;
+    const stacked = mobile && mMode !== 'keep';
+    const twoUp = stacked && String(mMode) === '2';
+    const reversed = stacked && r.props.mobileOrder === 'reverse';
+    const colsEl = el('div', stacked
+      ? (twoUp || reversed
+        ? {
+          display: 'flex',
+          flexWrap: twoUp && reversed ? 'wrap-reverse' : 'wrap',
+          flexDirection: twoUp ? (reversed ? 'row-reverse' : 'row') : (reversed ? 'column-reverse' : 'column'),
+        }
+        : { display: 'block' })
+      : colsWrap(r.props));
     r.cols.forEach((c, ci) => {
       const colLines = [];
       const items = [];
       c.blocks.forEach((b, bi) => {
+        /*
+         * Device visibility. In the static preview -- the honest picture of
+         * what is sent -- a block the current device would not receive is not
+         * drawn at all, matching the exported `.mc-only-d` / `.mc-only-m`
+         * rules. On the editable canvas it is drawn faded instead: hiding it
+         * outright would leave the user with a block they cannot select,
+         * move or set back to "all devices".
+         */
+        const hiddenHere = b.props.vis === (core.state.device === 'mobile' ? 'desktop' : 'mobile');
+        if (!live && hiddenHere) return;
         if (live) { const line = dropLine(); colLines.push(line); items.push(line); }
         const bSel = live && sel && sel.id === b.id;
-        const bWrap = el('div', Object.assign({ position: 'relative' }, boxStyle(b.props)), { 'data-mc-slot': '1', draggable: live ? 'true' : undefined, class: live ? `mc-block-el${bSel ? ' is-selected' : ''}` : undefined });
+        const bWrap = el('div', Object.assign({ position: 'relative', opacity: hiddenHere ? '0.4' : '' }, boxStyle(b.props)), { 'data-mc-slot': '1', draggable: live ? 'true' : undefined, class: live ? `mc-block-el${bSel ? ' is-selected' : ''}` : undefined });
         if (live) {
           bWrap.addEventListener('dragstart', core.startDrag({ kind: 'move-block', id: b.id }));
           bWrap.addEventListener('dragend', () => { core.drag = null; hideActive(rowDropTracker); hideActive(colTracker); });
@@ -326,7 +355,11 @@ export function renderDoc(core, live) {
       }
       // Stacked, a column is simply a full-width block -- the flex sizing and
       // the horizontal gutter both belong to the side-by-side layout only.
-      const colEl = el('div', stacked ? { width: '100%' } : colStyle(r.props, c));
+      // Two-up takes half, box-sized so its own padding cannot push it over
+      // the line and wrap every cell onto a row of its own.
+      const colEl = el('div', stacked
+        ? (twoUp ? { flex: '0 0 50%', maxWidth: '50%', boxSizing: 'border-box' } : { width: '100%' })
+        : colStyle(r.props, c));
       // Column-level styling lives on an inner wrapper, not on colEl itself:
       // colEl's padding is the inter-column gutter (colStyle), and a painted
       // background must stop at the column's visual edge, not bleed across

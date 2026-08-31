@@ -354,9 +354,10 @@ await it('a single-column row is not given a stacking hook it cannot use', async
 
 await it('a row that opted out of stacking keeps its columns side by side', async () => {
   const row = mkRow([50, 50], [mk('text')]);
-  row.props.stackMobile = false;
+  row.props.mobileCols = 'keep';
   const html = buildHtml({ doc: { theme: THEME, rows: [row] } }, stubRoot({}), boxCss);
-  assert.equal(/class="mc-col"/.test(html), false, 'the toggle is honoured, not ignored as it was');
+  assert.equal(/class="mc-col"/.test(html), false, 'the choice is honoured, not ignored as it once was');
+  assert.equal(/@media[^}]*mc-col/.test(html), false, 'and the rule it would have needed is not shipped either');
 });
 
 /*
@@ -440,6 +441,90 @@ await it('the document declares one colour scheme, the one it actually ships', a
   assert.equal(/content="light dark"/.test(html), false);
 });
 
+
+/*
+ * Mobile layout modes and device visibility.
+ *
+ * Two rules govern all of it. Rules are emitted only for the modes a document
+ * actually uses, and rows asking for the same thing share one class -- so a
+ * template that never leaves the defaults ships the stylesheet it shipped
+ * before the feature existed. And the plain one-up stack never depends on
+ * flex, so if a sanitiser strips `display:flex` the fancy modes fall back to
+ * the desktop layout instead of taking ordinary stacking down with them.
+ */
+const rowWith = (props, spans = [50, 50]) => {
+  const r = mkRow(spans, [mk('text')]);
+  Object.assign(r.props, props);
+  return buildHtml({ doc: { theme: THEME, rows: [r] } }, stubRoot({}), boxCss);
+};
+
+await it('the default row stacks one-up with no flex anywhere', async () => {
+  const html = rowWith({});
+  assert.match(html, /<td class="mc-col"/, 'the cell rule, exactly as before');
+  assert.equal(/mc-2up|mc-rev/.test(html), false, 'no class it did not ask for');
+  assert.equal(/display:flex/.test(html), false, 'and the common case never rides on flex');
+});
+
+await it('a two-up row becomes a flex grid, and its cells drop the one-up class', async () => {
+  const html = rowWith({ mobileCols: 2 });
+  assert.match(html, /<tr class="mc-2up">/, 'the row is the flex container');
+  assert.equal(/class="mc-col"/.test(html), false, 'so the cell rule would only fight it');
+  assert.match(html, /\.mc-2up > td, \.mc-2up > div \{ box-sizing:border-box !important; flex:0 0 50% !important;/);
+});
+
+await it('a reversed row flips a stack of any depth', async () => {
+  const html = rowWith({ mobileOrder: 'reverse' }, [25, 25, 25, 25]);
+  assert.match(html, /<tr class="mc-rev">/);
+  // `column-reverse` handles four columns; the table-header-group idiom every
+  // other builder uses has only two usable slots.
+  assert.match(html, /\.mc-rev \{[^}]*flex-direction:column-reverse !important;/);
+  assert.match(html, /\.mc-2up\.mc-rev \{ flex-direction:row-reverse !important; flex-wrap:wrap-reverse !important; \}/);
+});
+
+await it('rules are shipped only for the modes a document actually uses', async () => {
+  assert.equal(/mc-2up/.test(rowWith({})), false, 'no two-up rule in a document with no two-up row');
+  assert.equal(/mc-rev/.test(rowWith({})), false, 'no reverse rule either');
+  assert.equal(/mc-only-/.test(rowWith({})), false, 'and no visibility rules');
+  const all = rowWith({ mobileCols: 2, mobileOrder: 'reverse' });
+  assert.match(all, /mc-2up/); assert.match(all, /mc-rev/);
+});
+
+await it('two rows wanting the same thing share one rule', async () => {
+  const a = mkRow([50, 50], [mk('text')]); a.props.mobileCols = 2;
+  const b = mkRow([50, 50], [mk('text')]); b.props.mobileCols = 2;
+  const html = buildHtml({ doc: { theme: THEME, rows: [a, b] } }, stubRoot({}), boxCss);
+  assert.equal((html.match(/\.mc-2up \{/g) || []).length, 1, 'declared once, not once per row');
+  assert.equal((html.match(/class="mc-2up"/g) || []).length, 2, 'and used by both');
+});
+
+await it('a mobile-only block is hidden outside the media query, where Outlook can see it', async () => {
+  const b = mk('text'); b.props.vis = 'mobile';
+  const html = buildHtml({ doc: { theme: THEME, rows: [mkRow([100], [b])] } }, stubRoot({ [b.id]: '<p>x</p>' }), boxCss);
+  assert.match(html, /<div class="mc-only-m"/);
+  // Classic Outlook never reads a media query, so the base rule is the only
+  // thing that can hide it there -- and mso-hide is the half Word understands.
+  const base = html.slice(0, html.indexOf('@media'));
+  assert.match(base, /\.mc-only-m, \.mc-only-m table \{ mso-hide:all; display:none;/);
+  assert.match(html.slice(html.indexOf('@media')), /\.mc-only-m[^{]*\{ display:block !important;/, 'and the query brings it back');
+});
+
+await it('a desktop-only block is hidden only inside the media query', async () => {
+  const b = mk('text'); b.props.vis = 'desktop';
+  const html = buildHtml({ doc: { theme: THEME, rows: [mkRow([100], [b])] } }, stubRoot({ [b.id]: '<p>x</p>' }), boxCss);
+  assert.match(html, /<div class="mc-only-d"/);
+  assert.equal(/mc-only-d[^{]*\{ mso-hide/.test(html.slice(0, html.indexOf('@media'))), false, 'desktop clients must show it');
+  assert.match(html.slice(html.indexOf('@media')), /\.mc-only-d[^{]*\{ display:none !important;/);
+});
+
+await it('the stylesheet carries no rule that the importer would fold back inline', async () => {
+  // core/css-cascade.js folds every non-@media rule into inline styles on
+  // import, so a bare `p { line-height: inherit }` -- standard in
+  // hand-written email -- came back stamped on every paragraph and broke
+  // export -> import -> export convergence.
+  const html = rowWith({});
+  const base = html.slice(html.indexOf('<style>'), html.indexOf('@media'));
+  assert.equal(/^\s*p\s*\{/m.test(base), false, 'no bare element selector in the base stylesheet');
+});
 
 console.log(`\n${passed} passed, ${failed} failed.`);
 if (failed) process.exit(1);

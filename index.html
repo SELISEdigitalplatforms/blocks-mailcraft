@@ -312,16 +312,24 @@ td code, .features code { font-family: "IBM Plex Mono", monospace; font-size: 12
 .quad b { display: block; font-family: "Bricolage Grotesque", sans-serif; font-size: 16px; font-weight: 700; margin-bottom: 3px; }
 .quad span { font-size: 12.5px; color: var(--muted); }
 
+.vh {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+
 /* FAQ — answers stay open rather than sitting in <details>, because the
    unit a search snippet or an AI answer lifts is a whole paragraph, and a
    collapsed one reads as lower-confidence to both. */
 .faq {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
-  gap: 1px; background: var(--line); margin-top: 4px;
+  gap: 0; background: var(--panel); margin-top: 4px;
   border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
   box-shadow: var(--sheet-shadow);
 }
-.faq > div { background: var(--panel); padding: 21px 23px; }
+/* Hairlines on the cells rather than a 1px grid gap over a tinted container:
+   ten answers never fill the last row of a responsive grid, and the gap trick
+   paints those empty tracks in the divider colour. Same approach as .quad. */
+.faq > div { padding: 21px 23px; border-top: 1px solid var(--line-soft); border-inline-start: 1px solid var(--line-soft); }
 .faq h3 { font-size: 16.5px; font-weight: 700; letter-spacing: -0.012em; }
 .faq p { margin-top: 9px; font-size: 13.8px; color: var(--muted); max-width: none; }
 .faq code {
@@ -488,12 +496,13 @@ footer {
     </div>
     <div class="tablecard rv"><div class="scroller">
       <table class="compare">
+        <caption class="vh">Blocks MailCraft compared with Unlayer, Beefree SDK, Stripo Plugin, Topol.io, Chamaileon SDK, GrapesJS + MJML, Easy Email and Maily.to, on pricing, openness, self-containment, framework support, white-labelling, editor localization and RTL, conditions and loops, HTML import and maintenance status. Verified August 2026.</caption>
         <thead><tr>
-          <th>Editor</th><th>Pricing</th><th>Truly open</th><th>Self-contained</th><th>Framework</th><th>White-label</th><th>Editor i18n / RTL</th><th>Conditions &amp; loops</th><th>HTML import</th><th>Status</th>
+          <th scope="col">Editor</th><th scope="col">Pricing</th><th scope="col">Truly open</th><th scope="col">Self-contained</th><th scope="col">Framework</th><th scope="col">White-label</th><th scope="col">Editor i18n / RTL</th><th scope="col">Conditions &amp; loops</th><th scope="col">HTML import</th><th scope="col">Status</th>
         </tr></thead>
         <tbody>
           <tr class="hero-row">
-            <th>Blocks MailCraft</th>
+            <th scope="row">Blocks MailCraft</th>
             <td><span class="yes">Free</span><span class="cellnote">MIT, everything included</span></td>
             <td><span class="yes">✓</span><span class="cellnote">whole editor is source</span></td>
             <td><span class="yes">✓</span><span class="cellnote">no cloud, no iframe</span></td>
@@ -505,7 +514,7 @@ footer {
             <td><span class="yes">Active</span></td>
           </tr>
           <tr>
-            <th>Unlayer</th>
+            <th scope="row">Unlayer</th>
             <td><span class="fee">Paid plans</span><span class="cellnote">metered usage add-ons</span></td>
             <td><span class="no">✗</span><span class="cellnote">MIT wrapper, closed editor</span></td>
             <td><span class="no">✗</span><span class="cellnote">CDN iframe; on-prem = Enterprise</span></td>
@@ -517,7 +526,7 @@ footer {
             <td>Active</td>
           </tr>
           <tr>
-            <th>Beefree SDK</th>
+            <th scope="row">Beefree SDK</th>
             <td><span class="fee">Paid plans</span><span class="cellnote">metered by users and API calls</span></td>
             <td><span class="no">✗</span></td>
             <td><span class="no">✗</span><span class="cellnote">cloud auth, 12&nbsp;h tokens</span></td>
@@ -529,7 +538,7 @@ footer {
             <td>Active</td>
           </tr>
           <tr>
-            <th>Stripo Plugin</th>
+            <th scope="row">Stripo Plugin</th>
             <td><span class="fee">Paid plans</span><span class="cellnote">metered per email opened in editor</span></td>
             <td><span class="no">✗</span></td>
             <td><span class="no">✗</span></td>
@@ -541,7 +550,7 @@ footer {
             <td>Active</td>
           </tr>
           <tr>
-            <th>Topol.io</th>
+            <th scope="row">Topol.io</th>
             <td><span class="fee">Paid plans</span><span class="cellnote">metered per active user</span></td>
             <td><span class="no">✗</span></td>
             <td><span class="no">✗</span></td>
@@ -553,7 +562,7 @@ footer {
             <td>Active</td>
           </tr>
           <tr>
-            <th>Chamaileon SDK</th>
+            <th scope="row">Chamaileon SDK</th>
             <td><span class="fee">Paid plans</span><span class="cellnote">metered by MAU and generator calls</span></td>
             <td><span class="no">✗</span></td>
             <td><span class="no">✗</span><span class="cellnote">cloud iframe modules</span></td>
@@ -565,7 +574,7 @@ footer {
             <td>Active</td>
           </tr>
           <tr>
-            <th>GrapesJS + MJML</th>
+            <th scope="row">GrapesJS + MJML</th>
             <td><span class="yes">Free</span><span class="cellnote">BSD-3</span></td>
             <td><span class="yes">✓</span></td>
             <td>✓<span class="cellnote">~12&nbsp;MB package + MJML compiler</span></td>
@@ -577,7 +586,7 @@ footer {
             <td>Core active<span class="cellnote">newsletter preset unpublished since 2023</span></td>
           </tr>
           <tr>
-            <th>Easy Email</th>
+            <th scope="row">Easy Email</th>
             <td><span class="yes">Free</span><span class="cellnote">MIT</span></td>
             <td><span class="yes">✓</span></td>
             <td>✓<span class="cellnote">MJML + Arco Design dep tree</span></td>
@@ -589,7 +598,7 @@ footer {
             <td><span class="no">Maintenance mode</span><span class="cellnote">author's focus moved to paid Pro</span></td>
           </tr>
           <tr>
-            <th>Maily.to</th>
+            <th scope="row">Maily.to</th>
             <td><span class="yes">Free</span><span class="cellnote">MIT</span></td>
             <td><span class="yes">✓</span></td>
             <td>✓<span class="cellnote">36 dependencies</span></td>
@@ -678,7 +687,7 @@ footer {
         <p>It is free, and there is no paid tier to graduate to. The whole editor is MIT-licensed source: no seats, no per-email metering, no plan-gated features and no &ldquo;contact sales&rdquo; &mdash; white-label, editor localization, HTML import and conditional logic all arrive in the one install.</p>
       </div>
       <div>
-        <h3>Which frameworks does it work with?</h3>
+        <h3>Which frameworks does Blocks MailCraft work with?</h3>
         <p>All of them, because it is a standard custom element rather than a framework component. The same tag runs in React, Angular, Vue and Svelte, and in a plain HTML page loaded with a <code>&lt;script&gt;</code> tag &mdash; there is no per-framework wrapper package to keep up with.</p>
       </div>
       <div>
@@ -694,15 +703,15 @@ footer {
         <p>Thirty-one, with right-to-left layout switched on automatically for Arabic. Beyond translation, all 189 interface labels can be overridden from your own copy deck, so the editor can use your product&rsquo;s vocabulary rather than ours &mdash; and be white-labelled while it does.</p>
       </div>
       <div>
-        <h3>How does it differ from Unlayer, Beefree, Stripo, Topol or Chamaileon?</h3>
+        <h3>How does Blocks MailCraft compare to Unlayer, Beefree, Stripo, Topol or Chamaileon?</h3>
         <p>Those are hosted SDKs: the editor itself is closed source and loads from the vendor&rsquo;s cloud, and white-label, localization, HTML import and conditional logic sit behind paid or metered tiers. Blocks MailCraft is the entire editor as MIT source, running inside your own page with nothing to call home to.</p>
       </div>
       <div>
-        <h3>How does it differ from GrapesJS, Easy Email or Maily.to?</h3>
+        <h3>How does it compare to GrapesJS, Easy Email or Maily.to?</h3>
         <p>Those are genuinely open source, but each asks for a trade. GrapesJS needs an MJML toolchain and its newsletter preset has been unpublished since 2023; Easy Email and Maily.to are React-only; none of the three ships editor localization with RTL. Blocks MailCraft is framework-agnostic and dependency-free.</p>
       </div>
       <div>
-        <h3>How do I install it?</h3>
+        <h3>How do I install Blocks MailCraft?</h3>
         <p>Run <code>npm install @seliseblocks/mailcraft</code> and import the module, or drop the prebuilt bundle into a page with a script tag from unpkg or jsDelivr &mdash; no build step either way. The <a href="README.html">quick start</a> is five minutes end to end; the <a href="DOCS.html">guide</a> covers framework wiring, storage, AI and i18n contracts.</p>
       </div>
       <div>
@@ -802,5 +811,221 @@ footer {
 })();
 </script>
 <script src="assets/js/site.js"></script>
+<!-- Structured data. One @graph, so the Organization, the site, the software
+     and the page cross-reference by @id instead of repeating one another.
+     The FAQPage entries are the visible #faq section word for word, minus its
+     markup: Google discounts (and can penalise) FAQ markup that is not on the
+     page, so the two move together or not at all. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://mailcraft.seliseblocks.com/#publisher",
+      "name": "SELISE Digital Platforms",
+      "url": "https://seliseblocks.com",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://mailcraft.seliseblocks.com/assets/brand/icon.svg"
+      },
+      "sameAs": [
+        "https://github.com/SELISEdigitalplatforms",
+        "https://www.npmjs.com/package/@seliseblocks/mailcraft",
+        "https://os.seliseblocks.com"
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://mailcraft.seliseblocks.com/#website",
+      "url": "https://mailcraft.seliseblocks.com/",
+      "name": "Blocks MailCraft",
+      "description": "A drag-and-drop HTML email editor, packaged as a single zero-dependency Web Component.",
+      "inLanguage": "en",
+      "publisher": {
+        "@id": "https://mailcraft.seliseblocks.com/#publisher"
+      }
+    },
+    {
+      "@type": [
+        "SoftwareApplication",
+        "SoftwareSourceCode"
+      ],
+      "@id": "https://mailcraft.seliseblocks.com/#software",
+      "name": "Blocks MailCraft",
+      "alternateName": "@seliseblocks/mailcraft",
+      "description": "Open-source drag-and-drop editor for HTML email templates, packaged as a single zero-dependency Web Component. HTML in, send-ready HTML out, with merge tags, conditions and loops, HTML import, white-labelling and 31 interface languages included.",
+      "url": "https://mailcraft.seliseblocks.com/",
+      "applicationCategory": "DeveloperApplication",
+      "applicationSubCategory": "Email template editor",
+      "operatingSystem": "Any modern browser",
+      "runtimePlatform": "Web Components (custom elements)",
+      "programmingLanguage": "JavaScript",
+      "codeRepository": "https://github.com/SELISEdigitalplatforms/blocks-mailcraft",
+      "downloadUrl": "https://www.npmjs.com/package/@seliseblocks/mailcraft",
+      "installUrl": "https://www.npmjs.com/package/@seliseblocks/mailcraft",
+      "license": "https://opensource.org/licenses/MIT",
+      "isAccessibleForFree": true,
+      "author": {
+        "@id": "https://mailcraft.seliseblocks.com/#publisher"
+      },
+      "publisher": {
+        "@id": "https://mailcraft.seliseblocks.com/#publisher"
+      },
+      "maintainer": {
+        "@id": "https://mailcraft.seliseblocks.com/#publisher"
+      },
+      "image": "https://mailcraft.seliseblocks.com/assets/brand/og.png",
+      "screenshot": "https://mailcraft.seliseblocks.com/assets/brand/og.png",
+      "softwareHelp": {
+        "@type": "CreativeWork",
+        "url": "https://mailcraft.seliseblocks.com/DOCS.html"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock",
+        "category": "Free and open source"
+      },
+      "featureList": [
+        "Drag-and-drop canvas with 20 block types",
+        "Framework-agnostic: one custom element for React, Angular, Vue, Svelte or plain HTML",
+        "Zero runtime dependencies and no network requests",
+        "HTML in, HTML out — import existing templates, export send-ready HTML",
+        "Merge tags, conditions and loops",
+        "31 interface languages with automatic right-to-left layout",
+        "All 189 interface labels overridable",
+        "White-label: your own brand colour, font and logo",
+        "Design and code views side by side",
+        "Pluggable storage, image library and AI hooks",
+        "MIT licensed — no seats, metering or plan-gated features"
+      ],
+      "keywords": "email editor, email template builder, drag and drop email editor, HTML email, Web Component, open source, MIT, white-label, self-hosted"
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://mailcraft.seliseblocks.com/#webpage",
+      "url": "https://mailcraft.seliseblocks.com/",
+      "name": "Blocks MailCraft — the open-source drag-and-drop email editor",
+      "description": "Open-source drag-and-drop email template editor in one Web Component. Zero dependencies, 31 languages, HTML in / HTML out, MIT licensed.",
+      "isPartOf": {
+        "@id": "https://mailcraft.seliseblocks.com/#website"
+      },
+      "about": {
+        "@id": "https://mailcraft.seliseblocks.com/#software"
+      },
+      "mainEntity": {
+        "@id": "https://mailcraft.seliseblocks.com/#software"
+      },
+      "primaryImageOfPage": {
+        "@type": "ImageObject",
+        "url": "https://mailcraft.seliseblocks.com/assets/brand/og.png",
+        "width": 1200,
+        "height": 630
+      },
+      "inLanguage": "en",
+      "dateModified": "2026-09-01",
+      "significantLink": [
+        "https://mailcraft.seliseblocks.com/DOCS.html",
+        "https://mailcraft.seliseblocks.com/README.html",
+        "https://mailcraft.seliseblocks.com/examples/vanilla.html",
+        "https://www.npmjs.com/package/@seliseblocks/mailcraft",
+        "https://github.com/SELISEdigitalplatforms/blocks-mailcraft"
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://mailcraft.seliseblocks.com/#faq",
+      "isPartOf": {
+        "@id": "https://mailcraft.seliseblocks.com/#webpage"
+      },
+      "inLanguage": "en",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is Blocks MailCraft?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Blocks MailCraft is an open-source drag-and-drop editor for HTML email templates, shipped as a single Web Component — one \u003cmailcraft-editor\u003e tag. You hand it HTML and it hands back send-ready HTML, with no proprietary document format in between. It is MIT licensed and published on npm as @seliseblocks/mailcraft."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is it really free, or is there a paid tier?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It is free, and there is no paid tier to graduate to. The whole editor is MIT-licensed source: no seats, no per-email metering, no plan-gated features and no “contact sales” — white-label, editor localization, HTML import and conditional logic all arrive in the one install."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which frameworks does Blocks MailCraft work with?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "All of them, because it is a standard custom element rather than a framework component. The same tag runs in React, Angular, Vue and Svelte, and in a plain HTML page loaded with a script tag — there is no per-framework wrapper package to keep up with."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it need a server, an account or an API key?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Blocks MailCraft has zero runtime dependencies and makes no network requests of its own — no vendor cloud, no iframe, no telemetry, no token to refresh. It runs from a file:// page, which is also the short answer to where your templates go: nowhere you did not send them."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I import the email templates I already have?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, and it is not metered. Existing HTML imports into an editable block canvas and exports as HTML again; opening a design and saving it without touching anything gives you back what you put in, so migrating off another editor is not a one-way door."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How many languages does the editor interface support?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Thirty-one, with right-to-left layout switched on automatically for Arabic. Beyond translation, all 189 interface labels can be overridden from your own copy deck, so the editor can use your product’s vocabulary rather than ours — and be white-labelled while it does."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does Blocks MailCraft compare to Unlayer, Beefree, Stripo, Topol or Chamaileon?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Those are hosted SDKs: the editor itself is closed source and loads from the vendor’s cloud, and white-label, localization, HTML import and conditional logic sit behind paid or metered tiers. Blocks MailCraft is the entire editor as MIT source, running inside your own page with nothing to call home to."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does it compare to GrapesJS, Easy Email or Maily.to?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Those are genuinely open source, but each asks for a trade. GrapesJS needs an MJML toolchain and its newsletter preset has been unpublished since 2023; Easy Email and Maily.to are React-only; none of the three ships editor localization with RTL. Blocks MailCraft is framework-agnostic and dependency-free."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I install Blocks MailCraft?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Run npm install @seliseblocks/mailcraft and import the module, or drop the prebuilt bundle into a page with a script tag from unpkg or jsDelivr — no build step either way. The quick start is five minutes end to end; the guide covers framework wiring, storage, AI and i18n contracts."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does it relate to SELISE Blocks?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Same team, two ways to use it. Blocks MailCraft is standalone and stays that way, and it also ships pre-wired inside SELISE Blocks Cloud, where Email Management, file storage for the image library, identity, secrets and observability share one console per project and environment."
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
 </body>
 </html>

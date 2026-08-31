@@ -1305,6 +1305,17 @@ export class EditorCore {
       // line and a dead divider strip under the title.
       const base = [];
       const padF = [B.head('Spacing'), group(null, [B.range('Above & below', 'py', 0, 160, 2, 'px'), B.range('Left & right', 'px', 0, 120, 2, 'px')])];
+      // Appended to every block type at once rather than repeated across
+      // twenty switch arms. An absent `vis` means "all devices", so the
+      // property only ever appears in a document that asked for it and no
+      // migration is needed. Re-decorating an already-decorated list is safe:
+      // `decorate` derives its flags from `kind`, which survives the pass.
+      const visF = [B.head('Visibility'), B.seg('Show on', 'vis', [
+        { value: 'all', label: 'All' },
+        { value: 'desktop', label: 'Desktop' },
+        { value: 'mobile', label: 'Mobile' },
+      ])];
+      const built = (() => {
       switch (b.type) {
         case 'text': return decorate(base.concat(
           /<a(?:\s|>)/i.test(String(b.props.html || ''))
@@ -1368,6 +1379,11 @@ export class EditorCore {
         case 'codeblock': return decorate(base.concat([B.area('Code', 'code'), B.color('Background', 'bg'), B.color('Text color', 'color'), B.range('Size', 'size', 8, 32, 0.5, 'px'), B.range('Padding', 'pad', 0, 80, 2, 'px')]));
         default: return [];
       }
+      })();
+      // Logic markers are editor furniture with no rendered body, so there is
+      // nothing for a device to show or hide.
+      if (b.type === 'condition' || b.type === 'loop') return built;
+      return decorate(built.concat(visF));
     }
     if (f.row) {
       const r = f.row;
@@ -1405,7 +1421,21 @@ export class EditorCore {
         },
         ...(r.cols.length > 1 ? [
           B.range('Space between columns', 'gap', 0, 120, 2, 'px'),
-          B.tog('Stack columns on mobile', 'stackMobile'),
+          B.head('On mobile'),
+          // Replaces the old "Stack columns on mobile" switch, which could
+          // only say all-or-nothing. Saved documents are mapped onto these
+          // values in migrateDoc, so an existing toggle keeps its meaning.
+          B.seg('Columns', 'mobileCols', [
+            { value: 1, label: 'One' },
+            { value: 2, label: 'Two' },
+            { value: 'keep', label: 'Keep' },
+          ]),
+          // Only offered where it changes something: reversing a row that
+          // keeps its desktop layout would do nothing.
+          ...(p.mobileCols !== 'keep' ? [B.seg('Order', 'mobileOrder', [
+            { value: 'normal', label: 'Normal' },
+            { value: 'reverse', label: 'Reverse' },
+          ])] : []),
         ] : []),
         // Per-column styling, only for multi-column sections (a single
         // column's background is just the section background).

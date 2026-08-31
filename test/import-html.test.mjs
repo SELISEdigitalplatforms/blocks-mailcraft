@@ -392,6 +392,41 @@ await it('a full-width one-cell button is recognised as full width', async () =>
   assert.equal(b.props.full, true, 'read off the table, since the anchor is always block here');
 });
 
+/*
+ * Device visibility, read back. A mobile-only block is deliberately
+ * `display:none` in the base stylesheet so Classic Outlook -- which never
+ * reads a media query -- does not show it, and css-cascade folds that inline
+ * on import. Without special handling it was indistinguishable from a hidden
+ * preheader and was dropped, losing content the user had authored.
+ */
+await it('a mobile-only block survives import instead of being read as a hidden preheader', async () => {
+  const src = email('<tr><td><div class="mc-only-m" style="margin:0;display:none;max-height:0;overflow:hidden">'
+    + '<h2 style="font-size:20px;margin:0">Tap to open</h2></div></td></tr>');
+  const b = blocksOf(src).find((x) => x.type === 'heading');
+  assert.ok(b, 'kept, got ' + blocksOf(src).map((x) => x.type).join(',') || '(nothing)');
+  assert.equal(b.props.vis, 'mobile');
+  assert.equal(b.props.text, 'Tap to open', 'and it is still a heading, not an untyped run of text');
+});
+
+await it("another builder's desktop_hide / mobile_hide become the same property", async () => {
+  const src = email('<tr><td>'
+    + '<div class="mobile_hide"><h2 style="font-size:20px;margin:0">Wide only</h2></div>'
+    + '<div class="desktop_hide" style="mso-hide:all;display:none;max-height:0;overflow:hidden"><h2 style="font-size:20px;margin:0">Narrow only</h2></div>'
+    + '</td></tr>');
+  const heads = blocksOf(src).filter((x) => x.type === 'heading');
+  assert.equal(heads.length, 2, 'both kept, got ' + blocksOf(src).map((x) => x.type).join(','));
+  assert.equal(heads[0].props.vis, 'mobile', 'mobile_hide means hidden on mobile -> desktop... ');
+  assert.equal(heads[1].props.vis, 'desktop');
+});
+
+await it('an ordinary hidden preheader is still dropped', async () => {
+  const src = email('<tr><td><div style="display:none;max-height:0;overflow:hidden">secret preheader</div>'
+    + '<p style="font-size:14px">Real copy</p></td></tr>');
+  const text = blocksOf(src).map((b) => (b.props.html || b.props.text || '')).join(' ');
+  assert.equal(/secret preheader/.test(text), false, 'no visibility class, so it is genuinely hidden content');
+  assert.match(text, /Real copy/);
+});
+
 console.log(`\n${passed} passed, ${failed} failed.`);
 closeDom();
 process.exit(failed ? 1 : 0);

@@ -88,7 +88,33 @@ function cellPadOf(tb) {
  * zero font. A zero font-size ALONE is not hidden: emails set it on
  * whitespace-collapsing wrappers around buttons and menus.
  */
+/**
+ * A device-visibility wrapper, as a `vis` value -- or '' for ordinary content.
+ *
+ * Both this exporter's `mc-only-d`/`mc-only-m` and the `desktop_hide`/
+ * `mobile_hide` convention every other builder uses (BEE, Stripo, Mailchimp)
+ * are recognised, so a foreign template's device variants import as an
+ * editable property instead of being silently thrown away.
+ *
+ * This has to be consulted *before* `isHidden`, and that is the whole point:
+ * a mobile-only block is deliberately `display:none` in the base stylesheet
+ * so Classic Outlook -- which never reads a media query -- does not show it.
+ * The importer folds those base rules inline (core/css-cascade.js drops the
+ * `@media` block that would have un-hidden it), so without this the block
+ * looked exactly like a hidden preheader and was dropped on re-import,
+ * losing content the user had authored.
+ */
+function visibilityOf(el) {
+  const cls = (el && el.getAttribute && el.getAttribute('class')) || '';
+  if (!cls) return '';
+  if (/\b(?:mc-only-m|mobile_hide|mobile-hide)\b/.test(cls)) return 'mobile';
+  if (/\b(?:mc-only-d|desktop_hide|desktop-hide)\b/.test(cls)) return 'desktop';
+  return '';
+}
+
 function isHidden(el) {
+  // Hidden *on this device* is not hidden: see visibilityOf.
+  if (visibilityOf(el)) return false;
   const st = el.style;
   if (!st) return false;
   if (st.display === 'none' || st.visibility === 'hidden') return true;
@@ -423,7 +449,18 @@ const CLASSIFIERS = [classifyImage, classifyButton, classifySocial, classifyMenu
 function classifyNode(el) {
   for (const fn of CLASSIFIERS) {
     const b = fn(el);
-    if (b) return b;
+    if (!b) continue;
+    // The class sits on the wrapper the exporter puts around each block, and
+    // on a foreign template it can be a level or two further out, so a short
+    // walk up finds it. Only ever set when a wrapper actually says so --
+    // absent means "all devices", which is what every ordinary block wants.
+    let n = el;
+    for (let i = 0; n && i < 4; i += 1) {
+      const v = visibilityOf(n);
+      if (v) { b.props.vis = v; break; }
+      n = n.parentElement;
+    }
+    return b;
   }
   return null;
 }
@@ -435,7 +472,18 @@ function isStructural(el) {
 /** `core/export.js` wraps every block in a column with `<div style="{boxCss(b.props)}">`, which for every block type shipped today (none define the `bBg/bBorder/bLine/bRadius/bPad` props `boxCss` reads) always resolves to a bare `<div style="margin:0">` -- a see-through spacing wrapper, not real content. Unwraps that one level so the classifiers see the block's own signature div directly; leaves any div that carries other styling (an intentionally-styled container someone pasted in) alone, since that's real content, not framework wrapper. */
 function unwrapBoxDiv(el) {
   if (el.tagName !== 'DIV' || el.children.length !== 1) return el;
-  const extra = Array.from(el.style).filter((prop) => prop.indexOf('margin') !== 0);
+  // A device-visibility wrapper is framework too, and the declarations that
+  // hide it are the framework's, not the author's: a mobile-only block is
+  // `display:none` in the base stylesheet so Classic Outlook never shows it,
+  // and css-cascade folds that inline on import. Without this exemption the
+  // wrapper looked like a deliberately styled container, never unwrapped, and
+  // the heading inside it came back as an untyped run of text. `classifyNode`
+  // reads the visibility off this same wrapper by walking back up, so the
+  // property survives the unwrap.
+  const framework = visibilityOf(el)
+    ? /^(?:margin|display|max-height|overflow|mso-)/
+    : /^margin/;
+  const extra = Array.from(el.style).filter((prop) => !framework.test(prop));
   if (extra.length) return el;
   const child = el.firstElementChild;
   if ((el.textContent || '') !== (child.textContent || '')) return el;

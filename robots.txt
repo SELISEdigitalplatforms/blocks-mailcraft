@@ -1,0 +1,11 @@
+# Blocks MailCraft - https://mailcraft.seliseblocks.com/
+#
+# Everything here is public documentation for an MIT-licensed project, so
+# there is nothing to disallow: crawlers, and the answer engines that read
+# for them, are welcome to all of it. llms.txt indexes the same pages in the
+# form a context window prefers.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://mailcraft.seliseblocks.com/sitemap.xml
