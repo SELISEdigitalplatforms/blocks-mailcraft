@@ -977,6 +977,15 @@ function themeFromParsedDoc(doc) {
       if (cbg) theme.contentBg = cbg;
       const r = PX(content.style && content.style.borderRadius);
       if (r > 0) theme.radius = r;
+      // The content column's full border, written by the exporter as a
+      // `border` shorthand on the same table -- read back so it survives the
+      // round trip like the radius above.
+      const bw = content.style ? PX(content.style.borderWidth) || PX(content.style.borderTopWidth) : 0;
+      if (bw > 0) {
+        theme.borderW = bw;
+        theme.borderStyle = borderStyleOf(content.style);
+        theme.borderColor = borderColorOf(content.style) || '';
+      }
       const cell = content.closest ? content.closest('td') : null;
       if (cell && cell.style) {
         const padY = PX(cell.style.paddingTop);

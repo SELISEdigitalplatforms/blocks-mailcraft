@@ -176,12 +176,16 @@ export function renderDoc(core, live) {
   // flipped bidi punctuation and default alignment on the canvas and made it
   // disagree with the exported result.
   const radius = Number(theme.radius) || 0;
+  const borderW = Number(theme.borderW) || 0;
   const root = el('div', {
     width: width + 'px', maxWidth: '100%', background: theme.contentBg || 'transparent', color: theme.text, fontFamily: theme.font,
     // Only when the document actually asks for a shape: an unconditional
     // `0px` would override the editor chrome's own soft corner on the sheet
     // (style.js) and square off every template that never touched the field.
     borderRadius: radius ? radius + 'px' : '',
+    // Same contract for the full content-area border: set only when asked,
+    // so the chrome's own subtle frame keeps marking the sheet otherwise.
+    border: borderW ? borderW + 'px ' + (theme.borderStyle || 'solid') + ' ' + (theme.borderColor || '#e2e2e5') : '',
     // Clipping the rows to that corner is right for the sent email (export
     // emits `overflow:hidden` alongside the radius) and for the static
     // preview, but not for the editable canvas: the sheet is also what the

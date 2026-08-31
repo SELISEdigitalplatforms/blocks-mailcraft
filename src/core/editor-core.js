@@ -1500,11 +1500,16 @@ export class EditorCore {
       B.head('Content area'),
       B.color('Content area background color', 'contentBg', { transparent: true, solid: '#ffffff' }),
       B.range('Corner radius', 'radius', 0, 48, 1, 'px'),
+      B.range('Border thickness', 'borderW', 0, 12, 1, 'px'),
+    ].concat(this.state.doc.theme.borderW ? [
+      B.sel('Border style', 'borderStyle', BORDER_STYLES),
+      B.color('Border color', 'borderColor'),
+    ] : []).concat([
       B.head('Type & color'),
       B.sel('Default font', 'font', this.fontOptions(false)),
       B.color('Text color', 'text'),
       B.color('Link color', 'link'),
-    ]);
+    ]));
   }
 
   vars() { return varsFn(this.variablesRaw); }

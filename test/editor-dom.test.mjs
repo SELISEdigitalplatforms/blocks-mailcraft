@@ -113,9 +113,17 @@ await it('the canvas tab offers the page padding and content radius steppers', a
   await settle();
   el.core.setState({ tab: 'theme' });
   await settle();
-  const labels = qa(el, '.mc-inspector .mc-field-label, .mc-inspector label').map((n) => n.textContent.trim());
-  ['Page background color', 'Top & bottom', 'Sides', 'Corner radius'].forEach((name) => {
-    assert.ok(labels.some((l) => l.indexOf(name) > -1), 'the panel offers ' + name);
+  const labels = () => qa(el, '.mc-inspector .mc-field-label, .mc-inspector label').map((n) => n.textContent.trim());
+  ['Page background color', 'Top & bottom', 'Sides', 'Corner radius', 'Border thickness'].forEach((name) => {
+    assert.ok(labels().some((l) => l.indexOf(name) > -1), 'the panel offers ' + name);
+  });
+  // Style and colour reveal only once there is a border to style, like the
+  // button's outline fields.
+  assert.equal(labels().some((l) => l.indexOf('Border style') > -1), false, 'no style field while the border is 0');
+  el.core.setTheme('borderW', 2);
+  await settle(2);
+  ['Border style', 'Border color'].forEach((name) => {
+    assert.ok(labels().some((l) => l.indexOf(name) > -1), 'the panel reveals ' + name);
   });
 });
 

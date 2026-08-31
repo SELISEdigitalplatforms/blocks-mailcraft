@@ -212,6 +212,15 @@ await it('a blank expression emits no tag at all', async () => {
   assert.equal(/\{\{\/if\}\}/.test(html), false, 'its end marker is skipped too');
 });
 
+await it('the content-area border rides the content table, only when asked', async () => {
+  const plain = render(docOf([mk('text')]));
+  assert.equal(/max-width:100%[^"]*border:/.test(plain), false, 'no border style with borderW unset');
+  const doc = docOf([mk('text')]);
+  doc.theme = Object.assign({}, THEME, { borderW: 3, borderStyle: 'dashed', borderColor: '#123456' });
+  const html = buildHtml({ doc }, stubRoot({}), boxCss);
+  assert.match(html, /width:620px;max-width:100%[^"]*border:3px dashed #123456/, 'the border sits on the content table');
+});
+
 await it('a row holding only markers emits the tags without its <tr> scaffolding', async () => {
   const doc = { theme: THEME, rows: [mkRow([100], [marker('condition')]), mkRow([100], [mk('text')]), mkRow([100], [marker('condition', { end: true })])] };
   const html = buildHtml({ doc }, stubRoot({}), boxCss);

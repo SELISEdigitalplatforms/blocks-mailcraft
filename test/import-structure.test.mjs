@@ -258,6 +258,18 @@ await it('a transparent content area survives the export -> import round trip', 
   assert.match(String(solid.theme.contentBg).toLowerCase(), /#ffffff|rgb\(255,\s*255,\s*255\)/, 'a solid colour still round-trips');
 });
 
+await it('a content-area border survives the export -> import round trip', async () => {
+  const doc = htmlToDoc(email('<tr><td><p>hello</p></td></tr>').replace(
+    'style="width:600px;background:#ffffff"',
+    'style="width:600px;background:#ffffff;border:3px dashed #123456"',
+  ));
+  assert.equal(doc.theme.borderW, 3);
+  assert.equal(doc.theme.borderStyle, 'dashed');
+  assert.match(String(doc.theme.borderColor).toLowerCase(), /#123456|rgb\(18,\s*52,\s*86\)/);
+  const bare = htmlToDoc(email('<tr><td><p>hello</p></td></tr>'));
+  assert.equal(bare.theme.borderW ?? 0, 0, 'no declared border imports none');
+});
+
 console.log(`\n${passed} passed, ${failed} failed.`);
 closeDom();
 process.exit(failed ? 1 : 0);
