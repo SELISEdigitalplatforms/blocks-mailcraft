@@ -5,16 +5,48 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>Blocks MailCraft — the open-source drag-and-drop email editor</title>
-<meta name="description" content="Drag-and-drop email template editor as a single Web Component. Zero dependencies, 31 languages, HTML in / HTML out, MIT licensed. From the SELISE Blocks team.">
+<meta name="description" content="Open-source drag-and-drop email template editor in one Web Component. Zero dependencies, 31 languages, HTML in / HTML out, MIT licensed — no seats, no metering, no vendor cloud.">
 <link rel="canonical" href="https://mailcraft.seliseblocks.com/">
+<meta name="author" content="SELISE Digital Platforms">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+<meta name="theme-color" content="#f1f4f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b1120" media="(prefers-color-scheme: dark)">
+
+<!-- Social cards. `og:image` has to be an absolute URL to a raster file: X,
+     LinkedIn and Slack all drop a relative path, and all three refuse SVG —
+     so the brand logo cannot stand in here. The PNG is generated from
+     tools/og-card.html; re-run `node tools/render-og.mjs` after any change to
+     the headline or the three numbers, and keep both copies of each string
+     below in sync with the hero. -->
 <meta property="og:title" content="Blocks MailCraft — the email editor you ship, not subscribe to">
-<meta property="og:description" content="One Web Component. Zero dependencies. 31 languages. MIT.">
+<meta property="og:description" content="One Web Component. Zero dependencies. 31 languages. MIT — everything included, nothing plan-gated.">
 <meta property="og:url" content="https://mailcraft.seliseblocks.com/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Blocks MailCraft">
-<meta name="twitter:card" content="summary">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://mailcraft.seliseblocks.com/assets/brand/og.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Blocks MailCraft — the email editor you ship, not subscribe to. npm install @seliseblocks/mailcraft. Zero runtime dependencies, 31 languages, 20 block types.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Blocks MailCraft — the email editor you ship, not subscribe to">
+<meta name="twitter:description" content="One Web Component. Zero dependencies. 31 languages. MIT — everything included, nothing plan-gated.">
+<meta name="twitter:image" content="https://mailcraft.seliseblocks.com/assets/brand/og.png">
+<meta name="twitter:image:alt" content="Blocks MailCraft — the email editor you ship, not subscribe to. npm install @seliseblocks/mailcraft. Zero runtime dependencies, 31 languages, 20 block types.">
+
+<!-- For crawlers and answer engines that would rather have the source than
+     the chrome: llms.txt indexes the site, and the .md.txt mirrors are the
+     repository's own Markdown, byte for byte. Nothing here is hidden from
+     people — every one of these files is linked in the page too. -->
+<link rel="alternate" type="text/plain" href="llms.txt" title="llms.txt — machine-readable index of this site">
+<link rel="alternate" type="text/markdown" href="README.md.txt" title="Blocks MailCraft quick start (Markdown)">
+<link rel="alternate" type="text/markdown" href="DOCS.md.txt" title="Blocks MailCraft product &amp; integration guide (Markdown)">
+
 <link rel="icon" href="assets/brand/icon.svg" media="(prefers-color-scheme: light)">
 <link rel="icon" href="assets/brand/icon-white.svg" media="(prefers-color-scheme: dark)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <script>
   try {
     var t = localStorage.getItem('mailcraft-docs-theme');
@@ -280,6 +312,23 @@ td code, .features code { font-family: "IBM Plex Mono", monospace; font-size: 12
 .quad b { display: block; font-family: "Bricolage Grotesque", sans-serif; font-size: 16px; font-weight: 700; margin-bottom: 3px; }
 .quad span { font-size: 12.5px; color: var(--muted); }
 
+/* FAQ — answers stay open rather than sitting in <details>, because the
+   unit a search snippet or an AI answer lifts is a whole paragraph, and a
+   collapsed one reads as lower-confidence to both. */
+.faq {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  gap: 1px; background: var(--line); margin-top: 4px;
+  border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+  box-shadow: var(--sheet-shadow);
+}
+.faq > div { background: var(--panel); padding: 21px 23px; }
+.faq h3 { font-size: 16.5px; font-weight: 700; letter-spacing: -0.012em; }
+.faq p { margin-top: 9px; font-size: 13.8px; color: var(--muted); max-width: none; }
+.faq code {
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 0.92em;
+  background: var(--accent-soft); color: var(--accent); border-radius: 4px; padding: 1px 5px;
+}
+
 /* Footer — the page closes on the same workspace grid it opened on */
 footer {
   margin-top: 74px;
@@ -378,16 +427,13 @@ footer {
 
 <main class="wrap">
   <!-- The spec card: the promise, measured. Hands the hero to chapter 01. -->
-  <div class="spec" role="list" aria-label="Blocks MailCraft in six numbers">
+  <div class="spec" role="list" aria-label="Blocks MailCraft in three numbers">
     <div class="stat" role="listitem"><div class="n">0</div><div class="l">Runtime deps</div></div>
-    <div class="stat" role="listitem"><div class="n">182&hairsp;KB</div><div class="l">Gzipped, one file</div></div>
     <div class="stat" role="listitem"><div class="n">31</div><div class="l">Languages, RTL auto</div></div>
     <div class="stat" role="listitem"><div class="n">20</div><div class="l">Block types</div></div>
-    <div class="stat" role="listitem"><div class="n">397</div><div class="l">Automated tests</div></div>
-    <div class="stat" role="listitem"><div class="n">MIT</div><div class="l">All of it, no tiers</div></div>
   </div>
 
-  <div class="bridge rv"><p>Six numbers are the whole pitch. Here's what they <em>unpack into</em>.</p></div>
+  <div class="bridge rv"><p>Three numbers are the whole pitch. Here's what they <em>unpack into</em>.</p></div>
 
   <!-- ACT 1 · The product -->
   <section id="features">
@@ -606,6 +652,65 @@ footer {
       <a class="btn btn-ghost" href="examples/vanilla.html">Or just try the editor</a>
     </div>
   </div>
+
+  <div class="bridge rv"><p>What people ask before they <em>npm install</em>.</p></div>
+
+  <!-- ACT 6 · The questions.
+       Written answer-first on purpose: every <p> opens with a sentence that
+       survives being quoted on its own, since that is the unit a search
+       snippet or a generated answer takes. The same ten pairs are repeated
+       verbatim in the FAQPage JSON-LD at the end of the document -- if you
+       edit one, edit the other, or the markup stops matching the page and
+       becomes worse than none at all. -->
+  <section id="faq">
+    <div class="sec-head rv">
+      <span class="eyebrow"><span class="ch">05</span>The questions</span>
+      <h2>Frequently asked</h2>
+      <p>The ten that arrive by email and issue most often, answered in one paragraph each.</p>
+    </div>
+    <div class="faq rv">
+      <div>
+        <h3>What is Blocks MailCraft?</h3>
+        <p>Blocks MailCraft is an open-source drag-and-drop editor for HTML email templates, shipped as a single Web Component &mdash; one <code>&lt;mailcraft-editor&gt;</code> tag. You hand it HTML and it hands back send-ready HTML, with no proprietary document format in between. It is MIT licensed and published on npm as <code>@seliseblocks/mailcraft</code>.</p>
+      </div>
+      <div>
+        <h3>Is it really free, or is there a paid tier?</h3>
+        <p>It is free, and there is no paid tier to graduate to. The whole editor is MIT-licensed source: no seats, no per-email metering, no plan-gated features and no &ldquo;contact sales&rdquo; &mdash; white-label, editor localization, HTML import and conditional logic all arrive in the one install.</p>
+      </div>
+      <div>
+        <h3>Which frameworks does it work with?</h3>
+        <p>All of them, because it is a standard custom element rather than a framework component. The same tag runs in React, Angular, Vue and Svelte, and in a plain HTML page loaded with a <code>&lt;script&gt;</code> tag &mdash; there is no per-framework wrapper package to keep up with.</p>
+      </div>
+      <div>
+        <h3>Does it need a server, an account or an API key?</h3>
+        <p>No. Blocks MailCraft has zero runtime dependencies and makes no network requests of its own &mdash; no vendor cloud, no iframe, no telemetry, no token to refresh. It runs from a <code>file://</code> page, which is also the short answer to where your templates go: nowhere you did not send them.</p>
+      </div>
+      <div>
+        <h3>Can I import the email templates I already have?</h3>
+        <p>Yes, and it is not metered. Existing HTML imports into an editable block canvas and exports as HTML again; opening a design and saving it without touching anything gives you back what you put in, so migrating off another editor is not a one-way door.</p>
+      </div>
+      <div>
+        <h3>How many languages does the editor interface support?</h3>
+        <p>Thirty-one, with right-to-left layout switched on automatically for Arabic. Beyond translation, all 189 interface labels can be overridden from your own copy deck, so the editor can use your product&rsquo;s vocabulary rather than ours &mdash; and be white-labelled while it does.</p>
+      </div>
+      <div>
+        <h3>How does it differ from Unlayer, Beefree, Stripo, Topol or Chamaileon?</h3>
+        <p>Those are hosted SDKs: the editor itself is closed source and loads from the vendor&rsquo;s cloud, and white-label, localization, HTML import and conditional logic sit behind paid or metered tiers. Blocks MailCraft is the entire editor as MIT source, running inside your own page with nothing to call home to.</p>
+      </div>
+      <div>
+        <h3>How does it differ from GrapesJS, Easy Email or Maily.to?</h3>
+        <p>Those are genuinely open source, but each asks for a trade. GrapesJS needs an MJML toolchain and its newsletter preset has been unpublished since 2023; Easy Email and Maily.to are React-only; none of the three ships editor localization with RTL. Blocks MailCraft is framework-agnostic and dependency-free.</p>
+      </div>
+      <div>
+        <h3>How do I install it?</h3>
+        <p>Run <code>npm install @seliseblocks/mailcraft</code> and import the module, or drop the prebuilt bundle into a page with a script tag from unpkg or jsDelivr &mdash; no build step either way. The <a href="README.html">quick start</a> is five minutes end to end; the <a href="DOCS.html">guide</a> covers framework wiring, storage, AI and i18n contracts.</p>
+      </div>
+      <div>
+        <h3>How does it relate to SELISE Blocks?</h3>
+        <p>Same team, two ways to use it. Blocks MailCraft is standalone and stays that way, and it also ships pre-wired inside <a href="https://os.seliseblocks.com">SELISE Blocks Cloud</a>, where Email Management, file storage for the image library, identity, secrets and observability share one console per project and environment.</p>
+      </div>
+    </div>
+  </section>
 </main>
 
 <footer>
@@ -642,6 +747,7 @@ footer {
         <li><a href="#features">01 · The product</a></li>
         <li><a href="#compare">02 · The market</a></li>
         <li><a href="#platform">03 · The platform</a></li>
+        <li><a href="#faq">05 · The questions</a></li>
       </ul>
     </div>
   </div>

@@ -209,10 +209,21 @@ function classifyImage(el) {
 }
 
 function classifyButton(el) {
-  let a = null; let outerAlign = '';
+  let a = null; let outerAlign = ''; let pillTable = null;
   if (el.tagName === 'A') a = el;
   else if (el.tagName === 'DIV' || el.tagName === 'TD') {
     a = onlyChild(el, 'A');
+    // The bulletproof shape: the anchor is wrapped in a one-cell table so
+    // Word has a `<td>` to paint and pad (this exporter emits that, and so
+    // does every hand-written bulletproof button). Reached through the
+    // wrapper rather than the cell because that is the node the row walker
+    // offers, and the wrapper is also what carries the alignment.
+    if (!a) {
+      pillTable = onlyChild(el, 'TABLE');
+      const cells = pillTable ? pillTable.querySelectorAll('td') : [];
+      if (cells.length === 1) a = onlyChild(cells[0], 'A');
+      if (!a) pillTable = null;
+    }
     if (a) outerAlign = el.style.textAlign || el.getAttribute('align') || '';
   }
   if (!a) return null;
@@ -221,11 +232,16 @@ function classifyButton(el) {
   // generators (Beefree et al.) leave the `<a>` bare and hang the background,
   // radius and padding on nested `<span>`s inside it. Whichever element
   // carries the background is the pill; padding may sit a level deeper still.
-  const hasBg = (e) => !!(e.style && (e.style.backgroundColor || e.style.background));
-  const pill = hasBg(a) ? a : Array.from(a.querySelectorAll('span')).find(hasBg);
+  const hasBg = (e) => !!(e.style && (e.style.backgroundColor || e.style.background)) || !!(e.getAttribute && e.getAttribute('bgcolor'));
+  // The cell is checked last and only as a fallback: an anchor that paints
+  // its own pill still describes the button best (that is where the radius
+  // and the label colour sit), and the cell is what carries them when the
+  // source put the paint and the padding on the `<td>` instead.
+  const cell = a.closest ? a.closest('td') : null;
+  const pill = hasBg(a) ? a : (Array.from(a.querySelectorAll('span')).find(hasBg) || (cell && hasBg(cell) ? cell : null));
   if (!pill) return null;
   const st = pill.style;
-  let pad = paddingOf(a.style) || paddingOf(st);
+  let pad = paddingOf(a.style) || paddingOf(st) || (cell ? paddingOf(cell.style) : null);
   if (!pad) {
     const padded = Array.from(pill.querySelectorAll('span')).find((s) => paddingOf(s.style));
     if (padded) pad = paddingOf(padded.style);
@@ -235,8 +251,8 @@ function classifyButton(el) {
   const over = {
     label: (a.textContent || '').trim() || 'Button',
     href: a.getAttribute('href') || '#',
-    bg: st.backgroundColor || st.background,
-    color: st.color || a.style.color || '#ffffff',
+    bg: st.backgroundColor || st.background || (pill.getAttribute && pill.getAttribute('bgcolor')) || '',
+    color: a.style.color || st.color || '#ffffff',
     radius: radiusOf(st),
     py: (pad && pad.py) || 13,
     px: (pad && pad.px) || 26,
@@ -245,13 +261,23 @@ function classifyButton(el) {
     // about where the pill sits in the row -- that's the container's call,
     // so alignment is read starting at the parent, never at the anchor.
     align: outerAlign || textAlignOf(a.parentElement || a),
-    full: a.style.display === 'block',
+    // In the one-cell shape the anchor is always `display:block` (it fills
+    // the padded cell), so full-width has to be read off the table instead --
+    // otherwise every bulletproof button imports as a full-width one.
+    full: pillTable
+      ? /100%/.test((pillTable.style && pillTable.style.width) || pillTable.getAttribute('width') || '')
+      : a.style.display === 'block',
   };
   const size = fontPx(st.fontSize) || fontPx(a.style.fontSize);
   if (size) over.size = size;
-  // Outline buttons: transparent fill, the pill drawn by its border.
-  const bw = borderSidesOf(st).width;
-  if (bw) { over.borderW = bw; over.borderStyle = borderStyleOf(st); over.borderColor = borderColorOf(st) || over.color; }
+  // Outline buttons: transparent fill, the pill drawn by its border. The
+  // border is looked for on the cell as well as the pill, because in the
+  // one-cell shape the paint and the frame are on different elements -- the
+  // anchor is the pill (it carries the background) while the `<td>` draws the
+  // outline. Reading only the pill dropped `borderW` on every round trip.
+  const frame = borderSidesOf(st).width ? st : (cell && cell.style && borderSidesOf(cell.style).width ? cell.style : st);
+  const bw = borderSidesOf(frame).width;
+  if (bw) { over.borderW = bw; over.borderStyle = borderStyleOf(frame); over.borderColor = borderColorOf(frame) || over.color; }
   return blk('button', over);
 }
 
@@ -974,6 +1000,26 @@ function collectRows(nodes) {
  * document's theme -- a DM Sans email on #F1F5F9 came back in the default
  * Georgia on the default parchment, which read as "the import broke".
  */
+/**
+ * A layout table's committed pixel width, however it declares one: the
+ * `width` attribute, a `width` style, or -- for a responsive template -- the
+ * `max-width` that caps a fluid `width:100%`.
+ *
+ * `max-width` is not a nicety. It is how this exporter now writes the content
+ * column (`width:100%;max-width:620px`, so the email can narrow to a phone),
+ * and it is the shape every other modern email builder emits too. Reading
+ * only the fixed forms meant an export -> import round trip came back with no
+ * `theme.width` at all and silently fell to the default. Returns 0 for a
+ * purely proportional table, which the callers already skip.
+ */
+function fixedWidthOf(tb) {
+  const w = tb.getAttribute('width') || (tb.style && tb.style.width) || '';
+  if (w && !String(w).endsWith('%')) return PX(w);
+  const cap = tb.style && tb.style.maxWidth;
+  if (cap && !String(cap).endsWith('%')) return PX(cap);
+  return 0;
+}
+
 function themeFromParsedDoc(doc) {
   const theme = {};
   const body = doc.body;
@@ -985,9 +1031,7 @@ function themeFromParsedDoc(doc) {
   if (bg) theme.bg = bg;
   const widthCounts = {};
   body.querySelectorAll('table').forEach((tb) => {
-    const w = tb.getAttribute('width') || (tb.style && tb.style.width) || '';
-    if (!w || String(w).endsWith('%')) return;
-    const px = PX(w);
+    const px = fixedWidthOf(tb);
     if (px >= 320 && px <= 900) widthCounts[px] = (widthCounts[px] || 0) + 1;
   });
   const bestWidth = Object.keys(widthCounts).sort((a, b) => widthCounts[b] - widthCounts[a])[0];
@@ -998,10 +1042,7 @@ function themeFromParsedDoc(doc) {
   // column's corner. Without this an import flattened both, and the next
   // export silently squared the template off and closed the gap around it.
   if (bestWidth) {
-    const content = Array.from(body.querySelectorAll('table')).find((tb) => {
-      const w = tb.getAttribute('width') || (tb.style && tb.style.width) || '';
-      return w && !String(w).endsWith('%') && PX(w) === Number(bestWidth);
-    });
+    const content = Array.from(body.querySelectorAll('table')).find((tb) => fixedWidthOf(tb) === Number(bestWidth));
     if (content) {
       // The content column's own background -- including the literal
       // `transparent` the exporter always writes for a see-through column.

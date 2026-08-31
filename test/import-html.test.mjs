@@ -321,6 +321,77 @@ await it('template tags mixed into prose stay literal content', async () => {
   assert.match(JSON.stringify(rows), /\{\{#if vip\}\}/, 'and it passes through untouched');
 });
 
+/*
+ * The width vote has to understand a responsive content column.
+ *
+ * This exporter now writes it as `width:100%;max-width:620px` -- the shape
+ * every modern builder emits, and the one that lets the email narrow to a
+ * phone -- so a reader that only recognised a fixed px width came back with
+ * no `theme.width` at all and silently fell to the default on every
+ * export -> import round trip.
+ */
+await it('a fluid content column still yields the document width', async () => {
+  const fluid = `<!doctype html><html><head></head><body style="background:#eef2f7">
+<table role="presentation" width="100%"><tr><td align="center">
+<table role="presentation" width="100%" style="width:100%;max-width:640px;background:#ffffff"><tr><td><p>hi</p></td></tr></table>
+</td></tr></table></body></html>`;
+  const doc = htmlToDoc(fluid);
+  assert.equal(doc.theme.width, 640, 'read off max-width, not lost');
+});
+
+await it('the fixed-width form keeps working exactly as before', async () => {
+  const doc = htmlToDoc(email('<tr><td><p>hi</p></td></tr>'));
+  assert.equal(doc.theme.width, 600, 'width:600px still votes');
+});
+
+await it('a purely proportional table casts no width vote', async () => {
+  const pct = `<!doctype html><html><head></head><body>
+<table role="presentation" width="100%" style="width:100%"><tr><td><p>hi</p></td></tr></table></body></html>`;
+  const doc = htmlToDoc(pct);
+  assert.equal(doc.theme.width, undefined, 'nothing to claim, so the default stands');
+});
+
+/*
+ * The one-cell button shape, read back. This exporter now wraps a button in a
+ * table so Classic Outlook has a `<td>` to pad and paint, and hand-written
+ * bulletproof buttons have always looked like this -- so the classifier has
+ * to see through the wrapper, and has to find the properties that moved off
+ * the anchor onto the cell.
+ */
+await it('a bulletproof one-cell table button is a button, not a table', async () => {
+  const src = email('<tr><td><div style="text-align:center"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tbody><tr>'
+    + '<td align="center" bgcolor="#0065b3" style="background:#0065b3;padding:14px 28px;border-radius:6px">'
+    + '<a href="https://example.com" style="display:block;color:#ffffff;text-decoration:none;font-size:15px">Shop</a>'
+    + '</td></tr></tbody></table></div></td></tr>');
+  const b = blocksOf(src).find((x) => x.type === 'button');
+  assert.ok(b, 'classified as a button, got ' + blocksOf(src).map((x) => x.type).join(','));
+  assert.equal(b.props.label, 'Shop');
+  assert.equal(b.props.px, 28, 'padding read off the cell');
+  assert.equal(b.props.py, 14);
+  assert.equal(b.props.full, false, 'an auto-width table is not a full-width button');
+});
+
+await it('an outline button keeps the border that lives on its cell', async () => {
+  const src = email('<tr><td><div><table role="presentation"><tbody><tr>'
+    + '<td bgcolor="#ffffff" style="background:#ffffff;padding:12px 32px;border:2px solid #0065b3">'
+    + '<a href="https://example.com" style="display:block;color:#0065b3;text-decoration:none">Reset</a>'
+    + '</td></tr></tbody></table></div></td></tr>');
+  const b = blocksOf(src).find((x) => x.type === 'button');
+  assert.ok(b);
+  assert.equal(b.props.borderW, 2, 'the frame is on the cell, the paint on the anchor');
+  assert.equal(b.props.borderColor, '#0065b3');
+});
+
+await it('a full-width one-cell button is recognised as full width', async () => {
+  const src = email('<tr><td><div><table role="presentation" style="width:100%"><tbody><tr>'
+    + '<td bgcolor="#0065b3" style="background:#0065b3;padding:14px 28px">'
+    + '<a href="https://example.com" style="display:block;color:#ffffff">Go</a>'
+    + '</td></tr></tbody></table></div></td></tr>');
+  const b = blocksOf(src).find((x) => x.type === 'button');
+  assert.ok(b);
+  assert.equal(b.props.full, true, 'read off the table, since the anchor is always block here');
+});
+
 console.log(`\n${passed} passed, ${failed} failed.`);
 closeDom();
 process.exit(failed ? 1 : 0);

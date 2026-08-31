@@ -49,6 +49,57 @@ function logicPlan(doc) {
 }
 
 /**
+ * The two Word-engine declarations that have to be applied to the finished
+ * markup rather than to the DOM the renderer builds.
+ *
+ * `mso-*` are not real CSS properties, and CSSOM silently drops anything it
+ * does not recognise -- `style.msoLineHeightRule = 'exactly'` and
+ * `setProperty('mso-line-height-rule', ...)` both no-op, and the canvas is
+ * built through `Object.assign(node.style, ...)`. Since the exporter reads
+ * that DOM back as `outerHTML`, a string pass over the result is the only
+ * place these can be added. They are also meaningless anywhere but Outlook,
+ * so the canvas is better off without them.
+ *
+ * - `mso-line-height-rule:exactly` -- Classic Outlook otherwise ignores
+ *   `line-height` outright and sets text solid. Added only where a real
+ *   line-height is already declared, so it never invents spacing of its own.
+ * - `mso-table-lspace/rspace:0pt` -- Word adds its own horizontal space
+ *   around a table, which shows up as phantom gaps between columns.
+ *
+ * Both are idempotent: a second pass finds its own marker and skips.
+ */
+export function msoHarden(html) {
+  return html
+    .replace(/style="([^"]*line-height:[^"]*)"/g, (m0, css) => {
+      if (/mso-line-height-rule/.test(css)) return m0;
+      // A ratio resolved against the font size in the same declaration.
+      // `exactly` tells Word to use the line-height verbatim, and a unitless
+      // 1.65 is not a length -- the pair is ambiguous at best and collapses
+      // the leading at worst. Every block that sets a line-height sets its
+      // font-size beside it, so the multiplication is exact rather than a
+      // guess; anything the renderer did not author (imported markup with a
+      // bare ratio, or a keyword like `normal`) is left exactly as it is and
+      // gets no `exactly` either, since there would be no length to honour.
+      const fs = css.match(/font-size:\s*([\d.]+)px/);
+      const out = fs
+        ? css.replace(/line-height:\s*([\d.]+)\s*(;|$)/g, (s0, ratio, end) => 'line-height:' + Math.round(parseFloat(fs[1]) * parseFloat(ratio)) + 'px' + end)
+        : css;
+      if (!/line-height:\s*[\d.]+px/.test(out)) return 'style="' + out + '"';
+      return 'style="' + out + (out.trim().endsWith(';') ? '' : ';') + 'mso-line-height-rule:exactly;"';
+    })
+    .replace(/<table\b([^>]*)>/g, (m0, attrs) => {
+      if (/mso-table-lspace/.test(attrs)) return m0;
+      const spacing = 'mso-table-lspace:0pt;mso-table-rspace:0pt;';
+      // Appended, never prepended: the declarations the template actually
+      // authored stay at the front of the attribute, where both the importer
+      // and a human reading the source expect to find them.
+      return /style="/.test(attrs)
+        ? '<table' + attrs.replace(/style="([^"]*)"/, (s0, css) => 'style="' + css + (!css.trim() || css.trim().endsWith(';') ? '' : ';') + spacing + '"') + '>'
+        : '<table' + attrs + ' style="' + spacing + '">';
+    });
+}
+
+/**
  * Display-only dressing for the Code modal's live-preview iframe: the
  * exported template carries literal {{#if}}/{{#each}} tags, which an iframe
  * renders as bare text at odd positions (a browser even foster-parents the
@@ -128,11 +179,21 @@ export function buildHtml(state, root, boxCss) {
       const inner = (c.bg || c.border || c.radius || c.padY || c.padX)
         ? '<div style="background:' + (c.bg || 'transparent') + ';' + (c.border ? 'border:' + c.border + 'px ' + (c.borderStyle || 'solid') + ' ' + (c.lineColor || '#e2e2e5') + ';' : '') + 'border-radius:' + (c.radius || 0) + 'px;padding:' + (c.padY || 0) + 'px ' + (c.padX || 0) + 'px">\n            ' + colInner(c) + '\n            </div>'
         : colInner(c);
-      return '<td width="' + c.span + '%" valign="' + rp.valign + '" style="padding:0 ' + Math.round(rp.gap / 2) + 'px;">\n            ' + inner + '\n          </td>';
+      // `mc-col` is what the stylesheet's one media query targets to stack
+      // this cell under its neighbour on a narrow screen -- the behaviour the
+      // row's "Stack columns on mobile" toggle has always promised. Only
+      // emitted where it can do something: a lone column is already full
+      // width, and a row that opted out keeps its side-by-side cells.
+      const stack = rp.stackMobile !== false && r.cols.length > 1;
+      return '<td' + (stack ? ' class="mc-col"' : '') + ' width="' + c.span + '%" valign="' + rp.valign + '" style="padding:0 ' + Math.round(rp.gap / 2) + 'px;">\n            ' + inner + '\n          </td>';
     }).join('\n          ');
+    // The CSS-layout rows stack through the same query, via the wrapper: one
+    // class on the flex/grid container is enough to turn either into a single
+    // column, so the markup stays exactly as it was for every wide client.
+    const stackWrap = rp.stackMobile !== false && r.cols.length > 1 ? ' class="mc-stack"' : '';
     const cssBody = rp.layout === 'grid'
-      ? '<div style="display:grid;grid-template-columns:repeat(' + (rp.gridCols || 2) + ',minmax(0,1fr));gap:' + rp.gap + 'px">\n            ' + r.cols.map((c) => '<div>' + colInner(c) + '</div>').join('\n            ') + '\n          </div>'
-      : '<div style="display:flex;flex-direction:' + (rp.flexDir || 'row') + ';justify-content:' + (rp.justify || 'flex-start') + ';align-items:' + (rp.alignItems || 'stretch') + ';flex-wrap:' + (rp.wrap ? 'wrap' : 'nowrap') + ';gap:' + rp.gap + 'px">\n            ' + r.cols.map((c) => '<div style="flex:' + c.span + ' 1 auto;min-width:0">' + colInner(c) + '</div>').join('\n            ') + '\n          </div>';
+      ? '<div' + stackWrap + ' style="display:grid;grid-template-columns:repeat(' + (rp.gridCols || 2) + ',minmax(0,1fr));gap:' + rp.gap + 'px">\n            ' + r.cols.map((c) => '<div>' + colInner(c) + '</div>').join('\n            ') + '\n          </div>'
+      : '<div' + stackWrap + ' style="display:flex;flex-direction:' + (rp.flexDir || 'row') + ';justify-content:' + (rp.justify || 'flex-start') + ';align-items:' + (rp.alignItems || 'stretch') + ';flex-wrap:' + (rp.wrap ? 'wrap' : 'nowrap') + ';gap:' + rp.gap + 'px">\n            ' + r.cols.map((c) => '<div style="flex:' + c.span + ' 1 auto;min-width:0">' + colInner(c) + '</div>').join('\n            ') + '\n          </div>';
     const body = rp.layout && rp.layout !== 'columns'
       ? cssBody
       : '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>\n          ' + cells + '\n          </tr></table>';
@@ -165,5 +226,67 @@ export function buildHtml(state, root, boxCss) {
     // Patchy in mail clients (Outlook drops it), but honest: what the user
     // styled ships, and capable clients render it.
     + (t.shadow ? 'box-shadow:' + t.shadow + ';' : '');
-  return '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<meta name="color-scheme" content="light dark">\n<title>' + 'Email' + '</title>\n</head>\n<body style="margin:0;padding:0;background:' + pageBg + ';font-family:' + t.font.replace(/"/g, "'") + ';color:' + t.text + ';-webkit-font-smoothing:antialiased;">\n<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:' + pageBg + ';">\n  <tr><td align="center" style="padding:' + pagePad + ';">\n    <table role="presentation" width="' + t.width + '" cellpadding="0" cellspacing="0" border="0" style="width:' + t.width + 'px;max-width:100%;background:' + (t.contentBg || 'transparent') + ';' + contentShape + '">\n' + rows + '\n    </table>\n  </td></tr>\n</table>\n</body>\n</html>';
+  /*
+   * The content column is `width:100%` capped by `max-width`, never a fixed
+   * `width:<n>px`.
+   *
+   * The fixed width was what made the sent email unresponsive, and not only
+   * for itself: a px width becomes the table's min-content contribution, so
+   * it propagated outward and pinned the full-width wrapper open too. A plain
+   * text-only template measured 620px of horizontal scroll on a 390px phone,
+   * and `max-width:100%` -- already sitting right there -- never got the
+   * chance to engage, because 100% of a container the table had itself forced
+   * to 620px is 620px. Swapping the two makes the cap the real constraint:
+   * measured 500px (fits) on the phone, unchanged 620px on the desktop.
+   *
+   * The `<!--[if mso]>` pair is the price of that. Word-based Outlook honours
+   * neither `max-width` nor the media query below, so on its own it would now
+   * render the column edge to edge across the whole window; the ghost table
+   * is a fixed-width cage only Outlook sees, which holds the old geometry for
+   * exactly the client that cannot do better. Every other client skips the
+   * conditional comment entirely and gets the fluid table.
+   */
+  const ghostOpen = '<!--[if mso]><table role="presentation" width="' + t.width + '" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->';
+  const ghostClose = '<!--[if mso]></td></tr></table><![endif]-->';
+  const shell = '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:' + t.width + 'px;background:' + (t.contentBg || 'transparent') + ';' + contentShape + '">\n' + rows + '\n    </table>';
+  /*
+   * The one embedded stylesheet in the document, and the only place the
+   * exporter is not inline-styled -- a media query cannot be expressed
+   * inline, and every rule here is a narrow-screen override of an inline
+   * style, hence `!important` throughout.
+   *
+   * `mc-col` / `mc-stack` are what finally make "Stack columns on mobile" do
+   * something: the toggle has shipped in the row inspector since columns
+   * existed, but nothing read the prop -- no media query was emitted and the
+   * canvas ignored it -- so a 4-column row stayed 4 columns of 60px on a
+   * phone. The image rule is the other half of being responsive: a fixed-width
+   * image from an import would otherwise hold a stacked column open.
+   */
+  const stackCss = '\n<style>\n'
+    + '/* Apple Mail and iOS auto-detect dates, addresses and phone numbers and\n'
+    + '   repaint them as blue underlined links. This hands them back to the\n'
+    + '   surrounding text; links the template actually declares are untouched,\n'
+    + '   because they carry their own inline colour. */\n'
+    + 'a[x-apple-data-detectors] { color:inherit !important; text-decoration:none !important; }\n'
+    + '@media only screen and (max-width:' + t.width + 'px) {\n'
+    + '  .mc-col { display:block !important; width:100% !important; padding-left:0 !important; padding-right:0 !important; }\n'
+    + '  .mc-stack { display:block !important; }\n'
+    + '  .mc-stack > div { width:100% !important; }\n'
+    + '  img { max-width:100% !important; height:auto !important; }\n'
+    + '}\n</style>';
+  /*
+   * `xmlns:o` earns its place; `xmlns:v` does not. The Office namespace is
+   * what makes `<o:OfficeDocumentSettings>` parse, and `PixelsPerInch` 96 is
+   * a live bug fix rather than a legacy one: on a high-DPI Windows display
+   * Outlook renders at 120dpi and scales the whole template about 25% larger
+   * than authored. VML's namespace is deliberately absent -- nothing here
+   * emits VML, and declaring a namespace for markup that never appears is
+   * noise in every other client.
+   */
+  const msoHead = '\n<!--[if mso]>\n<xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml>\n<![endif]-->';
+  // `text-size-adjust` at 100%, never `none`: both stop a mobile client
+  // inflating the type, but `none` also blocks legitimate scaling and leaves
+  // text unreadably small on some Android clients.
+  const bodyStyle = 'margin:0;padding:0;background:' + pageBg + ';font-family:' + t.font.replace(/"/g, "'") + ';color:' + t.text + ';-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;text-size-adjust:100%;';
+  return msoHarden('<!doctype html>\n<html lang="en" xmlns:o="urn:schemas-microsoft-com:office:office">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<meta name="color-scheme" content="light">\n<meta name="supported-color-schemes" content="light">\n<title>' + 'Email' + '</title>' + msoHead + stackCss + '\n</head>\n<body style="' + bodyStyle + '">\n<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:' + pageBg + ';">\n  <tr><td align="center" style="padding:' + pagePad + ';">\n    ' + ghostOpen + '\n    ' + shell + '\n    ' + ghostClose + '\n  </td></tr>\n</table>\n</body>\n</html>');
 }

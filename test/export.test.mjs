@@ -13,7 +13,7 @@
  */
 import assert from 'node:assert/strict';
 
-const { buildHtml } = await import(new URL('../src/core/export.js', import.meta.url).href);
+const { buildHtml, msoHarden } = await import(new URL('../src/core/export.js', import.meta.url).href);
 const { boxCss } = await import(new URL('../src/core/layout-style.js', import.meta.url).href);
 const { mk, mkRow, migrateDoc } = await import(new URL('../src/core/blocks.js', import.meta.url).href);
 
@@ -218,16 +218,16 @@ await it('the canvas drop shadow rides the content table, only when asked', asyn
   const doc = docOf([mk('text')]);
   doc.theme = Object.assign({}, THEME, { shadow: '0 8px 28px rgba(23,32,51,0.14)' });
   const html = buildHtml({ doc }, stubRoot({}), boxCss);
-  assert.match(html, /width:620px;max-width:100%[^"]*box-shadow:0 8px 28px rgba\(23,32,51,0\.14\)/);
+  assert.match(html, /width:100%;max-width:620px[^"]*box-shadow:0 8px 28px rgba\(23,32,51,0\.14\)/);
 });
 
 await it('the content-area border rides the content table, only when asked', async () => {
   const plain = render(docOf([mk('text')]));
-  assert.equal(/max-width:100%[^"]*border:/.test(plain), false, 'no border style with borderW unset');
+  assert.equal(/max-width:620px[^"]*border:/.test(plain), false, 'no border style with borderW unset');
   const doc = docOf([mk('text')]);
   doc.theme = Object.assign({}, THEME, { borderW: 3, borderStyle: 'dashed', borderColor: '#123456' });
   const html = buildHtml({ doc }, stubRoot({}), boxCss);
-  assert.match(html, /width:620px;max-width:100%[^"]*border:3px dashed #123456/, 'the border sits on the content table');
+  assert.match(html, /width:100%;max-width:620px[^"]*border:3px dashed #123456/, 'the border sits on the content table');
 });
 
 await it('a row holding only markers emits the tags without its <tr> scaffolding', async () => {
@@ -307,7 +307,7 @@ await it('a transparent page background reaches the body and the wrapper table',
 await it('a transparent content background is passed through, not defaulted to white', async () => {
   const doc = docOf([]);
   doc.theme = Object.assign({}, THEME, { contentBg: 'transparent' });
-  assert.match(render(doc), /max-width:100%;background:transparent;/);
+  assert.match(render(doc), /max-width:620px;background:transparent;/);
 });
 
 await it('a page with no background at all still emits valid CSS', async () => {
@@ -317,6 +317,129 @@ await it('a page with no background at all still emits valid CSS', async () => {
   assert.equal(/background:;/.test(html), false, 'never an empty declaration');
   assert.match(html, /background:transparent/);
 });
+
+/*
+ * Responsiveness. The exporter used to pin the content column at a fixed
+ * `width:620px`, which a mail client on a phone cannot narrow -- and because
+ * a px width is also a table's min-content contribution, it propagated
+ * outward and held the full-width wrapper open too, so even a text-only
+ * template scrolled sideways on a 390px screen. These lock in the fluid
+ * shape, the Outlook cage that compensates for it, and the stacking the row
+ * inspector's "Stack columns on mobile" toggle had been promising while
+ * nothing actually read the prop.
+ */
+await it('the content column is fluid, capped by max-width rather than pinned to it', async () => {
+  const html = render(docOf([mk('text')]));
+  assert.match(html, /style="width:100%;max-width:620px/, 'fluid up to the document width');
+  assert.equal(/style="width:620px/.test(html), false, 'never a fixed px width, which no client can narrow');
+});
+
+await it('Outlook, which honours neither max-width nor media queries, still gets a fixed cage', async () => {
+  const html = render(docOf([mk('text')]));
+  assert.match(html, /<!--\[if mso\]><table role="presentation" width="620"/, 'the ghost table opens');
+  assert.match(html, /<!--\[if mso\]><\/td><\/tr><\/table><!\[endif\]-->/, 'and closes');
+});
+
+await it('columns carry the hook that stacks them on a narrow screen', async () => {
+  const two = buildHtml({ doc: { theme: THEME, rows: [mkRow([50, 50], [mk('text')])] } }, stubRoot({}), boxCss);
+  assert.match(two, /<td class="mc-col" width="50%"/, 'each cell opts in');
+  assert.match(two, /@media only screen and \(max-width:620px\)/, 'and the query that acts on it ships');
+  assert.match(two, /\.mc-col \{ display:block !important; width:100% !important;/);
+});
+
+await it('a single-column row is not given a stacking hook it cannot use', async () => {
+  const one = buildHtml({ doc: { theme: THEME, rows: [mkRow([100], [mk('text')])] } }, stubRoot({}), boxCss);
+  assert.equal(/class="mc-col"/.test(one), false, 'already full width');
+});
+
+await it('a row that opted out of stacking keeps its columns side by side', async () => {
+  const row = mkRow([50, 50], [mk('text')]);
+  row.props.stackMobile = false;
+  const html = buildHtml({ doc: { theme: THEME, rows: [row] } }, stubRoot({}), boxCss);
+  assert.equal(/class="mc-col"/.test(html), false, 'the toggle is honoured, not ignored as it was');
+});
+
+/*
+ * Mail-client hardening. Each of these is one or two declarations that fix a
+ * defect a real client still has today; the deliberately *absent* ones are
+ * asserted too, so nobody reintroduces the legacy payload (VML buttons and
+ * their namespace, o:AllowPNG, #MessageViewBody, -ms-text-size-adjust) that
+ * only ever served clients now long dead.
+ */
+await it('Outlook is told to render at 96dpi, so it stops scaling the template up', async () => {
+  const html = render(docOf([mk('text')]));
+  assert.match(html, /xmlns:o="urn:schemas-microsoft-com:office:office"/, 'the namespace o: actually needs');
+  assert.match(html, /<!--\[if mso\]>\s*<xml><o:OfficeDocumentSettings><o:PixelsPerInch>96<\/o:PixelsPerInch>/);
+});
+
+await it('every table blocks Word from adding its own horizontal spacing', async () => {
+  const html = render(docOf([mk('text')]));
+  const tables = html.match(/<table\b[^>]*>/g) || [];
+  assert.ok(tables.length >= 3, 'the shell alone has several');
+  tables.forEach((tag) => assert.match(tag, /mso-table-lspace:0pt;mso-table-rspace:0pt;/, tag.slice(0, 60)));
+});
+
+await it('declared line-heights are made exact for Outlook, and none are invented', async () => {
+  const html = render(docOf([mk('text')]));
+  (html.match(/style="[^"]*"/g) || []).forEach((attr) => {
+    if (/line-height:/.test(attr)) assert.match(attr, /mso-line-height-rule:exactly/, 'paired: ' + attr.slice(0, 70));
+    else assert.equal(/mso-line-height-rule/.test(attr), false, 'never added on its own: ' + attr.slice(0, 70));
+  });
+});
+
+await it('mobile clients are stopped from resizing the type, without blocking scaling outright', async () => {
+  const html = render(docOf([mk('text')]));
+  assert.match(html, /-webkit-text-size-adjust:100%;text-size-adjust:100%/);
+  assert.equal(/text-size-adjust:none/.test(html), false, 'none leaves text too small on some Android clients');
+});
+
+await it("Apple Mail's auto-detected links are handed back to the surrounding text", async () => {
+  const html = render(docOf([mk('text')]));
+  assert.match(html, /a\[x-apple-data-detectors\] \{ color:inherit !important; text-decoration:none !important; \}/);
+});
+
+await it('the legacy payload is deliberately not carried', async () => {
+  const html = render(docOf([mk('button'), mk('text')]));
+  assert.equal(/xmlns:v=/.test(html), false, 'no VML namespace, because nothing emits VML');
+  assert.equal(/v:roundrect/.test(html), false, 'no VML buttons');
+  assert.equal(/AllowPNG/.test(html), false, 'Outlook 2007-2010 era');
+  assert.equal(/MessageViewBody/.test(html), false, 'old Outlook.com / Windows Live');
+  assert.equal(/-ms-text-size-adjust/.test(html), false, 'IE / Windows Phone');
+});
+
+await it('hardening is idempotent, so a re-export never doubles it', async () => {
+  const html = render(docOf([mk('text')]));
+  const twice = msoHarden(html);
+  assert.equal(twice, html, 'a second pass is a no-op');
+});
+
+await it('line-heights are resolved to pixels before Outlook is told to obey them exactly', async () => {
+  // Exercised through msoHarden directly: this suite is DOM-free, and block
+  // bodies reach the exporter from the rendered tree. The input below is the
+  // shape render/block-body.js emits for a text block.
+  const out = msoHarden('<div style="padding: 10px 0px; font-size: 15px; line-height: 1.65;">x</div>');
+  // A unitless ratio is not a length, so pairing it with `exactly` is
+  // ambiguous at best. Every block sets font-size beside line-height, so the
+  // ratio can be resolved rather than guessed: 15 * 1.65 = 24.75 -> 25.
+  assert.match(out, /line-height:25px;mso-line-height-rule:exactly;/);
+  assert.equal(/line-height:\s*[\d.]+\s*;/.test(out), false, 'no bare ratio survives');
+});
+
+await it('a line-height with no font-size beside it is left alone, and gets no exactly', async () => {
+  const out = msoHarden('<p style="line-height:1.65">x</p>');
+  assert.match(out, /line-height:1\.65/, 'nothing to resolve it against, so it is untouched');
+  assert.equal(/mso-line-height-rule/.test(out), false, 'and no exactly, which would have no length to honour');
+});
+
+await it('the document declares one colour scheme, the one it actually ships', async () => {
+  const html = render(docOf([mk('text')]));
+  // Declaring `light dark` invites a client to apply its own dark transform
+  // to a template whose colours are all hard-coded light.
+  assert.match(html, /<meta name="color-scheme" content="light">/);
+  assert.match(html, /<meta name="supported-color-schemes" content="light">/);
+  assert.equal(/content="light dark"/.test(html), false);
+});
+
 
 console.log(`\n${passed} passed, ${failed} failed.`);
 if (failed) process.exit(1);

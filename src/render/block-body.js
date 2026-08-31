@@ -40,6 +40,31 @@ function editableAttrs(on) {
   return on ? { contenteditable: 'true', spellcheck: 'false', ...NO_ASSIST } : { spellcheck: 'false' };
 }
 
+/**
+ * What keeps a text-bearing block inside the column it was dropped in.
+ *
+ * A long unbroken token -- a tracking URL, a concatenated word -- has a
+ * min-content width of the whole token, and nothing above clips it: the block
+ * wrapper (render/canvas.js) and the exported `<td>` both let it through, so
+ * the run either paints across the next column on the canvas or, in the sent
+ * email, widens its own cell and steals the width from its siblings (a 25%
+ * column measured 511px against its neighbours' 24px).
+ *
+ * `anywhere` rather than the more familiar `break-word` on purpose: only
+ * `anywhere` lowers the min-content contribution, which is the number table
+ * and flex layout actually size against -- `break-word` wraps the glyphs but
+ * leaves the box's intrinsic width at the full token, so the column blows out
+ * exactly as before. `word-break` carries the same meaning for engines that
+ * predate `anywhere`. Neither breaks a token that already fits.
+ *
+ * It has to live here, in the inline style, rather than in the editor's
+ * stylesheet: this is the DOM `core/export.js` reads back and sends. The
+ * canvas *looked* fine without it only because Chrome's UA sheet gives
+ * `[contenteditable]` an `overflow-wrap: break-word` -- and export strips
+ * `contenteditable`, so the editor was hiding the defect that shipped.
+ */
+const FIT = { overflowWrap: 'anywhere', wordBreak: 'break-word' };
+
 /** An explicit block font owns every rich descendant; an empty value deliberately leaves imported inline typography untouched. */
 function overrideRichFont(root, fontFamily) {
   if (!fontFamily) return;
@@ -62,7 +87,7 @@ export function blockBody(b, theme, live, ctx) {
     case 'text': {
       const edit = live;
       const content = el('div', {
-        padding: pad(p), fontSize: p.size + 'px', lineHeight: p.lh, textAlign: p.align, fontWeight: p.weight, color: p.color || t.text, outline: 'none', fontFamily: p.fontFamily || t.font,
+        padding: pad(p), fontSize: p.size + 'px', lineHeight: p.lh, textAlign: p.align, fontWeight: p.weight, color: p.color || t.text, outline: 'none', fontFamily: p.fontFamily || t.font, ...FIT,
       }, { ...attr, ...editableAttrs(edit), html: m(p.html), 'data-focus-key': edit ? 'block:' + b.id : undefined });
       // Imported email HTML keeps inline font-family declarations so an
       // untouched block retains its source typography. Once the user chooses
@@ -96,22 +121,57 @@ export function blockBody(b, theme, live, ctx) {
       }
       return wrap;
     }
+    /*
+     * A one-cell table, not a bare padded anchor.
+     *
+     * Classic Outlook's Word engine does not lay out `display:inline-block`
+     * and treats padding on an inline `<a>` inconsistently, so the pill drawn
+     * by an anchor alone collapses to bare coloured text there -- the single
+     * most-reported defect in hand-written email. A `<td>` is the one box
+     * Word sizes and paints reliably, so the background, the padding and the
+     * corner live on the cell and the anchor becomes the label inside it.
+     * Every other client renders the two identically.
+     *
+     * VML `<v:roundrect>` is the usual alternative and is deliberately not
+     * used: it needs an explicit pixel width and height, which an auto-width
+     * button sized by its own label does not have. The only thing this gives
+     * up against VML is the rounded corner in Classic Outlook, which squares
+     * off there and is correct everywhere else.
+     */
     case 'button': {
       const wrap = el('div', { textAlign: p.align, padding: '4px 0' }, attr);
-      const a = el('a', {
-        display: p.full ? 'block' : 'inline-block', background: p.bg, color: p.color, textDecoration: 'none',
-        padding: p.py + 'px ' + p.px + 'px', borderRadius: p.radius + 'px', fontFamily: p.fontFamily || t.font, fontSize: p.size + 'px',
-        fontWeight: '600', letterSpacing: '0.02em', outline: 'none',
+      // `inline-table` so the wrapper's text-align still positions it; the
+      // `align` attribute is the same instruction for Word, which ignores the
+      // display value. A full-width button is a plain 100% table instead.
+      const table = el('table', {
+        display: p.full ? 'table' : 'inline-table', width: p.full ? '100%' : 'auto', borderCollapse: 'separate',
+      }, { role: 'presentation', cellpadding: '0', cellspacing: '0', border: '0', align: p.full ? undefined : p.align });
+      const td = el('td', {
+        background: p.bg, borderRadius: p.radius + 'px', padding: p.py + 'px ' + p.px + 'px', textAlign: 'center',
         // Outline-style buttons (transparent fill + border) are a standard
         // email pattern; the color falls back to the label color so a bare
         // "outline thickness" bump looks right without a second step.
         border: p.borderW ? p.borderW + 'px ' + (p.borderStyle || 'solid') + ' ' + (p.borderColor || p.color) : '0',
+      }, { align: 'center', bgcolor: p.bg || undefined });
+      const a = el('a', {
+        display: 'block', color: p.color, textDecoration: 'none',
+        // Kept on the anchor as well as the cell: `classifyButton` reads the
+        // element carrying the background to decide something is a button at
+        // all, and a foreign client that drops the cell's paint still shows
+        // the pill. It costs one declaration.
+        background: p.bg, borderRadius: p.radius + 'px',
+        fontFamily: p.fontFamily || t.font, fontSize: p.size + 'px',
+        fontWeight: '600', letterSpacing: '0.02em', outline: 'none', ...FIT,
       }, { href: linkHref(p.href), ...editableAttrs(live), text: p.label });
       a.addEventListener('click', (e) => e.preventDefault());
       // Button editing is deliberately plain: no focus-tracked `editing` state, no
       // paste handling, no floating RTE toolbar -- only its label commits on blur.
       if (live) a.addEventListener('blur', (e) => { if (e.target.textContent !== p.label) ctx.onBlur(b, 'label', e.target.textContent); });
-      wrap.appendChild(a);
+      td.appendChild(a);
+      const tr = el('tr'); tr.appendChild(td);
+      const tbody = el('tbody'); tbody.appendChild(tr);
+      table.appendChild(tbody);
+      wrap.appendChild(table);
       return wrap;
     }
     case 'divider': {
@@ -190,7 +250,13 @@ export function blockBody(b, theme, live, ctx) {
       // instead of re-rendering the editor (see the tick in editor-core.js).
       const wrap = el('div', { padding: '10px 0', textAlign: 'center', fontFamily: p.fontFamily || t.font, color: p.color }, live ? Object.assign({ 'data-mc-countdown': p.target }, attr) : attr);
       wrap.appendChild(el('div', { fontSize: '12px', letterSpacing: '0.14em', textTransform: 'uppercase', opacity: '0.6', marginBottom: '10px' }, { text: p.label }));
-      const row = el('div', { display: 'flex', justifyContent: 'center', gap: '10px' });
+      // Wraps rather than overhangs. Four 84px boxes plus their gaps need
+      // 366px, so in any column narrower than that -- a 50/50 split of a
+      // 620px sheet is 296px -- the unwrapped row used to run out over the
+      // next column, and in the sent email it dragged its own cell open to
+      // 386px against its neighbours' 94px. Wrapping keeps the digits legible
+      // at any width; a row with the space for one line still gets one line.
+      const row = el('div', { display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '10px' });
       parts.forEach(([lab, v]) => {
         const box = el('div', { border: '1px solid ' + p.color + '33', padding: '9px 12px', minWidth: '58px' });
         box.appendChild(el('div', { fontSize: '25px', fontFamily: p.fontFamily || t.font, fontWeight: '700', lineHeight: '1' }, live ? { text: String(v).padStart(2, '0'), 'data-mc-count': lab } : { text: String(v).padStart(2, '0') }));
@@ -203,7 +269,14 @@ export function blockBody(b, theme, live, ctx) {
     case 'menu': {
       const wrap = el('div', { textAlign: p.align, padding: '10px 0' }, attr);
       parseItems(p.items).forEach((it) => {
-        const a = el('a', { color: p.color, fontSize: p.size + 'px', fontFamily: p.fontFamily || t.font, textDecoration: 'none', margin: '0 ' + p.gap / 2 + 'px', letterSpacing: '0.12em', textTransform: 'uppercase' }, { href: linkHref(it.href), text: it.label });
+        // `inline-block`, not the default inline: adjacent inline *text* runs
+        // offer no soft-wrap opportunity between them, and these anchors are
+        // appended with no whitespace in between -- so a menu too wide for its
+        // column ran straight off the edge instead of wrapping onto a second
+        // line (item 3 of a 3-item menu started 18px past a 148px column). An
+        // inline-block is an atomic inline, which does get a break opportunity
+        // either side of it, exactly as the social row already relied on.
+        const a = el('a', { display: 'inline-block', color: p.color, fontSize: p.size + 'px', fontFamily: p.fontFamily || t.font, textDecoration: 'none', margin: '0 ' + p.gap / 2 + 'px', letterSpacing: '0.12em', textTransform: 'uppercase' }, { href: linkHref(it.href), text: it.label });
         a.addEventListener('click', (e) => e.preventDefault());
         wrap.appendChild(a);
       });
@@ -214,7 +287,7 @@ export function blockBody(b, theme, live, ctx) {
       const head = el(p.level || 'h2', {
         margin: '0', padding: pad(p), fontSize: p.size + 'px', lineHeight: p.lh, textAlign: p.align,
         fontWeight: p.weight, letterSpacing: p.font === 'condensed' ? '0.005em' : '-0.01em',
-        color: p.color || t.text, outline: 'none',
+        color: p.color || t.text, outline: 'none', ...FIT,
         // An explicit per-block font beats the Condensed/Body style toggle.
         fontFamily: p.fontFamily || (p.font === 'condensed' ? "'Arial Narrow', 'Helvetica Neue Condensed', Helvetica, Arial, sans-serif" : t.font),
       }, { ...attr, ...editableAttrs(edit), text: m(p.text), 'data-focus-key': edit ? 'block:' + b.id : undefined });
@@ -224,7 +297,7 @@ export function blockBody(b, theme, live, ctx) {
     }
     case 'list': {
       const items = String(p.items || '').split('\n').filter((l) => l.trim());
-      const list = el(p.ordered ? 'ol' : 'ul', { margin: '0', padding: (p.py || 0) + 'px 0 ' + (p.py || 0) + 'px 22px', fontFamily: p.fontFamily || t.font, fontSize: p.size + 'px', lineHeight: p.lh, color: p.color || t.text }, attr);
+      const list = el(p.ordered ? 'ol' : 'ul', { margin: '0', padding: (p.py || 0) + 'px 0 ' + (p.py || 0) + 'px 22px', fontFamily: p.fontFamily || t.font, fontSize: p.size + 'px', lineHeight: p.lh, color: p.color || t.text, ...FIT }, attr);
       items.forEach((it) => {
         const li = el('li', { marginBottom: p.gap + 'px' }, { html: m(it) });
         list.appendChild(li);
@@ -247,6 +320,17 @@ export function blockBody(b, theme, live, ctx) {
             fontWeight: isHead ? '600' : '400', outline: 'none',
             fontFamily: p.fontFamily || t.font,
             letterSpacing: isHead ? '0.06em' : 'normal', textTransform: isHead ? 'uppercase' : 'none', fontSize: isHead ? p.size + 1 + 'px' : p.size + 'px',
+            // See FIT: a `<table>` cannot be laid out narrower than its
+            // min-content width, so `width:100%` alone never made it fit a
+            // column smaller than the sum of its longest cells (224px for the
+            // stock three-column table -- wider than a 3- or 4-way split).
+            // Letting the cells break brings that floor down to the column.
+            // Deliberately *not* `table-layout:fixed`, the usual reflex here:
+            // fixed would also fit, but it divides the width evenly and would
+            // silently re-proportion every table already in a saved document.
+            // Breaking keeps the content-proportional columns (measured
+            // 53/42/39 against fixed's 45/45/45).
+            ...FIT,
           }, { ...editableAttrs(edit), text: m(cell), 'data-focus-key': edit ? 'block:' + b.id + ':c' + ri + '-' + ci : undefined });
           if (edit) {
             // stopPropagation is load-bearing (a bubbled click would select
@@ -289,9 +373,15 @@ export function blockBody(b, theme, live, ctx) {
         borderTop: borderSide(p.topBorder), borderRight: borderSide(p.rightBorder),
         borderBottom: borderSide(p.bottomBorder), borderLeft: borderSide(p.leftBorder),
         borderRadius: p.radius + 'px', padding: p.pad + 'px', textAlign: p.align,
+        // `maxWidth` has to cap the box the reader sees, not its text area:
+        // under the default content-box sizing the padding and border were
+        // added *outside* the cap, so a box set to 60% of a 296px column
+        // painted 212px wide instead of 178. The default 100% is unaffected
+        // either way -- an auto-width block already stops at the column edge.
+        boxSizing: 'border-box',
         minHeight: p.minH ? p.minH + 'px' : 'auto', maxWidth: p.maxW + '%', margin: p.align === 'center' ? '0 auto' : '0',
         boxShadow: p.shadow ? '0 10px 30px rgba(29,31,32,0.12)' : 'none',
-        fontFamily: t.font, color: t.text, fontSize: '15px', lineHeight: '1.6',
+        fontFamily: t.font, color: t.text, fontSize: '15px', lineHeight: '1.6', ...FIT,
       }, { ...attr, ...editableAttrs(edit), html: m(p.html), 'data-focus-key': edit ? 'block:' + b.id : undefined });
       if (edit) wireEditable(box, b, 'html', ctx, false);
       if (!live) return box;
@@ -318,8 +408,15 @@ export function blockBody(b, theme, live, ctx) {
       if (!p.end) band.appendChild(el('span', { fontFamily: 'ui-monospace,monospace', fontSize: '11.5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }, { text: '{{ ' + (p.expr || '…') + ' }}' }));
       return band;
     }
+    // `pre-wrap`, not `pre`: `overflow-x:auto` gives the canvas a scrollbar
+    // and so looked contained here, but a mail client has no scrollbar to
+    // offer and sizes the cell to the longest line anyway -- a 33% column
+    // measured 371px against its neighbours' ~100px. Wrapping the long lines
+    // is the one option that keeps the sample readable and the row intact;
+    // `anywhere` covers a single unbroken line with no spaces to break at.
+    // The horizontal scroll stays for the canvas, where it still helps.
     case 'codeblock':
-      return el('pre', { margin: '0', padding: p.pad + 'px', background: p.bg, color: p.color, fontFamily: 'ui-monospace, Menlo, monospace', fontSize: p.size + 'px', lineHeight: '1.6', overflowX: 'auto', whiteSpace: 'pre' }, { ...attr, text: m(p.code) });
+      return el('pre', { margin: '0', padding: p.pad + 'px', background: p.bg, color: p.color, fontFamily: 'ui-monospace, Menlo, monospace', fontSize: p.size + 'px', lineHeight: '1.6', overflowX: 'auto', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }, { ...attr, text: m(p.code) });
     default:
       return el('div');
   }

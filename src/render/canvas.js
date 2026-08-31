@@ -269,7 +269,14 @@ export function renderDoc(core, live) {
       rowEl.appendChild(grip);
     }
 
-    const colsEl = el('div', colsWrap(r.props));
+    // The mobile preview stacks exactly where the sent email stacks. The
+    // device switch used to do nothing but narrow the sheet to 375px, so a
+    // 4-column row previewed as four 60px slivers -- a layout no recipient
+    // would ever see, since the exported stylesheet now collapses that row to
+    // one column below the content width. Previewing the wide layout at a
+    // narrow width was showing a page that does not exist.
+    const stacked = core.state.device === 'mobile' && r.props.stackMobile !== false && r.cols.length > 1;
+    const colsEl = el('div', stacked ? { display: 'block' } : colsWrap(r.props));
     r.cols.forEach((c, ci) => {
       const colLines = [];
       const items = [];
@@ -317,7 +324,9 @@ export function renderDoc(core, live) {
       if (live && !c.blocks.length) {
         items.push(el('div', { border: '1px dashed var(--ed-accent-sheet-line)', borderRadius: 'var(--ed-radius-sm)', color: 'var(--ed-faint)', fontFamily: 'ui-monospace,monospace', fontSize: '9.5px', letterSpacing: '0.14em', textTransform: 'uppercase', padding: '24px 8px', textAlign: 'center' }, { text: 'drop block' }));
       }
-      const colEl = el('div', colStyle(r.props, c));
+      // Stacked, a column is simply a full-width block -- the flex sizing and
+      // the horizontal gutter both belong to the side-by-side layout only.
+      const colEl = el('div', stacked ? { width: '100%' } : colStyle(r.props, c));
       // Column-level styling lives on an inner wrapper, not on colEl itself:
       // colEl's padding is the inter-column gutter (colStyle), and a painted
       // background must stop at the column's visual edge, not bleed across

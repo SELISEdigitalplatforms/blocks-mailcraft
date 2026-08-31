@@ -490,6 +490,103 @@ await it('retranslates while open', async () => {
   el.story.close();
 });
 
+/*
+ * Fitting the column.
+ *
+ * jsdom lays nothing out, so these assert the declarations rather than
+ * measured boxes -- the geometry they stand for was verified in a real
+ * engine: a stock table needed 224px in a 148px column, a countdown 247px,
+ * and in the sent email a long tracking URL dragged a 25% cell to 511px
+ * against its neighbours' 24px. Each declaration below is the specific thing
+ * that brings one of those back inside its column, and each is easy to drop
+ * by accident while restyling the block.
+ */
+console.log();
+console.log('Blocks stay inside their column');
+
+/** The inline style of the rendered body for a freshly inserted block. */
+async function styleOf(type, props) {
+  const el = await mountEditor();
+  el.core.insertBlock(type);
+  await settle(2);
+  const block = el.getContent().rows.flatMap((r) => r.cols.flatMap((c) => c.blocks)).find((b) => b.type === type);
+  if (props) Object.keys(props).forEach((k) => el.core.setProp(block.id, k, props[k]));
+  await settle(2);
+  return { el, node: q(el, `[data-mc-content="${block.id}"]`) };
+}
+
+await it('text, heading and list can break a token too long for the column', async () => {
+  for (const type of ['text', 'heading', 'list']) {
+    const { node } = await styleOf(type);
+    // `anywhere`, not `break-word`: only `anywhere` lowers the min-content
+    // width, which is the number the column actually sizes against.
+    assert.equal(node.style.overflowWrap, 'anywhere', type + ' breaks an over-long token');
+  }
+});
+
+await it('the canvas does not rely on contenteditable to do that for it', async () => {
+  const { node } = await styleOf('text');
+  // Chrome's UA sheet gives [contenteditable] `overflow-wrap: break-word`,
+  // which made the canvas look correct while the export -- which strips
+  // contenteditable -- shipped the overflow. The declaration must be the
+  // block's own, so it survives into the sent email.
+  assert.match(node.getAttribute('style') || '', /overflow-wrap/, 'declared inline, not inherited from the editor');
+});
+
+await it('table cells break rather than hold the table open past the column', async () => {
+  const { el, node } = await styleOf('table');
+  assert.equal(node.tagName, 'TABLE');
+  const cell = node.querySelector('th, td');
+  assert.equal(cell.style.overflowWrap, 'anywhere', 'the cell, which is what sets the table min-content');
+  // Deliberately not table-layout:fixed -- that also fits, but re-proportions
+  // every table in every saved document.
+  assert.equal(node.style.tableLayout, '', 'column proportions are left alone');
+  el.remove();
+});
+
+await it('the countdown wraps its boxes instead of overhanging the next column', async () => {
+  const { node } = await styleOf('countdown');
+  const row = Array.from(node.querySelectorAll('div')).find((d) => d.style.display === 'flex');
+  assert.ok(row, 'the digits sit in a flex row');
+  assert.equal(row.style.flexWrap, 'wrap', 'which wraps when four boxes will not fit');
+});
+
+await it('menu items are atomic inlines, so a line can break between them', async () => {
+  const { node } = await styleOf('menu');
+  const links = Array.from(node.querySelectorAll('a'));
+  assert.ok(links.length > 1);
+  // Adjacent inline *text* runs offer no wrap opportunity between them, and
+  // these are appended with no whitespace in between.
+  links.forEach((a) => assert.equal(a.style.display, 'inline-block'));
+});
+
+await it('a code sample wraps its long lines, having no scrollbar in an inbox', async () => {
+  const { node } = await styleOf('codeblock');
+  assert.equal(node.tagName, 'PRE');
+  assert.equal(node.style.whiteSpace, 'pre-wrap');
+  assert.equal(node.style.overflowWrap, 'anywhere');
+});
+
+await it("a box's max width caps the box, not just its text area", async () => {
+  const { node } = await styleOf('box', { maxW: 60 });
+  assert.equal(node.style.maxWidth, '60%');
+  assert.equal(node.style.boxSizing, 'border-box', 'padding and border sit inside the cap');
+});
+
+await it('a button renders as a one-cell table, which Word can pad and paint', async () => {
+  const { node } = await styleOf('button');
+  const table = node.querySelector('table');
+  assert.ok(table, 'wrapped in a table rather than left as a bare padded anchor');
+  const td = table.querySelector('td');
+  // Word does not lay out inline-block and treats padding on an inline
+  // anchor inconsistently; a cell is the one box it sizes and paints.
+  assert.ok(td.getAttribute('bgcolor'), 'the cell carries the paint for Outlook');
+  assert.equal(td.style.padding, '13px 26px', 'and the padding');
+  const a = td.querySelector('a');
+  assert.ok(a, 'the anchor is the label inside the cell');
+  assert.ok(a.style.background, 'which keeps its own paint too, so classifyButton still sees a pill');
+});
+
 console.log(`\n${passed} passed, ${failed} failed.`);
 closeDom();
 process.exit(failed ? 1 : 0);

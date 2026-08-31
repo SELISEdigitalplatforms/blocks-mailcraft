@@ -161,16 +161,44 @@ await it('a canvas drop wired without an index still resolves it from the sheet'
   assert.equal(el.getContent().rows.at(-1).id, ids[0], 'the derived index matched the explicit one');
 });
 
-await it('a column drop is handled', async () => {
+/**
+ * `colDragOver`/`colDrop` are curried: they take (rowId, ci) and *return* the
+ * listener. Called with the event first they build a handler and throw it
+ * away, which is what this test used to do -- it drove nothing and asserted
+ * `ok(true)`, so the whole column path read as covered while being untested.
+ * `colEvent` supplies the two things the real listener reads off the event.
+ */
+const colEvent = (target) => ({
+  preventDefault() {}, stopPropagation() {}, currentTarget: target || null, clientY: 0,
+});
+
+await it('a column drop puts the block in the column it was aimed at', async () => {
   const el = await mountEditor();
   el.core.insertRow([50, 50]);
   await settle(2);
   const row = el.getContent().rows.at(-1);
   el.core.startDrag({ kind: 'block', type: 'text' })(dragEvent('dragstart'));
-  el.core.colDragOver(dragEvent('dragover'), row.id, 0);
-  el.core.colDrop(dragEvent('drop'), row.id, 0);
+  el.core.colDragOver(row.id, 1)(colEvent());
+  assert.deepEqual(el.core.state.drop, { rowId: row.id, ci: 1, index: 0 }, 'the second column is the live target');
+  assert.equal(el.core.state.rowDrop, null, 'and the row line is cleared, so only one line shows');
+  el.core.colDrop(row.id, 1)(colEvent());
   await settle(2);
-  assert.ok(true, 'no throw through the column drop path');
+  const after = el.getContent().rows.find((r) => r.id === row.id);
+  assert.equal(after.cols[1].blocks.length, 1, 'the block landed in the second column');
+  assert.equal(after.cols[0].blocks.length, 0, 'not the first');
+  assert.equal(el.core.drag, null, 'the drag was released');
+});
+
+await it('a column dragover ignores a section being dragged', async () => {
+  const el = await mountEditor();
+  el.core.insertRow([50, 50]);
+  await settle(2);
+  const row = el.getContent().rows.at(-1);
+  // A section dragged across a column must not light a block-level line: it
+  // is not going *into* the column, it is being reordered around it.
+  el.core.startDrag({ kind: 'move-row', id: row.id })(dragEvent('dragstart'));
+  el.core.colDragOver(row.id, 0)(colEvent());
+  assert.equal(el.core.state.drop, null, 'no column line for a section drag');
 });
 
 console.log();

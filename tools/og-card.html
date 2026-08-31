@@ -1,0 +1,78 @@
+<!doctype html>
+<!--
+  Source for assets/brand/og.png — the 1200x630 social card.
+
+  Regenerate after any wording or brand change:
+    node tools/render-og.mjs
+
+  It is a page, not an SVG, because og:image must be a raster format: X,
+  LinkedIn and Slack all refuse SVG. Chrome renders this at 1200x630 and the
+  script writes the PNG. `tools/` is excluded from the Jekyll build, so this
+  file never ships as a route.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Public+Sans:wght@400;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+  /* Same tokens as the light theme of index.html, so the card and the page
+     it links to are visibly the same product. */
+  :root {
+    --ground: #f5f7fa; --panel: #fff; --grid-dot: #c9d2de;
+    --ink: #172033; --muted: #4c586e; --faint: #7c8798;
+    --line: rgba(23,32,51,.13); --accent: #0065b3;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1200px; height: 630px; }
+  body {
+    font-family: "Public Sans", system-ui, sans-serif; color: var(--ink);
+    background-color: #f1f4f8;
+    background-image: radial-gradient(circle, var(--grid-dot) 1px, transparent 1.2px);
+    background-size: 22px 22px;
+    padding: 62px 68px; display: flex; flex-direction: column; justify-content: space-between;
+    border-bottom: 10px solid var(--accent);
+  }
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 15px; font-weight: 600; letter-spacing: .17em; text-transform: uppercase;
+    color: var(--accent);
+  }
+  h1 {
+    font-family: "Bricolage Grotesque", "Public Sans", sans-serif;
+    font-size: 68px; font-weight: 800; line-height: 1.03; letter-spacing: -.02em;
+    max-width: 17ch; margin: 26px 0 0;
+  }
+  h1 em { font-style: normal; color: var(--accent); }
+  .install {
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 20px; font-weight: 500;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 13px 20px; display: inline-flex; gap: 12px; align-items: center; margin-top: 30px;
+    box-shadow: 0 2px 5px rgba(15,23,42,.05), 0 14px 38px rgba(15,23,42,.08);
+  }
+  .install .ps1 { color: var(--faint); }
+  .foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; }
+  .spec { display: flex; gap: 46px; }
+  .stat .n {
+    font-family: "Bricolage Grotesque", sans-serif; font-size: 44px; font-weight: 800;
+    line-height: 1; letter-spacing: -.02em;
+  }
+  .stat .l { font-size: 15px; font-weight: 600; color: var(--muted); margin-top: 6px; }
+  img { display: block; height: 46px; width: auto; }
+</style>
+</head>
+<body>
+  <div>
+    <span class="eyebrow">Open source · MIT · one Web Component</span>
+    <h1>The email editor you <em>ship</em>, not subscribe to.</h1>
+    <div class="install"><span class="ps1">$</span>npm install @seliseblocks/mailcraft</div>
+  </div>
+  <div class="foot">
+    <div class="spec">
+      <div class="stat"><div class="n">0</div><div class="l">Runtime deps</div></div>
+      <div class="stat"><div class="n">31</div><div class="l">Languages, RTL</div></div>
+      <div class="stat"><div class="n">20</div><div class="l">Block types</div></div>
+    </div>
+    <img src="../assets/brand/blocks-mailcraft-light.svg" alt="Blocks MailCraft">
+  </div>
+</body>
+</html>
