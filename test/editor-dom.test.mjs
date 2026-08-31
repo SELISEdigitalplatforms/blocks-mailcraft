@@ -614,7 +614,7 @@ console.log('Top bar configuration');
 
 await it('the bar renders every part by default', async () => {
   const el = await mountEditor();
-  assert.ok(q(el, '.mc-brand-name'), 'logo');
+  assert.ok(q(el, '.mc-brand'), 'logo');
   assert.ok(q(el, '.mc-device-segment'), 'device');
   assert.ok(bar(el, '.mc-icon-button').length >= 2, 'undo/redo');
 });
@@ -628,7 +628,7 @@ await it('toolbar="none" builds no header and the canvas takes the whole shell',
 
 await it('an attribute allow-list keeps only what it names', async () => {
   const el = await mountEditor({ toolbar: 'undo,redo,export' });
-  assert.equal(q(el, '.mc-brand-name'), null, 'no logo');
+  assert.equal(q(el, '.mc-brand'), null, 'no logo');
   assert.equal(q(el, '.mc-device-segment'), null, 'no device segment');
   assert.equal(bar(el, '.mc-icon-label').length, 1, 'only export');
   assert.match(bar(el, '.mc-icon-label')[0].textContent, /Export/);
@@ -636,10 +636,10 @@ await it('an attribute allow-list keeps only what it names', async () => {
 
 await it('setting the property rebuilds the bar in place', async () => {
   const el = await mountEditor();
-  assert.ok(q(el, '.mc-brand-name'));
+  assert.ok(q(el, '.mc-brand'));
   el.toolbar = { logo: false };
   await settle(2);
-  assert.equal(q(el, '.mc-brand-name'), null);
+  assert.equal(q(el, '.mc-brand'), null);
   assert.ok(q(el, '.mc-header'), 'the rest of the bar is still there');
 });
 
@@ -664,7 +664,7 @@ await it('mounts into a selector and returns a working handle', async () => {
   await settle(3);
   assert.ok(host.querySelector('mailcraft-editor'), 'mounted');
   assert.equal(editor.element.getAttribute('variables'), 'first_name');
-  assert.equal(q(editor.element, '.mc-brand-name'), null, 'toolbar option applied');
+  assert.equal(q(editor.element, '.mc-brand'), null, 'toolbar option applied');
   assert.ok(editor.exportHtml().includes('Launch'), 'the html option was applied');
   editor.destroy();
   assert.equal(host.querySelector('mailcraft-editor'), null, 'destroy removed it');

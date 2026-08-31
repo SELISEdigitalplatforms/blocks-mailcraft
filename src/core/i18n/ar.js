@@ -81,7 +81,7 @@ export const AR = {
   'rows.hintStack': 'تكديس حر: بدون تخطيطات — كل كتلة تسحبها تصبح قسمًا مستقلًا بعرض كامل، مرتبة بالتسلسل.',
 
   'files.libraryCount': 'المكتبة — {count} ملفات',
-  'files.openManager': 'فتح مدير الملفات',
+  'files.openManager': 'فتح مكتبة الوسائط',
   'files.dragToCanvas': 'اسحب أي ملف مباشرة إلى اللوحة لوضعه كصورة.',
 
   'layers.structure': 'البنية',
@@ -100,7 +100,7 @@ export const AR = {
   'vars.noneDeclared': 'لم يُعرِّف تطبيقك أي متغيرات بعد.',
   'vars.rteHint': 'أثناء تحرير النص يمكنك أيضًا اختيار متغير من القائمة المنسدلة في شريط الأدوات المضمّن.',
 
-  'modal.fileManager': 'مدير الملفات',
+  'modal.fileManager': 'مكتبة الوسائط',
   'modal.assetsTitle': 'الأصول',
   'modal.replaceImage': 'استبدال الصورة',
   'library.searchPlaceholder': 'بحث في الملفات…',

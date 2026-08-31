@@ -1,4 +1,7 @@
-# MailCraft
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/brand/blocks-mailcraft-dark.svg">
+  <img src="assets/brand/blocks-mailcraft-light.svg" alt="Blocks MailCraft" height="72">
+</picture>
 
 Drag-and-drop email editor as a Web Component. No dependencies, no framework, no build step.
 

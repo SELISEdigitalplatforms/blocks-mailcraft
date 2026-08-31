@@ -2,7 +2,9 @@
 # Source: branch `main`, folder `/ (root)` — see Settings -> Pages.
 #
 # GitHub Pages enables these plugins by default, and this site relies on them:
-#   jekyll-readme-index         README.md becomes the site homepage
+#   jekyll-readme-index         (inert here: it only promotes README.md when
+#                               the site has no index file, and index.html is
+#                               the homepage -- README.md renders at /README.html)
 #   jekyll-optional-front-matter  .md files render without needing front matter
 #   jekyll-relative-links       [DOCS.md](DOCS.md) rewrites to DOCS.html
 #   jekyll-titles-from-headings page titles come from the first H1
@@ -13,7 +15,7 @@
 # needed here: the site works the same at /blocks-mailcraft/, at a custom
 # domain, and under a local `jekyll serve`.
 
-title: MailCraft
+title: Blocks MailCraft
 description: A drag-and-drop HTML email editor, packaged as a single Web Component.
 # The custom domain. `CNAME` at the repo root is what GitHub Pages actually
 # serves from; this one is for the absolute URLs in page metadata. A custom
@@ -35,6 +37,7 @@ exclude:
   - coverage/
   - .cov/
   - build.js
+  - tools/
   - package.json
   - package-lock.json
   - AGENTS.md

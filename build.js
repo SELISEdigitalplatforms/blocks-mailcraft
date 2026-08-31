@@ -169,7 +169,10 @@ if (begin === -1 || end === -1) throw new Error('DOCS.md: message-keys markers n
 // identifier-shaped and safe inside backticks.
 const keyRows = Object.keys(EN).sort()
   .map((k) => `| \`${k}\` | ${String(EN[k]).replace(/\|/g, '\\|')} |`);
-const table = ['\n\n| key | English default |', '|---|---|', ...keyRows, ''].join('\n');
+// The blank line before the closing marker is load-bearing: with the comment
+// glued straight onto the last row, kramdown abandons the table and renders
+// the whole block as one paragraph of pipes on the docs site.
+const table = ['\n\n| key | English default |', '|---|---|', ...keyRows, '', ''].join('\n');
 const updated = docs.slice(0, beginEnd + 3) + table + docs.slice(end);
 if (updated !== docs) fs.writeFileSync(docsPath, updated);
 

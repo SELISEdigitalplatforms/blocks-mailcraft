@@ -80,7 +80,7 @@ export const BN = {
   'rows.hintStack': 'ফ্রি স্ট্যাক: লেআউট ছাড়াই — আপনি যে ব্লকই রাখুন না কেন তা নিজেই একটি পূর্ণ-প্রস্থ সেকশন হয়ে ক্রমানুসারে সাজে।',
 
   'files.libraryCount': 'লাইব্রেরি — {count}টি ফাইল',
-  'files.openManager': 'ফাইল ম্যানেজার খুলুন',
+  'files.openManager': 'মিডিয়া লাইব্রেরি খুলুন',
   'files.dragToCanvas': 'একটি ইমেজ ব্লক হিসেবে বসাতে যেকোনো ফাইল সরাসরি ক্যানভাসে টেনে আনুন।',
 
   'layers.structure': 'কাঠামো',
@@ -99,7 +99,7 @@ export const BN = {
   'vars.noneDeclared': 'আপনার অ্যাপ্লিকেশন এখনো কোনো ভেরিয়েবল ঘোষণা করেনি।',
   'vars.rteHint': 'টেক্সট সম্পাদনার সময় আপনি ইনলাইন টুলবারের ড্রপডাউন থেকেও ভেরিয়েবল বেছে নিতে পারেন।',
 
-  'modal.fileManager': 'ফাইল ম্যানেজার',
+  'modal.fileManager': 'মিডিয়া লাইব্রেরি',
   'modal.assetsTitle': 'অ্যাসেট',
   'modal.replaceImage': 'ইমেজ প্রতিস্থাপন করুন',
   'library.searchPlaceholder': 'ফাইল খুঁজুন…',

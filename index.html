@@ -4,14 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>MailCraft — the open-source drag-and-drop email editor</title>
+<title>Blocks MailCraft — the open-source drag-and-drop email editor</title>
 <meta name="description" content="Drag-and-drop email template editor as a single Web Component. Zero dependencies, 31 languages, HTML in / HTML out, MIT licensed. From the SELISE Blocks team.">
 <link rel="canonical" href="https://mailcraft.seliseblocks.com/">
-<meta property="og:title" content="MailCraft — the email editor you ship, not subscribe to">
+<meta property="og:title" content="Blocks MailCraft — the email editor you ship, not subscribe to">
 <meta property="og:description" content="One Web Component. Zero dependencies. 31 languages. MIT.">
 <meta property="og:url" content="https://mailcraft.seliseblocks.com/">
 <meta property="og:type" content="website">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230065b3'/%3E%3Cpath d='M7 11.5 16 18l9-6.5' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Crect x='7' y='9.5' width='18' height='13' rx='2.2' fill='none' stroke='white' stroke-width='2.2'/%3E%3C/svg%3E">
+<meta property="og:site_name" content="Blocks MailCraft">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="assets/brand/icon.svg" media="(prefers-color-scheme: light)">
+<link rel="icon" href="assets/brand/icon-white.svg" media="(prefers-color-scheme: dark)">
 <script>
   try {
     var t = localStorage.getItem('mailcraft-docs-theme');
@@ -91,13 +94,22 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
   padding: 30px 0 96px;
 }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 50px; }
-.wordmark { font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: 21px; display: flex; align-items: center; gap: 10px; }
+.wordmark { display: flex; align-items: center; }
+/* The logo is artwork, so it is sized by height and never re-typeset. The
+   light/dark pair mirrors the theme switch used by the sun/moon icons. */
+.brand-logo { width: auto; display: block; }
+.logo-dark { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .logo-light { display: none; }
+  :root:not([data-theme="light"]) .logo-dark { display: block; }
+}
+:root[data-theme="dark"] .logo-light { display: none; }
+:root[data-theme="dark"] .logo-dark { display: block; }
 .wordmark .dot { width: 12px; height: 12px; border-radius: 3px; background: var(--accent); }
 a.wordmark:hover { text-decoration: none; color: var(--accent) !important; }
 .topnav { display: flex; gap: 22px; font-size: 13.5px; font-weight: 600; }
 .topnav a { color: var(--muted); }
 .topnav a:hover { color: var(--accent); text-decoration: none; }
-.topnav a[aria-current="page"] { color: var(--accent); }
 .bar-end { display: flex; align-items: center; gap: 10px; }
 .icon-btn { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--muted); cursor: pointer; }
 .icon-btn:hover { color: var(--accent); border-color: var(--accent); }
@@ -109,7 +121,6 @@ a.wordmark:hover { text-decoration: none; color: var(--accent) !important; }
 }
 :root[data-theme="dark"] .icon-btn .i-sun { display: block; }
 :root[data-theme="dark"] .icon-btn .i-moon { display: none; }
-.brand-mark { color: var(--accent); border-radius: 7px; flex: none; }
 .hero-grid { display: grid; grid-template-columns: minmax(0,6fr) minmax(0,5fr); gap: 56px; align-items: center; }
 @media (max-width: 880px) { .hero-grid { grid-template-columns: 1fr; } }
 .hero h1 { font-size: clamp(40px, 5.6vw, 60px); font-weight: 800; letter-spacing: -0.024em; }
@@ -309,23 +320,19 @@ footer {
   <div class="wrap">
     <div class="topbar">
       <a class="wordmark" href="./" style="color:inherit">
-        <svg class="brand-mark" width="26" height="26" viewBox="0 0 32 32" aria-hidden="true">
-          <rect width="32" height="32" rx="7" fill="currentColor"></rect>
-          <rect x="7" y="9.5" width="18" height="13" rx="2.2" fill="none" stroke="#fff" stroke-width="2.2"></rect>
-          <path d="M7 11.5 16 18l9-6.5" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path>
-        </svg>
-        MailCraft
+        <img class="brand-logo logo-light" src="assets/brand/blocks-mailcraft-light.svg" alt="Blocks MailCraft" height="40">
+        <img class="brand-logo logo-dark" src="assets/brand/blocks-mailcraft-dark.svg" alt="Blocks MailCraft" height="40">
       </a>
       <nav class="topnav" aria-label="Primary">
-        <a href="./" aria-current="page">Overview</a>
+        <a href="README.html">Quick start</a>
         <a href="DOCS.html">Guide</a>
         <a href="examples/vanilla.html">Demo</a>
       </nav>
       <div class="bar-end">
-        <a class="icon-btn" href="https://www.npmjs.com/package/@seliseblocks/mailcraft" rel="noopener" aria-label="MailCraft on npm" title="npm — @seliseblocks/mailcraft">
+        <a class="icon-btn" href="https://www.npmjs.com/package/@seliseblocks/mailcraft" rel="noopener" aria-label="Blocks MailCraft on npm" title="npm — @seliseblocks/mailcraft">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M1.763 0C.786 0 0 .786 0 1.763v20.474C0 23.214.786 24 1.763 24h20.474c.977 0 1.763-.786 1.763-1.763V1.763C24 .786 23.214 0 22.237 0zM5.13 5.323l13.837.019-.009 13.836h-3.464l.01-10.382h-3.456L12.04 19.17H5.113z"></path></svg>
         </a>
-        <a class="icon-btn" href="https://github.com/SELISEdigitalplatforms/blocks-mailcraft" rel="noopener" aria-label="MailCraft on GitHub" title="GitHub — blocks-mailcraft">
+        <a class="icon-btn" href="https://github.com/SELISEdigitalplatforms/blocks-mailcraft" rel="noopener" aria-label="Blocks MailCraft on GitHub" title="GitHub — blocks-mailcraft">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"></path></svg>
         </a>
         <button id="theme-toggle" class="icon-btn" type="button" aria-label="Switch colour theme" title="Switch colour theme">
@@ -371,7 +378,7 @@ footer {
 
 <main class="wrap">
   <!-- The spec card: the promise, measured. Hands the hero to chapter 01. -->
-  <div class="spec" role="list" aria-label="MailCraft in six numbers">
+  <div class="spec" role="list" aria-label="Blocks MailCraft in six numbers">
     <div class="stat" role="listitem"><div class="n">0</div><div class="l">Runtime deps</div></div>
     <div class="stat" role="listitem"><div class="n">178&hairsp;KB</div><div class="l">Gzipped, one file</div></div>
     <div class="stat" role="listitem"><div class="n">31</div><div class="l">Languages, RTL auto</div></div>
@@ -392,7 +399,7 @@ footer {
     <div class="slip-stage rv">
       <div class="slip">
         <div class="slip-inner">
-          <h3>MailCraft &mdash; Packing Slip</h3>
+          <h3>Blocks MailCraft &mdash; Packing Slip</h3>
           <div class="meta">ORDER &#8470; npm install @seliseblocks/mailcraft</div>
           <hr class="slip-rule">
           <div class="slip-row"><span>Works in any framework</span><span class="dots"></span><em>INCLUDED</em></div>
@@ -440,7 +447,7 @@ footer {
         </tr></thead>
         <tbody>
           <tr class="hero-row">
-            <th>MailCraft</th>
+            <th>Blocks MailCraft</th>
             <td><span class="yes">Free</span><span class="cellnote">MIT, everything included</span></td>
             <td><span class="yes">✓</span><span class="cellnote">whole editor is source</span></td>
             <td><span class="yes">✓</span><span class="cellnote">no cloud, no iframe</span></td>
@@ -564,11 +571,11 @@ footer {
   <!-- ACT 4 · The platform -->
   <div class="platform rv" id="platform">
     <span class="eyebrow"><span class="ch">03</span>The platform</span>
-    <h2>MailCraft is the editor. SELISE Blocks is the whole platform.</h2>
+    <h2>Blocks MailCraft is the editor. SELISE Blocks is the whole platform.</h2>
     <p class="lede">Use it standalone in any app — or <b>pre-wired inside SELISE Blocks Cloud</b>, where email templates, <b>built-in file storage for your images</b>, identity, secrets and observability share one console, per project, per environment.</p>
     <div class="modules">
-      <div class="module this"><span class="mono-chip">This editor, inside</span><b>Email Management</b><span>Templates and communications, edited with MailCraft, sent through your configured provider.</span></div>
-      <div class="module"><span class="mono-chip">Built-in</span><b>Cloud Storage</b><span>A file manager with presigned uploads — MailCraft's image library is wired to it out of the box.</span></div>
+      <div class="module this"><span class="mono-chip">This editor, inside</span><b>Email Management</b><span>Templates and communications, edited with Blocks MailCraft, sent through your configured provider.</span></div>
+      <div class="module"><span class="mono-chip">Built-in</span><b>Cloud Storage</b><span>A file manager with presigned uploads — Blocks MailCraft's image library is wired to it out of the box.</span></div>
       <div class="module"><span class="mono-chip">Built-in</span><b>Identity &amp; Access</b><span>Users, roles and permissions, SSO and OIDC providers.</span></div>
       <div class="module"><span class="mono-chip">Built-in</span><b>Secrets &amp; Configs</b><span>Per-environment configuration and secret management.</span></div>
       <div class="module"><span class="mono-chip">Built-in</span><b>Logs &amp; Traces</b><span>Observability across your project's services, same console.</span></div>
@@ -587,7 +594,7 @@ footer {
   <div class="claim rv">
     <span class="eyebrow"><span class="ch">04</span>The verdict</span>
     <h2>Nobody else occupies this square.</h2>
-    <p>The hosted five give up openness and self-containment; the open-source three give up framework freedom, completeness, or upkeep. MailCraft alone holds all four &mdash; and when you want more than email, the platform it comes from is one free sign-up away.</p>
+    <p>The hosted five give up openness and self-containment; the open-source three give up framework freedom, completeness, or upkeep. Blocks MailCraft alone holds all four &mdash; and when you want more than email, the platform it comes from is one free sign-up away.</p>
     <div class="quad">
       <div><b>MIT — actually open</b><span>The entire editor is source you can read, fork and ship — not an open wrapper around a closed iframe.</span></div>
       <div><b>Framework-agnostic</b><span>One Web Component: the same tag in React, Angular, Vue, Svelte, or a plain &lt;script&gt;.</span></div>
@@ -605,13 +612,9 @@ footer {
   <div class="wrap">
   <div class="foot-grid">
     <div class="foot-brand">
-      <div class="wordmark" style="font-size:18px">
-        <svg class="brand-mark" width="22" height="22" viewBox="0 0 32 32" aria-hidden="true">
-          <rect width="32" height="32" rx="7" fill="currentColor"></rect>
-          <rect x="7" y="9.5" width="18" height="13" rx="2.2" fill="none" stroke="#fff" stroke-width="2.2"></rect>
-          <path d="M7 11.5 16 18l9-6.5" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path>
-        </svg>
-        MailCraft
+      <div class="wordmark">
+        <img class="brand-logo logo-light" src="assets/brand/blocks-mailcraft-light.svg" alt="Blocks MailCraft" height="34">
+        <img class="brand-logo logo-dark" src="assets/brand/blocks-mailcraft-dark.svg" alt="Blocks MailCraft" height="34">
       </div>
       <p>The open-source email editor — one Web Component, zero dependencies, MIT. Built and maintained by the SELISE Blocks team.</p>
       <a class="foot-cta" href="https://os.seliseblocks.com">Sign up for Blocks OS</a>
@@ -658,7 +661,7 @@ footer {
     <a href="https://github.com/arikchakma/maily.to">Maily.to</a> ·
     <a href="https://github.com/mjmlio/mjml">MJML</a> ·
     <a href="https://github.com/resend/react-email">react-email</a>.
-    Plan gating reflects the vendors' published pages on that date and may change. MailCraft's own figures are measured from the repository.</p>
+    Plan gating reflects the vendors' published pages on that date and may change. Blocks MailCraft's own figures are measured from the repository.</p>
   </div>
 </footer>
 

@@ -33,7 +33,7 @@ We appreciate the efforts of security researchers and the community in helping t
 
 ## Scope
 
-This security policy applies to the **MailCraft** email editor (the `<mailcraft-editor>` web component and this repository). Please note that this policy does not give you permission to hack, harm, or exploit our services. Any such attempts will be considered malicious and may be reported to the appropriate authorities.
+This security policy applies to the **Blocks MailCraft** email editor (the `<mailcraft-editor>` web component and this repository). Please note that this policy does not give you permission to hack, harm, or exploit our services. Any such attempts will be considered malicious and may be reported to the appropriate authorities.
 
 ## Security-relevant surfaces particular to this package
 
@@ -48,4 +48,4 @@ When reviewing, pay special attention to the paths this package deliberately har
 
 We may update this security policy from time to time. Check the file's Git history for the most recent changes.
 
-Thank you for helping to keep **MailCraft** secure!
+Thank you for helping to keep **Blocks MailCraft** secure!

@@ -3,9 +3,10 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>MailCraft — live demo</title>
-<meta name="description" content="A host application embedding the MailCraft email editor: host-owned theme, locale, brand colour, typography and template gallery." />
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230065b3'/%3E%3Crect x='7' y='9.5' width='18' height='13' rx='2.2' fill='none' stroke='white' stroke-width='2.2'/%3E%3Cpath d='M7 11.5 16 18l9-6.5' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+<title>Blocks MailCraft — live demo</title>
+<meta name="description" content="A host application embedding the Blocks MailCraft email editor: host-owned theme, locale, brand colour, typography and template gallery." />
+<link rel="icon" href="../assets/brand/icon.svg" media="(prefers-color-scheme: light)">
+<link rel="icon" href="../assets/brand/icon-white.svg" media="(prefers-color-scheme: dark)">
 <style>
   /* The host app's brand color, as a design token -- exactly where a real
      app keeps it. The editor is pointed at it with accent="var(--brand)".
@@ -59,8 +60,11 @@
     flex: none; display: flex; align-items: center; gap: 18px; height: 56px; padding: 0 18px;
     background: var(--surface); border-bottom: 1px solid var(--line-soft);
   }
-  .brand { display: flex; align-items: center; gap: 9px; text-decoration: none; color: var(--brand); }
-  .brand-name { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; color: var(--text); }
+  .brand { display: flex; align-items: center; text-decoration: none; }
+  .brand-logo { width: auto; display: block; }
+  .logo-dark { display: none; }
+  [data-theme="dark"] .logo-light, .dark .logo-light { display: none; }
+  [data-theme="dark"] .logo-dark, .dark .logo-dark { display: block; }
   .tag {
     font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
     color: var(--brand); background: var(--surface-2);
@@ -104,7 +108,7 @@
   input[type="color"] { width: 34px; padding: 2px; }
 
   @media (max-width: 780px) {
-    .tag, .brand-name { display: none; }
+    .tag { display: none; }
     .topbar, .controls { gap: 12px; padding: 0 12px; }
   }
 </style>
@@ -118,21 +122,18 @@
        pushed into the editor as attributes -- the editor never asks. -->
   <header class="topbar">
     <a class="brand" id="home-link" href="../README.md">
-      <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true">
-        <rect width="32" height="32" rx="7" fill="currentColor" />
-        <rect x="7" y="9.5" width="18" height="13" rx="2.2" fill="none" stroke="#fff" stroke-width="2.2" />
-        <path d="M7 11.5 16 18l9-6.5" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
-      </svg>
-      <span class="brand-name">MailCraft</span>
+      <img class="brand-logo logo-light" src="../assets/brand/blocks-mailcraft-light.svg" alt="Blocks MailCraft" height="34">
+      <img class="brand-logo logo-dark" src="../assets/brand/blocks-mailcraft-dark.svg" alt="Blocks MailCraft" height="34">
     </a>
     <span class="tag">Live demo</span>
 
-    <!-- Menu. The documentation link is resolved at runtime (see the script at
-         the foot of the file): DOCS.md when this file is opened straight off
-         disk, DOCS.html once the same file is served from GitHub Pages. -->
+    <!-- Menu. The doc links are resolved at runtime (see the script at the
+         foot of the file): the .md sources when this file is opened straight
+         off disk, the Jekyll-built .html pages once the same file is served
+         from GitHub Pages. The logo is the way back to the homepage. -->
     <nav class="menu" aria-label="Primary">
-      <a id="docs-link" href="../DOCS.md">Documentation</a>
-      <a id="readme-link" href="../README.md">Overview</a>
+      <a id="quickstart-link" href="../README.md">Quick start</a>
+      <a id="docs-link" href="../DOCS.md">Guide</a>
       <!-- No GitHub link while the repository is private -- it 404s for anyone
            outside the org. Restore it when the repo goes public. -->
       <a href="https://www.npmjs.com/package/@seliseblocks/mailcraft" rel="noopener">npm</a>
@@ -1443,7 +1444,7 @@
   // One check keeps both links live instead of picking a winner.
   if (location.protocol !== 'file:') {
     document.getElementById('docs-link').href = '../DOCS.html';
-    document.getElementById('readme-link').href = '../';
+    document.getElementById('quickstart-link').href = '../README.html';
     document.getElementById('home-link').href = '../';
   }
 

@@ -23,6 +23,10 @@ export const STYLE = `
   /* The accent as it must read on the email sheet, which is a white page in
      both themes -- so this family does NOT flip with the chrome (see the dark
      palette below, where it is deliberately not overridden). */
+  /* Logo ink. Deliberately literal rather than accent-derived: the host can
+     repaint the chrome through the brand attribute, and a logo that follows
+     it stops being the logo. Values are the official light artwork. */
+  --ed-logo-mark: #2D86C7; --ed-logo-text: #3C3939;
   --ed-accent-sheet: #0065b3; --ed-accent-sheet-strong: #004f8c; --ed-accent-sheet-ink: #ffffff;
   --ed-accent-sheet-line: rgba(0,101,179,0.5);
   --ed-grid: rgba(71,85,105,0.10);
@@ -43,6 +47,8 @@ export const STYLE = `
   --ed-panel-label: #e2e8f0; --ed-panel-value: #c0cad8; --ed-panel-meta: #8d9aae;
   --ed-accent: #58a8e3; --ed-accent-strong: #8fc4ec; --ed-accent-ink: #08111f; --ed-soft: rgba(88,168,227,0.13);
   --ed-accent-tint: #8fcdf2; --ed-glow: rgba(88,168,227,0.28); --ed-select: rgba(88,168,227,0.3);
+  /* The official dark-mode logo artwork: mark and wordmark both go light. */
+  --ed-logo-mark: #F2F2F2; --ed-logo-text: #EEEEEE;
   --ed-grid: rgba(148,163,184,0.08);
   --ed-danger: #f2777c; --ed-danger-soft: rgba(242,119,124,0.14);
   --ed-success: #4ade95; --ed-success-soft: rgba(74,222,149,0.14);
@@ -151,14 +157,9 @@ export const STYLE = `
 .mc-footer-link { cursor: pointer; transition: color 0.14s ease; }
 .mc-footer-link:hover { color: var(--ed-accent); text-decoration: underline; }
 
-/* Brand mark -- the small gradient envelope glyph in the header. */
-.mc-brand-mark {
-  display: flex; align-items: center; justify-content: center; flex: none;
-  width: 26px; height: 26px; border-radius: 8px;
-  background: linear-gradient(145deg, var(--ed-accent-tint), var(--ed-accent) 55%, var(--ed-accent-strong));
-  box-shadow: 0 5px 14px var(--ed-glow);
-  color: #ffffff;
-}
+/* The header logo. It is the official lockup artwork, so it gets no chip, no
+   gradient and no recolouring -- only a height. */
+.mc-brand { display: flex; align-items: center; flex: none; }
 
 /*
  * Shared segmented-control shell -- one bordered/backed track that owns the
@@ -269,9 +270,7 @@ export const STYLE = `
 /* Opaque, no backdrop-filter: the header sits over the scrolling canvas, so a
    backdrop blur re-composites every scroll frame -- visible scroll jank. */
 #mc .mc-header { padding: 0 18px !important; background: var(--ed-panel) !important; }
-#mc .mc-brand-mark { width: 30px !important; height: 30px !important; border-radius: 9px; background: linear-gradient(145deg, var(--ed-accent-tint), var(--ed-accent) 56%, var(--ed-accent-strong)) !important; box-shadow: 0 7px 18px var(--ed-glow); }
-#mc .mc-brand-mark svg { width: 20px; height: 20px; display: block; color: #fff; }
-#mc .mc-brand-name { font-family: var(--ed-font) !important; font-size: 17px !important; letter-spacing: -.03em !important; }
+#mc .mc-brand svg { height: 34px; width: auto; display: block; }
 #mc .mc-header button { font-family: var(--ed-font) !important; font-size: 10.5px !important; font-weight: 600; letter-spacing: .015em !important; text-transform: none !important; }
 #mc .mc-header > div { border-radius: 10px; }
 #mc .mc-segment { gap: 3px !important; padding: 3px !important; border: 0 !important; border-radius: 10px; background: var(--ed-panel-2) !important; }

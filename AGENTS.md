@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Project knowledge for working on the MailCraft editor. Host-facing API docs live in [README.md](README.md).
+Project knowledge for working on the Blocks MailCraft editor. Host-facing API docs live in [README.md](README.md).
 
 ## Workflow — always
 

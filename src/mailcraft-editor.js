@@ -6,6 +6,7 @@ import { renderDoc } from './render/canvas.js';
 import { renderRte } from './render/rte.js';
 import { renderField, renderFieldCards, typeCommit } from './render/fields.js';
 import { icon } from './core/icons.js';
+import { brandLockup } from './core/brand.js';
 import { TOKEN } from './core/variables.js';
 import { hl, cssUrl } from './core/sanitize.js';
 import { decorateLogicTags } from './core/export.js';
@@ -569,15 +570,11 @@ export class MailCraftEditor extends ElementBase {
     const t = this.core.t;
     const header = elS('header', "display: flex; align-items: center; gap: 14px; padding: 0 16px; border-bottom: 1px solid var(--ed-line); background: linear-gradient(to bottom, var(--ed-panel), var(--ed-panel-2)); position: relative; z-index: 30;", { class: 'mc-header' });
 
-    const brandMark = elS('span', '', { class: 'mc-brand-mark' });
-    const markSvg = icon('mailSpark', 20);
-    markSvg.setAttribute('stroke-width', '1.8');
-    brandMark.appendChild(markSvg);
-    const brand = elS('div', 'display: flex; align-items: center; gap: 9px;');
-    brand.append(
-      brandMark,
-      elS('span', 'font-family: var(--ed-font); font-weight: 600; font-size: 15px; letter-spacing: -0.01em; line-height: 1;', { text: 'MailCraft', class: 'mc-brand-name' }),
-    );
+    // The logo itself, not a mark beside a typeset word: the wordmark is part
+    // of the artwork, so it keeps the brand's own typeface whatever font the
+    // host pushes into --ed-font.
+    const brand = elS('div', 'display: flex; align-items: center;', { class: 'mc-brand' });
+    brand.appendChild(brandLockup(30));
     if (on.logo) header.append(brand, elS('div', 'width: 1px; height: 22px; background: var(--ed-line);'));
 
     this.savedLabel = elS('span', 'display: flex; align-items: center; gap: 6px; font-family: ui-monospace, monospace; font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ed-faint); white-space: nowrap;');

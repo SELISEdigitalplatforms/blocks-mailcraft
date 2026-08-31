@@ -100,7 +100,7 @@ export const EN = {
 
   // Files tab (sidebar)
   'files.libraryCount': 'Library — {count} files',
-  'files.openManager': 'Open file manager',
+  'files.openManager': 'Open media library',
   'files.dragToCanvas': 'Drag any file straight onto the canvas to place it as an image block.',
 
   // Layers (Tree) tab
@@ -122,7 +122,7 @@ export const EN = {
   'vars.rteHint': 'While editing text you can also pick a variable straight from the inline toolbar’s dropdown.',
 
   // Library modal
-  'modal.fileManager': 'File manager',
+  'modal.fileManager': 'Media library',
   'modal.assetsTitle': 'Assets',
   'modal.replaceImage': 'Replace image',
   'library.searchPlaceholder': 'Search files…',

@@ -1,7 +1,7 @@
 ---
 ---
 
-# Contributing to MailCraft
+# Contributing to Blocks MailCraft
 
 Thanks for contributing. This guide covers the day-to-day workflow for this repository. See `README.md` for environment setup and the host-facing API.
 

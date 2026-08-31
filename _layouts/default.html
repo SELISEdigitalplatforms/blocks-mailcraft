@@ -8,21 +8,45 @@
      theme the page is actually painting rather than the OS setting. -->
 
 
+{%- comment -%}
+  `is_home` is false for every page this layout currently renders: the
+  homepage is the static index.html at the repo root, which has no front
+  matter, so Jekyll copies it verbatim instead of wrapping it in a layout.
+  The branches below are the fallback, not dead code -- delete index.html
+  and jekyll-readme-index promotes README.md to "/", at which point this
+  layout renders the homepage and the hero further down comes back.
+{%- endcomment -%}
 {%- assign is_home = false -%}
 {%- if page.url == "/" or page.url == "/index.html" -%}{%- assign is_home = true -%}{%- endif -%}
 
-<title>{% if is_home %}{{ site.title }} — {{ site.description }}{% else %}{{ page.title | default: site.title }} · {{ site.title }}{% endif %}</title>
+{%- comment -%}
+  Several pages open with an H1 that already contains the site title
+  (README.md is just "Blocks MailCraft"; DOCS.md is "Blocks MailCraft —
+  product & integration guide"), and jekyll-titles-from-headings turns
+  that H1 into page.title. Appending the site title unconditionally gave
+  those pages a stuttering "Blocks MailCraft · Blocks MailCraft" tab. Only
+  pages whose own title does not name the product get the suffix, so
+  SECURITY.md still reads "Security Policy · Blocks MailCraft".
+{%- endcomment -%}
+{%- assign page_title = page.title | default: site.title -%}
+{%- assign title_tail = "" -%}
+{%- unless page_title contains site.title -%}{%- assign title_tail = " · " | append: site.title -%}{%- endunless -%}
+
+<title>{% if is_home %}{{ site.title }} — {{ site.description }}{% else %}{{ page_title }}{{ title_tail }}{% endif %}</title>
 <meta name="description" content="{{ page.description | default: site.description }}">
-<meta property="og:title" content="{% if is_home %}{{ site.title }}{% else %}{{ page.title | default: site.title }}{% endif %}">
+<meta property="og:title" content="{% if is_home %}{{ site.title }}{% else %}{{ page_title }}{% endif %}">
 <meta property="og:description" content="{{ page.description | default: site.description }}">
 <meta property="og:type" content="website">
 <meta property="og:url" content="{{ page.url | absolute_url }}">
+<meta property="og:site_name" content="{{ site.title }}">
+<meta name="twitter:card" content="summary">
 <link rel="canonical" href="{{ page.url | absolute_url }}">
 
 <!-- Every page this layout serves lives at the site root, so the links here are
      plain relative paths: correct under a project baseurl, a custom domain, or
      a local `jekyll serve`, with nothing to configure. -->
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230065b3'/%3E%3Cpath d='M7 11.5 16 18l9-6.5' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Crect x='7' y='9.5' width='18' height='13' rx='2.2' fill='none' stroke='white' stroke-width='2.2'/%3E%3C/svg%3E">
+<link rel="icon" href="assets/brand/icon.svg" media="(prefers-color-scheme: light)">
+<link rel="icon" href="assets/brand/icon-white.svg" media="(prefers-color-scheme: dark)">
 <link rel="stylesheet" href="assets/css/site.css">
 <script>
   // Applied before first paint so a stored dark preference never flashes white.
@@ -39,12 +63,8 @@
 <header class="site-header">
   <div class="bar">
     <a class="brand" href="./">
-      <svg class="brand-mark" width="26" height="26" viewBox="0 0 32 32" aria-hidden="true">
-        <rect width="32" height="32" rx="7" fill="currentColor"/>
-        <rect x="7" y="9.5" width="18" height="13" rx="2.2" fill="none" stroke="#fff" stroke-width="2.2"/>
-        <path d="M7 11.5 16 18l9-6.5" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      <span class="brand-name">{{ site.title }}</span>
+      <img class="brand-logo logo-light" src="assets/brand/blocks-mailcraft-light.svg" alt="Blocks MailCraft" height="36">
+      <img class="brand-logo logo-dark" src="assets/brand/blocks-mailcraft-dark.svg" alt="Blocks MailCraft" height="36">
     </a>
 
     <!-- CODE_OF_CONDUCT.md builds as a page only because it carries an (empty)
@@ -52,9 +72,11 @@
          filenames, so without it Jekyll copies it to the site as raw markdown
          and no .html is ever generated. Empty means no keys for GitHub to
          render as a table above the content. -->
+    <!-- aria-current drives the active-item styling in site.css; without it
+         the reader has no indication of which page they are on. -->
     <nav class="nav" aria-label="Primary">
-      <a href="./">Overview</a>
-      <a href="DOCS.html">Guide</a>
+      <a href="README.html"{% if page.path == "README.md" %} aria-current="page"{% endif %}>Quick start</a>
+      <a href="DOCS.html"{% if page.path == "DOCS.md" %} aria-current="page"{% endif %}>Guide</a>
       <a href="examples/vanilla.html">Demo</a>
     </nav>
 

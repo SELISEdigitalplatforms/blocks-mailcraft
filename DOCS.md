@@ -1,4 +1,4 @@
-# MailCraft — product & integration guide
+# Blocks MailCraft — product & integration guide
 
 [README.md](README.md) is the five-minute version. This is the rest: what it is, why it works the way it does, and how to wire it into a real application.
 
@@ -625,7 +625,7 @@ The complete catalog of UI strings that `.messages` accepts — every key the ed
 | `export.meta` | {kb} KB · ready to copy or download |
 | `files.dragToCanvas` | Drag any file straight onto the canvas to place it as an image block. |
 | `files.libraryCount` | Library — {count} files |
-| `files.openManager` | Open file manager |
+| `files.openManager` | Open media library |
 | `footer.poweredBy` | Powered by SELISE Blocks © 2026 |
 | `inspector.blockProperties` | Block properties |
 | `inspector.emptyBody` | Pick a row or block on the canvas to style it here. Drag blocks in from the <strong style="color: var(--ed-text); font-weight: 600;">Content blocks</strong> tab; double-click any text to edit it in place. |
@@ -655,7 +655,7 @@ The complete catalog of UI strings that `.messages` accepts — every key the ed
 | `modal.assetsTitle` | Assets |
 | `modal.export` | Export |
 | `modal.exportTitle` | Your email is ready |
-| `modal.fileManager` | File manager |
+| `modal.fileManager` | Media library |
 | `modal.rawHtmlTitle` | Raw HTML, live preview |
 | `modal.replaceImage` | Replace image |
 | `preview.kickerDesktop` | Preview — desktop {width}px |
@@ -754,6 +754,7 @@ The complete catalog of UI strings that `.messages` accepts — every key the ed
 | `vars.noneDeclared` | Your application has not declared any variables yet. |
 | `vars.rteHint` | While editing text you can also pick a variable straight from the inline toolbar’s dropdown. |
 | `vars.title` | Variables |
+
 <!-- message-keys:end -->
 
 ---

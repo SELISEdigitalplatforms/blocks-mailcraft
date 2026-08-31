@@ -235,3 +235,4 @@ export function socialKey(label) {
   if (l.includes('mail') || l.includes('email')) return 'mail';
   return 'globe';
 }
+

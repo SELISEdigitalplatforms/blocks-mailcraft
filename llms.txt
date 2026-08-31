@@ -1,4 +1,4 @@
-# MailCraft
+# Blocks MailCraft
 
 > A drag-and-drop HTML email editor, packaged as a single zero-dependency Web Component (`<mailcraft-editor>`). HTML in, HTML out; no framework, no build step, no network requests. Published on npm as `@seliseblocks/mailcraft`.
 
