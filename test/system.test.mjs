@@ -454,6 +454,14 @@ await it('every shipped locale covers the whole message table, with nothing stal
   // compares tables, never `t()`.
   const tags = LOCALES.map((l) => l.tag);
   assert.deepEqual(tags.slice().sort(), Object.keys(LOCALE_TABLES).sort(), 'LOCALES and LOCALE_TABLES cover the same tags');
+  // The element resolves `locale` through the lazy loaders, so a tag present
+  // in the eager map but missing a loader would silently render English.
+  const { LOCALE_LOADERS, loadLocale } = await import(new URL('../src/core/i18n/loaders.js', import.meta.url).href);
+  assert.deepEqual(Object.keys(LOCALE_LOADERS).sort(), Object.keys(LOCALE_TABLES).sort(), 'every shipped locale has a lazy loader');
+  for (const tag of tags) {
+    assert.deepEqual(await loadLocale(tag), LOCALE_TABLES[tag], tag + ': the lazy loader resolves the same table the eager map carries');
+  }
+  assert.equal(await loadLocale('xx'), null, 'an unshipped tag resolves null, the English-fallback signal');
   const enKeys = Object.keys(EN);
   for (const tag of tags) {
     const table = LOCALE_TABLES[tag];

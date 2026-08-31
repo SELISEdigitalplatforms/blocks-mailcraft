@@ -247,6 +247,17 @@ await it('the theme falls back cleanly when the source declares nothing', async 
   assert.ok(Array.isArray(doc.rows));
 });
 
+await it('a transparent content area survives the export -> import round trip', async () => {
+  // The exporter always writes the content table's background -- the literal
+  // `transparent` for a see-through column. The import must read it back:
+  // it used to be dropped, and the blank-doc default repainted the content
+  // area white on every save/reload.
+  const doc = htmlToDoc(email('<tr><td><p>hello</p></td></tr>').replace('background:#ffffff', 'background:transparent'));
+  assert.equal(doc.theme.contentBg, 'transparent');
+  const solid = htmlToDoc(email('<tr><td><p>hello</p></td></tr>'));
+  assert.match(String(solid.theme.contentBg).toLowerCase(), /#ffffff|rgb\(255,\s*255,\s*255\)/, 'a solid colour still round-trips');
+});
+
 console.log(`\n${passed} passed, ${failed} failed.`);
 closeDom();
 process.exit(failed ? 1 : 0);

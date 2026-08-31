@@ -17,7 +17,7 @@ import { createStoryViewer } from './render/story.js';
 import { STYLE } from './render/style.js';
 import { createTranslator, isRtl } from './core/i18n/index.js';
 import { ACCENT_VARS, accentTokens, parseColor } from './core/accent.js';
-import { LOCALE_TABLES } from './core/i18n/tables.js';
+import { localeTable, loadLocale } from './core/i18n/loaders.js';
 
 /** `elS` mirrors the template's literal `style="..."` attribute strings verbatim -- copied, not re-derived, to keep the port pixel-exact. */
 function elS(tag, styleStr, attrs = {}, ...children) {
@@ -298,13 +298,26 @@ export class MailCraftEditor extends ElementBase {
 
   /**
    * Resolves the `locale` attribute to its shipped message table
-   * (core/i18n/tables.js) and overlays any host-set `.messages` on top --
+   * (core/i18n/loaders.js) and overlays any host-set `.messages` on top --
    * attribute picks the language, `.messages` stays the documented way to
    * override individual strings. With no locale attribute this degrades to
    * the old behavior: `.messages` alone over built-in English.
+   *
+   * Tables load lazily (a literal dynamic import per tag, so app bundlers
+   * code-split them instead of shipping all 31). A not-yet-loaded locale
+   * renders English for the tick the chunk takes to arrive, then this method
+   * re-runs; the load is a no-op re-render if the attribute changed again
+   * meanwhile -- the guard re-reads the live attribute, never the old tag.
    */
   refreshTranslator() {
-    const table = LOCALE_TABLES[this.getAttribute('locale')] || null;
+    const tag = this.getAttribute('locale') || '';
+    let table = tag ? localeTable(tag) : null;
+    if (table === undefined) {
+      table = null;
+      loadLocale(tag).then(() => {
+        if ((this.getAttribute('locale') || '') === tag) this.refreshTranslator();
+      });
+    }
     const overrides = this.core.messages;
     this.core.t = createTranslator(table ? Object.assign({}, table, overrides || {}) : overrides);
     this.story?.retranslate();
@@ -688,17 +701,19 @@ export class MailCraftEditor extends ElementBase {
     this.toastEl.textContent = s.toast || '';
   }
 
-  /** Repaint just the countdown digits on the canvas -- driven by the core's
-   * 1s tick (core.onTick), which used to re-render the whole editor. */
+  /** Repaint just the countdown digits on the canvas -- and in the preview,
+   * whose sheet is now memoized rather than rebuilt every render -- driven by
+   * the core's 1s tick (core.onTick), which used to re-render the whole editor. */
   refreshCountdowns() {
     const now = this.core.state.now;
-    this.canvasSlot.querySelectorAll('[data-mc-countdown]').forEach((wrap) => {
+    const slots = this.core.state.previewOpen && this.previewSlot ? [this.canvasSlot, this.previewSlot] : [this.canvasSlot];
+    slots.forEach((slot) => slot.querySelectorAll('[data-mc-countdown]').forEach((wrap) => {
       const ms = Math.max(0, new Date(wrap.getAttribute('data-mc-countdown')).getTime() - now);
       const vals = { days: Math.floor(ms / 86400000), hrs: Math.floor(ms / 3600000) % 24, min: Math.floor(ms / 60000) % 60, sec: Math.floor(ms / 1000) % 60 };
       wrap.querySelectorAll('[data-mc-count]').forEach((n) => {
         n.textContent = String(vals[n.getAttribute('data-mc-count')] ?? 0).padStart(2, '0');
       });
-    });
+    }));
   }
 
   /** The header's "Saved HH:MM" label -- autosave updates it through
@@ -964,7 +979,7 @@ export class MailCraftEditor extends ElementBase {
     this.renderExportModal();
     this.renderCodeModal();
     this.renderAiModal();
-    this.renderPreviewModal(false);
+    this.renderPreviewModal();
 
     this.refreshToast();
   }
@@ -1599,7 +1614,7 @@ export class MailCraftEditor extends ElementBase {
     // own page, then its content column. `is-device` (renderCodeModal) puts
     // the mat and the frame back for the 390px phone width, where the card
     // *is* the point.
-    const previewWrap = elS('div', 'overflow: auto; padding: 0; display: flex; justify-content: center; background: var(--ed-work);', { class: 'mc-code-preview-body' });
+    const previewWrap = elS('div', 'overflow: auto; display: flex; justify-content: center; background: var(--ed-work);', { class: 'mc-code-preview-body' });
     this.codePreviewBody = previewWrap;
     this.codeFrame = elS('iframe', "width: 100%; height: 100%; min-height: 420px; border: 0; background: #ffffff; transition: width 0.24s cubic-bezier(0.22,0.61,0.36,1);", { title: t('code.liveHtmlPreviewTitle'), 'data-i18n-title': 'code.liveHtmlPreviewTitle', class: 'mc-code-frame' });
     this.codeFrame.addEventListener('load', () => this.syncCodePreviewScrollbar());
@@ -1812,7 +1827,7 @@ export class MailCraftEditor extends ElementBase {
   buildPreviewModal() {
     const t = this.core.t;
     const overlay = elS('div', '', { class: 'mc-fullscreen-panel mc-preview-panel' });
-    overlay.style.cssText = 'position: absolute; inset: 0; z-index: 60; display: grid; grid-template-rows: 58px minmax(0, 1fr); animation: mcFade 0.16s ease; display: none;';
+    overlay.style.cssText = 'position: absolute; inset: 0; z-index: 60; background: var(--ed-work); display: grid; grid-template-rows: 58px minmax(0, 1fr); animation: mcFade 0.16s ease; display: none;';
     const head = elS('div', 'display: flex; align-items: center; gap: 12px; padding: 0 20px; border-bottom: 1px solid var(--ed-line); background: var(--ed-panel);', { class: 'mc-preview-toolbar' });
     const headText = elS('div', 'flex: 1; min-width: 0;');
     this.previewKickerEl = elS('div', 'font-family: var(--ed-font); font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ed-muted);', { class: 'mc-preview-kicker' });
@@ -1826,10 +1841,12 @@ export class MailCraftEditor extends ElementBase {
     closeBtn.addEventListener('click', () => this.core.setState({ previewOpen: false }));
     head.append(headText, this.previewDeviceSeg, closeBtn);
     overlay.appendChild(head);
-    // Flush and unpainted: this body *is* the sent email's page, so the
-    // sheet sits edge to edge exactly as exportHtml() renders it -- the
-    // theme's page background is applied on each render (renderPreviewModal).
-    const body = elS('div', 'overflow-y: auto; padding: 0;', { class: 'mc-preview-body' });
+    // This body *is* the sent email's page: the theme's page background is
+    // applied on each render (renderPreviewModal), and the stylesheet gives
+    // it container padding painted in that background -- breathing room the
+    // way a mail client's viewport provides it, with the sheet itself, and
+    // everything exportHtml() renders, untouched.
+    const body = elS('div', 'overflow-y: auto;', { class: 'mc-preview-body' });
     // Kept on the instance: renderPreviewModal repaints it from the document's
     // page background on every render, and it runs long after this builder's
     // local has gone out of scope.
@@ -1845,7 +1862,7 @@ export class MailCraftEditor extends ElementBase {
     const s = this.core.state;
     const t = this.core.t;
     this.previewModal.style.display = s.previewOpen ? 'grid' : 'none';
-    if (!s.previewOpen) return;
+    if (!s.previewOpen) { this._previewDoc = null; return; }
     this.previewKickerEl.textContent = s.device === 'mobile' ? t('preview.kickerMobile') : t('preview.kickerDesktop', { width: s.doc.theme.width });
     this.previewDeviceSeg.innerHTML = '';
     [
@@ -1865,8 +1882,20 @@ export class MailCraftEditor extends ElementBase {
     // page colour of its own shows behind the email.
     const pageBg = s.doc.theme.bg || '';
     this.previewBody.style.background = /^(transparent|none)$/i.test(pageBg.trim()) ? '' : pageBg;
-    this.previewSlot.innerHTML = '';
-    this.previewSlot.appendChild(renderDoc(this.core, false));
+    // Rebuild the sheet only when what it renders from actually changed.
+    // renderPreviewModal runs on *every* render pass, and rebuilding the
+    // whole email document each time made the open preview visibly rough:
+    // every unrelated setState re-created every node (images re-decoded and
+    // flashed, the scroll anchor jumped). The three inputs are cheap
+    // identity checks -- commit/undo/redo always replace `doc` with a fresh
+    // parse, refreshTranslator always replaces `t` -- so a stale hit is
+    // impossible.
+    if (s.doc !== this._previewDoc || s.device !== this._previewDevice || t !== this._previewT) {
+      this._previewDoc = s.doc;
+      this._previewDevice = s.device;
+      this._previewT = t;
+      this.previewSlot.replaceChildren(renderDoc(this.core, false));
+    }
   }
 }
 

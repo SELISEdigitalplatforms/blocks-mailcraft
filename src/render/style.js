@@ -223,8 +223,10 @@ export const STYLE = `
 #mc[data-chrome="dark"] .mc-workspace [data-mc-sheet="1"] { border-color: rgba(148,163,184,0.4); box-shadow: 0 0 0 1px rgba(15,23,42,0.4), 0 22px 58px rgba(0,0,0,0.36); }
 /* The preview body is the *sent* email's page: the theme's own page
    background paints it edge to edge (set inline by renderPreviewModal) and
-   the sheet sits flush -- no dotted grid, no padding, no framing. What you
-   see is what exportHtml() gives the recipient. */
+   the sheet itself carries no frame -- no dotted grid, no border, no shadow.
+   The body's mat (below, .mc-preview-body) is container padding painted in
+   that same page background; the sheet is what exportHtml() gives the
+   recipient. */
 .mc-preview-body [data-mc-sheet="1"] { border: 0; border-radius: 0; box-shadow: none; }
 #mc[data-chrome="dark"] .mc-preview-body [data-mc-sheet="1"] { border: 0; box-shadow: none; }
 
@@ -255,10 +257,14 @@ export const STYLE = `
 #mc [data-rte-select="1"] select:hover, #mc [data-rte-select="1"]:focus-within select { border-color: var(--ed-accent) !important; box-shadow: 0 0 0 3px var(--ed-soft); }
 #mc [data-rte-select="1"] select { background-image: none !important; padding-right: 24px !important; }
 #mc .mc-shell { border-color: var(--ed-line) !important; border-radius: 14px; grid-template-rows: 62px 1fr !important; box-shadow: 0 1px 2px rgba(15,23,42,.04), 0 16px 44px rgba(15,23,42,.10) !important; }
-
-/* The header row is pinned above with !important, so a shell built without a
-   header has to say so here too -- otherwise the canvas lands in a 62px track
-   and the editor renders into a sliver. */
+
+
+/* The header row is pinned above with !important, so a shell built without a
+
+   header has to say so here too -- otherwise the canvas lands in a 62px track
+
+   and the editor renders into a sliver. */
+
 #mc .mc-shell.mc-no-header { grid-template-rows: 1fr !important; }
 /* Opaque, no backdrop-filter: the header sits over the scrolling canvas, so a
    backdrop blur re-composites every scroll frame -- visible scroll jank. */
@@ -401,18 +407,27 @@ export const STYLE = `
 #mc .mc-code-split { gap: 12px; padding: 12px; background: var(--ed-work); }
 #mc .mc-code-source, #mc .mc-code-preview { border: 1px solid var(--ed-line) !important; border-radius: 12px; overflow: hidden; background: var(--ed-panel) !important; }
 #mc .mc-pane-label { padding: 8px 13px !important; background: var(--ed-panel-2) !important; font-size: 9.5px !important; letter-spacing: .025em !important; text-transform: none !important; }
-/* The live preview is the email, not a card of it: at full width the frame
-   fills the pane and the document's own page background is the only surround.
-   Only the 390px phone width gets the mat and the card, where the inset frame
-   is what reads as a device. */
-#mc .mc-code-preview-body { padding: 0 !important; background: var(--ed-work); }
-#mc .mc-code-preview-body.is-device { padding: 14px !important; }
+/* The live preview keeps breathing room on the *container* -- padding on the
+   pane, never markup or spacing inside the template: the iframe's document is
+   byte-for-byte what exportHtml() produces. The 390px phone width additionally
+   gets the card treatment, where the inset frame is what reads as a device. */
+#mc .mc-code-preview-body { padding: 16px !important; background: var(--ed-work); }
+#mc .mc-code-preview-body.is-device { padding: 16px !important; }
 #mc .mc-code-frame { border: 0 !important; border-radius: 0; box-shadow: none !important; }
 #mc .mc-code-preview-body.is-device .mc-code-frame { border-radius: 9px; box-shadow: 0 5px 20px rgba(15,23,42,.10) !important; }
 #mc .mc-code-footer { padding: 8px 16px !important; background: var(--ed-panel); font-family: var(--ed-font) !important; font-size: 9.5px !important; letter-spacing: 0 !important; }
 #mc .mc-preview-panel { grid-template-rows: 58px minmax(0,1fr) !important; }
 #mc .mc-preview-title { font-family: var(--ed-font); font-size: 12px !important; font-weight: 600; }
-#mc .mc-preview-body { padding: 0 !important; }
+/* Container-only inner space: the mat around the sheet is padding on the
+   preview body, which the theme's page background paints -- exactly the
+   breathing room a mail client's viewport gives a message. Nothing is added
+   to the document itself; exportHtml() is unchanged. */
+/* The opaque fallback ground for a page with no colour of its own: without
+   it a transparent page background left the whole overlay see-through and the
+   editor (canvas, inspector, footer) bled into the preview. The dotted grid
+   reads as "no page colour" the same way the canvas does; a set page colour
+   overrides both properties via the inline background shorthand. */
+#mc .mc-preview-body { padding: 32px 24px 56px !important; background-color: var(--ed-work); background-image: radial-gradient(circle, var(--ed-grid) 1px, transparent 1.2px); background-size: 22px 22px; }
 #mc .mc-toast { border-radius: 10px; box-shadow: 0 12px 34px rgba(16,19,36,.28) !important; }
 #mc[data-chrome="dark"] .mc-shell { box-shadow: 0 24px 70px rgba(0,0,0,.44) !important; }
 #mc[data-chrome="dark"] .mc-header { background: rgba(25,28,41,.88) !important; }

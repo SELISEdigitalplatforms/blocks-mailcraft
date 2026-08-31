@@ -5,5 +5,6 @@ export { renderDoc } from './render/canvas.js';
 export { BLOCKS, GROUPS, LAYOUTS, PALETTE } from './core/blocks.js';
 export { createTranslator, defineMessages, missingKeys, LOCALES, isRtl, EN, MESSAGE_KEYS } from './core/i18n/index.js';
 export { LOCALE_TABLES } from './core/i18n/tables.js';
+export { LOCALE_LOADERS, loadLocale, localeTable } from './core/i18n/loaders.js';
 export { ALL_FOLDER_ID, normalizeAsset, resolveLimits } from './core/storage.js';
 export { validateFiles, sanitizeName, acceptAttribute, limitsProblem } from './core/storage-limits.js';

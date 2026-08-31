@@ -261,6 +261,26 @@ for (const [label, open] of [
   });
 }
 
+await it('a transparent page keeps the preview overlay opaque', async () => {
+  // The preview overlay paints the theme's page background onto its body; a
+  // *transparent* page used to leave the whole overlay see-through, so the
+  // canvas, inspector and footer bled into the preview.
+  const el = await mountEditor();
+  await settle();
+  el.core.commit((doc) => { doc.theme.bg = 'transparent'; });
+  el.core.setState({ previewOpen: true });
+  await settle();
+  const overlay = q(el, '.mc-preview-panel');
+  const body = q(el, '.mc-preview-body');
+  assert.ok(overlay.style.background, 'the overlay carries its own opaque ground');
+  assert.equal(body.style.background, '', 'no inline paint, so the stylesheet dotted-grid fallback shows');
+  el.core.commit((doc) => { doc.theme.bg = '#102030'; });
+  await settle();
+  assert.ok(body.style.background, 'a set page colour paints the body inline over the fallback');
+  el.core.setState({ previewOpen: false });
+  await settle();
+});
+
 await it('the code modal round-trips the document through html', async () => {
   const el = await mountEditor();
   el.importHtml(EMAIL);
@@ -299,7 +319,7 @@ await it('the code preview uses the editor scrollbar without changing its source
  * iframe drew a mat and a card around a document that already paints its own
  * page background, so a template read as four nested rectangles.
  */
-await it('the live preview sits flush at full width and becomes a card only for the phone', async () => {
+await it('the live preview keeps its mat on the container, never inline or in the template', async () => {
   const el = await mountEditor();
   el.importHtml(EMAIL);
   await settle(3);
@@ -307,13 +327,13 @@ await it('the live preview sits flush at full width and becomes a card only for 
   await settle(2);
   const body = q(el, '.mc-code-preview-body');
   const frame = q(el, '.mc-code-frame');
-  assert.equal(body.style.padding, '0px', 'no mat around the full-width preview');
-  assert.equal(frame.style.border, '0px', 'and no card frame on the iframe');
+  assert.equal(body.style.padding, '', 'the mat is stylesheet-owned container padding, not inline');
+  assert.equal(frame.style.border, '0px', 'no card frame on the full-width iframe');
   assert.equal(body.classList.contains('is-device'), false);
   el.core.setState({ codeDevice: 'mobile' });
   await settle(2);
   assert.equal(frame.style.width, '390px');
-  assert.ok(body.classList.contains('is-device'), 'the phone width gets the mat and the card back');
+  assert.ok(body.classList.contains('is-device'), 'the phone width gets the device card');
 });
 
 

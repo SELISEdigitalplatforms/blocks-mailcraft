@@ -62,6 +62,12 @@ function transform(key, src) {
     return `${kind} ${name}`;
   });
 
+  // Literal dynamic imports (the lazy locale loaders) become synchronous
+  // requires wrapped in a resolved promise: the demo bundle carries every
+  // module anyway, so "load the French table" is a map lookup, and the
+  // `import()` contract (a promise for the module namespace) is preserved.
+  out = out.replace(/\bimport\(\s*(['"])([^'"]+)\1\s*\)/g, (_, q, spec) => `Promise.resolve(__require(${JSON.stringify(resolveImport(key, spec))}))`);
+
   const leftover = out.match(/^export\s+/m);
   if (leftover) throw new Error(`${key}: unhandled export syntax near "${leftover[0]}"`);
   if (/^import\s+/m.test(out)) throw new Error(`${key}: unhandled import syntax`);

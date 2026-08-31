@@ -37,10 +37,11 @@ import { UK } from './uk.js';
  * importing and assigning a table by hand.
  *
  * Deliberately a separate module from index.js's metadata-only `LOCALES`:
- * importing this one pulls all translations in. The element accepts that
- * (host-driven language is worth it, and the demo bundle carries every module
- * anyway); a size-sensitive host that bypasses the attribute can still
- * deep-import a single `core/i18n/<tag>.js` and assign `.messages` itself.
+ * importing this one pulls all translations in, eagerly. The element itself
+ * no longer does -- it resolves the `locale` attribute through the lazy
+ * per-tag loaders (loaders.js), so a bundled app ships only the locales it
+ * actually renders. This eager map remains for a host that wants every table
+ * up front (an instant-preview language switcher, a server-side pass).
  */
 export const LOCALE_TABLES = {
   en: EN, ar: AR, bg: BG, bn: BN, ca: CA, cs: CS, da: DA, de: DE, 'de-CH': DE_CH,

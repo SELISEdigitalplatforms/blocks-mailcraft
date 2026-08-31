@@ -419,6 +419,8 @@ Hiding the strip collapses its row — the canvas keeps every pixel it had.
 
 31 locales ship. `dir` follows the locale automatically (`locale="ar"` gives RTL) and can be overridden. While `theme` is set the host owns light/dark and the editor hides its own toggle.
 
+Tables load lazily: in a bundled app each locale is its own code-split chunk, fetched the first time its tag is used, so you ship only the languages you render (English is always built in). The chrome shows English for the instant the chunk takes to arrive; call `loadLocale(tag)` ahead of time to have it ready before you flip the attribute. The single-file CDN bundle carries every table, so switching there is always instant.
+
 Override any individual string:
 
 ```js
@@ -521,6 +523,7 @@ template, not to your app.
 | `isReady()` | whether the custom element is registered |
 | `MailCraftEditor` | the element class |
 | `LOCALES`, `LOCALE_TABLES`, `createTranslator` | i18n: the shipped tags, their tables, and the translator the editor uses |
+| `LOCALE_LOADERS`, `loadLocale(tag)` | lazy per-locale table loading — what the `locale` attribute resolves through, so a bundled app ships only the locales it uses. `loadLocale` prefetches one (e.g. before flipping `locale` at runtime) |
 | `defineMessages(base, overrides)` | merge a shipped locale with your own overrides — the supported way to build a `.messages` value |
 | `missingKeys(locale, base)` | keys `base` has that `locale` does not translate. What a translator has left to do |
 | `EN`, `MESSAGE_KEYS` | the English table and every key in it — listed in [Every message key](#every-message-key) |

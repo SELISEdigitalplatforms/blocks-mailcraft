@@ -966,6 +966,15 @@ function themeFromParsedDoc(doc) {
       return w && !String(w).endsWith('%') && PX(w) === Number(bestWidth);
     });
     if (content) {
+      // The content column's own background -- including the literal
+      // `transparent` the exporter always writes for a see-through column.
+      // Without this the round trip lost it: export wrote
+      // `background:transparent`, the import never read it back, and the
+      // blank-doc default repainted the content area white on every
+      // save/reload. Only an explicit value is taken, so a foreign email
+      // whose content table declares nothing keeps the white default.
+      const cbg = bgOf(content);
+      if (cbg) theme.contentBg = cbg;
       const r = PX(content.style && content.style.borderRadius);
       if (r > 0) theme.radius = r;
       const cell = content.closest ? content.closest('td') : null;

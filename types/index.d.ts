@@ -31,6 +31,15 @@ export const LOCALES: readonly LocaleInfo[];
 /** Every shipped message table, keyed by locale tag. Importing this pulls all translations in. */
 export const LOCALE_TABLES: Record<LocaleTag, MessageTable>;
 
+/** One lazy loader per shipped locale — literal dynamic imports, so bundlers code-split each table into its own chunk. What the element's `locale` attribute resolves through. */
+export const LOCALE_LOADERS: Record<LocaleTag, () => Promise<MessageTable>>;
+
+/** Fetches (once) and caches a locale's table; resolves `null` for a tag that does not ship. Useful for prefetching before setting `locale`. */
+export function loadLocale(tag: string): Promise<MessageTable | null>;
+
+/** The already-loaded table for a tag: the table, `undefined` (ships but not loaded yet), or `null` (does not ship). */
+export function localeTable(tag: string): MessageTable | null | undefined;
+
 /** The English table — the fallback for every key a custom table leaves out. */
 export const EN: MessageTable;
 
