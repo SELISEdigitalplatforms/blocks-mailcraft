@@ -489,7 +489,12 @@ export function renderField(f) {
     const value = el('output', { minWidth: '58px', height: '25px', padding: '0 8px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--ed-line)', borderRadius: '7px', background: 'var(--ed-panel-2)', color: 'var(--ed-accent)', fontFamily: 'var(--ed-font)', fontSize: '11.5px', fontWeight: '600', whiteSpace: 'nowrap' }, { 'aria-live': 'polite' });
     head.appendChild(value);
     const holder = el('div', { padding: '11px 0 4px' });
-    const input = el('input', { width: '100%', margin: '0', display: 'block', boxSizing: 'border-box' }, { type: 'range', min: f.min, max: f.max, step: f.step, class: 'mc-slider', 'aria-label': f.label, 'data-focus-key': `f${f.key}` });
+    // `dir=ltr` pins the track like every value-shaped inspector field: under
+    // an RTL locale the native input mirrors itself (thumb measured from the
+    // right) while the painted fill below stays a left-anchored gradient, so
+    // the two showed opposite ends of the range. Pinned, thumb, fill and
+    // drag direction always agree.
+    const input = el('input', { width: '100%', margin: '0', display: 'block', boxSizing: 'border-box' }, { type: 'range', min: f.min, max: f.max, step: f.step, class: 'mc-slider', 'aria-label': f.label, 'data-focus-key': `f${f.key}`, dir: 'ltr' });
     input.value = f.value;
     const place = () => {
       const pct = (input.value - f.min) / (f.max - f.min || 1);

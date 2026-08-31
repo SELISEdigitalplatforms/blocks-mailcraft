@@ -760,7 +760,7 @@ The complete catalog of UI strings that `.messages` accepts — every key the ed
 
 # How it works inside
 
-Useful when debugging an integration, and required reading before contributing.
+Useful when debugging an integration, or before changing the source.
 
 **Core / render split.** `src/core/` holds state and logic and never touches the DOM; `src/render/` builds all of it. The canvas is torn down and rebuilt on every state change — no diffing — and focus and caret survive through `data-focus-key` and `render/focus-preserve.js`.
 
@@ -780,7 +780,7 @@ node build.js     # rebuild dist/ after any change under src/
 npm test          # 13 suites — core logic runs DOM-free, the editor/importer suites run on jsdom
 ```
 
-Deeper notes for contributors and coding agents live in `AGENTS.md` in the repository, alongside [CONTRIBUTING](https://mailcraft.seliseblocks.com/CONTRIBUTING.html), which is also on the docs site.
+Deeper notes for coding agents and anyone changing the source live in `AGENTS.md` in the repository.
 
 ---
 

@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>MailCraft — the open-source drag-and-drop email editor</title>
+<meta name="description" content="Drag-and-drop email template editor as a single Web Component. Zero dependencies, 31 languages, HTML in / HTML out, MIT licensed. From the SELISE Blocks team.">
+<link rel="canonical" href="https://mailcraft.seliseblocks.com/">
+<meta property="og:title" content="MailCraft — the email editor you ship, not subscribe to">
+<meta property="og:description" content="One Web Component. Zero dependencies. 31 languages. MIT.">
+<meta property="og:url" content="https://mailcraft.seliseblocks.com/">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230065b3'/%3E%3Cpath d='M7 11.5 16 18l9-6.5' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Crect x='7' y='9.5' width='18' height='13' rx='2.2' fill='none' stroke='white' stroke-width='2.2'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem('mailcraft-docs-theme');
+    if (t) document.documentElement.setAttribute('data-theme', t);
+  } catch (e) { /* private mode: follow the OS */ }
+</script>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* ————— The page wears the editor's own chrome tokens ————— */
+:root {
+  --ground: #f5f7fa; --panel: #ffffff; --panel-2: #f8fafc; --work: #f1f4f8;
+  --grid-dot: #c9d2de;
+  --ink: #172033; --muted: #4c586e; --faint: #7c8798;
+  --line: rgba(23,32,51,0.13); --line-soft: rgba(23,32,51,0.07);
+  --accent: #0065b3; --accent-ink: #ffffff; --accent-soft: rgba(0,101,179,0.09);
+  --good: #0e7a4a; --paid: #94620a; --none: #9aa4b2;
+  --sheet-shadow: 0 2px 5px rgba(15,23,42,.05), 0 14px 38px rgba(15,23,42,.10);
+  --code-bg: #101828; --code-ink: #d7e3f4;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0b1120; --panel: #111827; --panel-2: #182235; --work: #0d1524;
+    --grid-dot: #26334a;
+    --ink: #e5ecf6; --muted: #a7b3c6; --faint: #76839a;
+    --line: rgba(226,236,246,0.14); --line-soft: rgba(226,236,246,0.07);
+    --accent: #4da3e0; --accent-ink: #06121f; --accent-soft: rgba(77,163,224,0.12);
+    --good: #3fbf85; --paid: #d3a545; --none: #5d6a80;
+    --sheet-shadow: 0 0 0 1px rgba(15,23,42,.4), 0 22px 58px rgba(0,0,0,.36);
+    --code-bg: #0a0f1a; --code-ink: #c6d4e8;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0b1120; --panel: #111827; --panel-2: #182235; --work: #0d1524;
+  --grid-dot: #26334a;
+  --ink: #e5ecf6; --muted: #a7b3c6; --faint: #76839a;
+  --line: rgba(226,236,246,0.14); --line-soft: rgba(226,236,246,0.07);
+  --accent: #4da3e0; --accent-ink: #06121f; --accent-soft: rgba(77,163,224,0.12);
+  --good: #3fbf85; --paid: #d3a545; --none: #5d6a80;
+  --sheet-shadow: 0 0 0 1px rgba(15,23,42,.4), 0 22px 58px rgba(0,0,0,.36);
+  --code-bg: #0a0f1a; --code-ink: #c6d4e8;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { background: var(--ground); color: var(--ink); font-family: "Public Sans", system-ui, sans-serif; font-size: 16px; line-height: 1.6; margin: 0; }
+.wrap { max-width: 1060px; margin: 0 auto; padding: 0 24px; }
+h1, h2, h3 { font-family: "Bricolage Grotesque", "Public Sans", sans-serif; text-wrap: balance; line-height: 1.1; margin: 0; }
+p { margin: 0; max-width: 66ch; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.eyebrow {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--accent); display: inline-flex; align-items: baseline; gap: 10px;
+}
+.eyebrow .ch { color: var(--faint); }
+
+/* Scroll reveal */
+.rv { opacity: 0; transform: translateY(16px); transition: opacity .6s cubic-bezier(.22,.61,.36,1), transform .6s cubic-bezier(.22,.61,.36,1); }
+.rv.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .rv { opacity: 1; transform: none; transition: none; } }
+
+/* Narrative bridges — the thread between chapters */
+.bridge { display: grid; justify-items: center; gap: 14px; padding: 58px 24px 0; text-align: center; }
+.bridge::before { content: ""; width: 1px; height: 34px; background: linear-gradient(var(--line), var(--accent)); }
+.bridge p { font-family: "Bricolage Grotesque", sans-serif; font-size: 19px; font-weight: 700; letter-spacing: -0.01em; color: var(--ink); max-width: 44ch; text-wrap: balance; }
+.bridge p em { font-style: normal; color: var(--accent); }
+
+/* ————— Hero ————— */
+.hero {
+  background-color: var(--work);
+  background-image: radial-gradient(circle, var(--grid-dot) 1px, transparent 1.2px);
+  background-size: 22px 22px;
+  border-bottom: 1px solid var(--line);
+  padding: 30px 0 96px;
+}
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 50px; }
+.wordmark { font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: 21px; display: flex; align-items: center; gap: 10px; }
+.wordmark .dot { width: 12px; height: 12px; border-radius: 3px; background: var(--accent); }
+a.wordmark:hover { text-decoration: none; color: var(--accent) !important; }
+.topnav { display: flex; gap: 22px; font-size: 13.5px; font-weight: 600; }
+.topnav a { color: var(--muted); }
+.topnav a:hover { color: var(--accent); text-decoration: none; }
+.topnav a[aria-current="page"] { color: var(--accent); }
+.bar-end { display: flex; align-items: center; gap: 10px; }
+.icon-btn { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--muted); cursor: pointer; }
+.icon-btn:hover { color: var(--accent); border-color: var(--accent); }
+.icon-btn .i-sun { display: none; }
+.icon-btn .i-moon { display: block; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .icon-btn .i-sun { display: block; }
+  :root:not([data-theme="light"]) .icon-btn .i-moon { display: none; }
+}
+:root[data-theme="dark"] .icon-btn .i-sun { display: block; }
+:root[data-theme="dark"] .icon-btn .i-moon { display: none; }
+.brand-mark { color: var(--accent); border-radius: 7px; flex: none; }
+.hero-grid { display: grid; grid-template-columns: minmax(0,6fr) minmax(0,5fr); gap: 56px; align-items: center; }
+@media (max-width: 880px) { .hero-grid { grid-template-columns: 1fr; } }
+.hero h1 { font-size: clamp(40px, 5.6vw, 60px); font-weight: 800; letter-spacing: -0.024em; }
+.hero h1 em { font-style: normal; color: var(--accent); }
+.hero .lede { margin-top: 18px; font-size: 17px; color: var(--muted); }
+.install {
+  margin-top: 26px; display: inline-flex; align-items: center; gap: 14px;
+  background: var(--code-bg); color: var(--code-ink);
+  font-family: "IBM Plex Mono", monospace; font-size: 14px;
+  padding: 13px 18px; border-radius: 9px; box-shadow: var(--sheet-shadow);
+}
+.install .ps1 { color: #5b708c; user-select: none; }
+.hero-ctas { margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap; }
+.btn { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; padding: 11px 20px; border-radius: 9px; border: 1px solid transparent; transition: transform .16s ease, filter .16s ease, border-color .16s ease, color .16s ease; }
+.btn:hover { transform: translateY(-1px); text-decoration: none; }
+.btn-primary { background: var(--accent); color: var(--accent-ink); }
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-ghost { border-color: var(--line); color: var(--ink); background: var(--panel); }
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+@media (prefers-reduced-motion: reduce) { .btn, .btn:hover { transition: none; transform: none; } }
+
+@media (prefers-reduced-motion: no-preference) {
+  .stagger > * { opacity: 0; transform: translateY(14px); animation: up .7s cubic-bezier(.22,.61,.36,1) forwards; }
+  .stagger > *:nth-child(1) { animation-delay: .05s; } .stagger > *:nth-child(2) { animation-delay: .14s; }
+  .stagger > *:nth-child(3) { animation-delay: .23s; } .stagger > *:nth-child(4) { animation-delay: .32s; }
+  @keyframes up { to { opacity: 1; transform: none; } }
+  .sheet { opacity: 0; transform: translateY(18px); animation: up .8s .2s cubic-bezier(.22,.61,.36,1) forwards; }
+  .sheet-body > * { opacity: 0; animation: fadein .5s forwards; }
+  .sheet-body > *:nth-child(1) { animation-delay: .55s; } .sheet-body > *:nth-child(2) { animation-delay: .68s; }
+  .sheet-body > *:nth-child(3) { animation-delay: .81s; } .sheet-body > *:nth-child(4) { animation-delay: .94s; }
+  .sheet-body > *:nth-child(5) { animation-delay: 1.07s; } .sheet-body > *:nth-child(6) { animation-delay: 1.2s; }
+  .sheet-body > *:nth-child(7) { animation-delay: 1.33s; } .sheet-body > *:nth-child(8) { animation-delay: 1.46s; }
+  @keyframes fadein { to { opacity: 1; } }
+}
+
+/* Faux editor sheet with a live countdown */
+.sheet-stack { position: relative; min-height: 400px; }
+.sheet { position: absolute; inset: 0 0 auto 0; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--sheet-shadow); overflow: hidden; }
+.sheet-head { background: var(--accent); height: 60px; display: flex; align-items: center; justify-content: center; }
+.sheet-head span { color: #fff; font-family: "IBM Plex Mono", monospace; font-size: 12.5px; letter-spacing: .08em; opacity: .95; }
+.sheet-body { padding: 25px 30px 28px; display: grid; gap: 13px; }
+.sk { border-radius: 4px; background: var(--line-soft); height: 12px; }
+.sk.title { height: 22px; width: 62%; background: var(--line); }
+.sk.w80 { width: 80%; } .sk.w70 { width: 70%; }
+.sk-btn { height: 38px; width: 190px; border-radius: 6px; background: var(--accent); margin-top: 4px; }
+.tag { display: inline-flex; width: max-content; font-family: "IBM Plex Mono", monospace; font-size: 11px; font-weight: 600; color: var(--accent); background: var(--accent-soft); border: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent); border-radius: 5px; padding: 3px 9px; }
+.count { display: flex; gap: 8px; margin-top: 2px; }
+.count .cell { min-width: 46px; text-align: center; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 5px 6px 6px; }
+.count .cell b { display: block; font-family: "IBM Plex Mono", monospace; font-size: 16px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.count .cell i { font-style: normal; font-size: 8.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
+
+/* Spec card — bridges the hero into the story */
+.spec {
+  position: relative; z-index: 2; margin-top: -52px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: var(--sheet-shadow); overflow: hidden;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+.stat { padding: 20px 22px; border-inline-start: 1px solid var(--line-soft); }
+.stat:first-child { border-inline-start: 0; }
+.stat .n { font-family: "Bricolage Grotesque", sans-serif; font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.stat .l { font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); margin-top: 2px; }
+
+/* Sections */
+section { padding: 30px 0 0; }
+.sec-head { margin-bottom: 30px; }
+.sec-head h2 { font-size: clamp(26px, 3.4vw, 35px); font-weight: 800; letter-spacing: -0.02em; margin-top: 12px; }
+.sec-head p { margin-top: 10px; color: var(--muted); }
+
+/* Chips — the paywall, condensed */
+.chips { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 99px;
+  padding: 7px 15px 7px 10px; font-size: 13px; font-weight: 600;
+}
+.chip svg { width: 15px; height: 15px; color: var(--good); flex: none; }
+.chip s { text-decoration-color: var(--paid); text-decoration-thickness: 1.5px; color: var(--muted); font-weight: 500; margin-inline-start: 4px; font-size: 11.5px; }
+
+/* Tables */
+.tablecard { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--sheet-shadow); overflow: hidden; }
+.scroller { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+td code, .features code { font-family: "IBM Plex Mono", monospace; font-size: 12px; background: var(--accent-soft); color: var(--accent); border-radius: 4px; padding: 1px 6px; white-space: nowrap; }
+/* The packing slip: "everything in the box", taken literally */
+.slip-stage {
+  display: grid; justify-items: center;
+  background-color: var(--work);
+  background-image: radial-gradient(circle, var(--grid-dot) 1px, transparent 1.2px);
+  background-size: 22px 22px;
+  border: 1px solid var(--line); border-radius: 16px;
+  padding: 52px 20px 58px;
+}
+.slip { width: min(520px, 100%); background: var(--panel); border: 1px solid var(--line); box-shadow: var(--sheet-shadow); font-family: "IBM Plex Mono", ui-monospace, monospace; position: relative; transform: rotate(-0.6deg); }
+.slip::before, .slip::after { content: ""; position: absolute; left: 0; right: 0; height: 8px; background-image: radial-gradient(circle at 5px 4px, var(--work) 4.5px, transparent 5px); background-size: 16px 8px; }
+.slip::before { top: -1px; }
+.slip::after { bottom: -1px; transform: scaleY(-1); }
+.slip-inner { padding: 30px 30px 34px; }
+.slip h3 { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 15px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; text-align: center; }
+.slip .meta { text-align: center; font-size: 10.5px; color: var(--faint); margin-top: 4px; letter-spacing: .08em; }
+.slip-rule { border: 0; border-top: 1.5px dashed var(--line); margin: 18px 0; }
+.slip-row { display: flex; justify-content: space-between; gap: 12px; font-size: 12.5px; padding: 5px 0; }
+.slip-row .dots { flex: 1; border-bottom: 1.5px dotted var(--line); transform: translateY(-4px); }
+.slip-row em { font-style: normal; color: var(--accent); font-weight: 600; }
+.slip-total { display: flex; justify-content: space-between; font-size: 13.5px; font-weight: 600; padding-top: 12px; }
+.slip-total em { font-style: normal; color: var(--accent); }
+.stamp {
+  position: absolute; right: 18px; bottom: 58px; transform: rotate(-11deg);
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 13px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--accent); border: 2.5px solid var(--accent); border-radius: 8px; padding: 7px 13px; opacity: .82;
+}
+.slip .fine { text-align: center; font-size: 10px; color: var(--faint); margin-top: 20px; letter-spacing: .06em; max-width: none; }
+
+.compare th, .compare td { padding: 11px 14px; border-top: 1px solid var(--line-soft); text-align: left; font-size: 13px; vertical-align: top; }
+.compare thead th { border-top: 0; background: var(--panel-2); font-family: "IBM Plex Mono", monospace; font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); white-space: nowrap; }
+.compare tbody th { font-weight: 700; white-space: nowrap; text-align: left; position: sticky; left: 0; background: var(--panel); z-index: 1; border-right: 1px solid var(--line-soft); font-size: 13.5px; }
+.compare tbody tr.hero-row th, .compare tbody tr.hero-row td { background: var(--accent-soft); border-top: 1px solid var(--line); }
+.compare tbody tr.hero-row th { color: var(--accent); }
+.compare td { min-width: 108px; color: var(--muted); }
+.yes { color: var(--good); font-weight: 700; }
+.no { color: var(--none); }
+.fee { color: var(--paid); font-weight: 600; }
+.cellnote { display: block; font-size: 11px; color: var(--faint); margin-top: 1px; }
+.legend { display: flex; gap: 20px; flex-wrap: wrap; padding: 12px 18px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); background: var(--panel-2); }
+
+/* SELISE Blocks band — the one dark, loud moment */
+.platform {
+  margin-top: 30px; background: var(--code-bg); color: var(--code-ink);
+  border-radius: 16px; box-shadow: var(--sheet-shadow);
+  padding: 48px 50px; position: relative; overflow: hidden;
+}
+@media (max-width: 640px) { .platform { padding: 30px 24px; } }
+.platform::before { content: ""; position: absolute; inset: 0; background-image: radial-gradient(circle, rgba(120,160,210,.18) 1px, transparent 1.2px); background-size: 22px 22px; pointer-events: none; }
+.platform > * { position: relative; }
+.platform .eyebrow { color: #7db8e8; }
+.platform .eyebrow .ch { color: #5b708c; }
+.platform h2 { color: #f2f7fd; font-size: clamp(25px, 3.3vw, 34px); font-weight: 800; letter-spacing: -0.02em; margin-top: 12px; }
+.platform .lede { color: #a9bdd6; margin-top: 12px; font-size: 16px; }
+.platform .lede b { color: #e8f1fb; }
+.modules { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-top: 28px; }
+.module { background: rgba(255,255,255,.045); border: 1px solid rgba(160,190,225,.18); border-radius: 11px; padding: 16px 17px; transition: border-color .16s ease, background .16s ease; }
+.module:hover { border-color: rgba(160,190,225,.45); background: rgba(255,255,255,.07); }
+.module b { display: block; color: #e8f1fb; font-family: "Bricolage Grotesque", sans-serif; font-size: 15px; font-weight: 700; }
+.module.this b { color: #8ec8f5; }
+.module span { display: block; font-size: 12.5px; color: #93a8c4; margin-top: 4px; line-height: 1.5; }
+.module .mono-chip { display: inline-block; font-family: "IBM Plex Mono", monospace; font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: #7db8e8; border: 1px solid rgba(125,184,232,.4); border-radius: 99px; padding: 2px 8px; margin-bottom: 8px; }
+.platform .btn-ghost { background: transparent; border-color: rgba(160,190,225,.35); color: #d7e3f4; }
+.platform .btn-ghost:hover { border-color: #7db8e8; color: #8ec8f5; }
+
+/* Verdict */
+.claim { margin-top: 30px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--sheet-shadow); padding: 44px 46px; }
+@media (max-width: 640px) { .claim { padding: 30px 24px; } }
+.claim h2 { font-size: clamp(24px, 3.2vw, 32px); font-weight: 800; letter-spacing: -0.016em; margin-top: 12px; }
+.claim p { margin-top: 14px; color: var(--muted); }
+.quad { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0; margin-top: 26px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.quad div { padding: 17px 19px; border-top: 1px solid var(--line-soft); border-inline-start: 1px solid var(--line-soft); background: var(--panel-2); }
+.quad b { display: block; font-family: "Bricolage Grotesque", sans-serif; font-size: 16px; font-weight: 700; margin-bottom: 3px; }
+.quad span { font-size: 12.5px; color: var(--muted); }
+
+/* Footer — the page closes on the same workspace grid it opened on */
+footer {
+  margin-top: 74px;
+  background-color: var(--work);
+  background-image: radial-gradient(circle, var(--grid-dot) 1px, transparent 1.2px);
+  background-size: 22px 22px;
+  border-top: 1px solid var(--line);
+  padding: 54px 0 40px;
+}
+.foot-grid { display: grid; grid-template-columns: minmax(220px, 1.4fr) repeat(3, minmax(130px, 1fr)); gap: 36px 28px; }
+@media (max-width: 760px) { .foot-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 480px) { .foot-grid { grid-template-columns: 1fr; } }
+.foot-brand p { font-size: 13.5px; color: var(--muted); margin-top: 12px; max-width: 34ch; }
+.foot-col h4 { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--faint); margin: 0 0 14px; }
+.foot-col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; }
+.foot-col a { color: var(--muted); font-size: 13.5px; font-weight: 500; }
+.foot-col a:hover { color: var(--accent); text-decoration: none; }
+.foot-cta {
+  display: inline-flex; margin-top: 6px;
+  font-size: 13px; font-weight: 700; color: var(--accent-ink); background: var(--accent);
+  border-radius: 8px; padding: 8px 14px;
+}
+.foot-cta:hover { text-decoration: none; filter: brightness(1.08); }
+.foot-base {
+  margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--line);
+  display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  font-size: 12.5px; color: var(--faint);
+}
+.sources { margin-top: 16px; font-size: 11.5px; color: var(--faint); }
+.sources a { color: var(--faint); text-decoration: underline; text-decoration-color: var(--line); }
+.sources a:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- ACT 0 · The promise -->
+<header class="hero">
+  <div class="wrap">
+    <div class="topbar">
+      <a class="wordmark" href="./" style="color:inherit">
+        <svg class="brand-mark" width="26" height="26" viewBox="0 0 32 32" aria-hidden="true">
+          <rect width="32" height="32" rx="7" fill="currentColor"></rect>
+          <rect x="7" y="9.5" width="18" height="13" rx="2.2" fill="none" stroke="#fff" stroke-width="2.2"></rect>
+          <path d="M7 11.5 16 18l9-6.5" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+        MailCraft
+      </a>
+      <nav class="topnav" aria-label="Primary">
+        <a href="./" aria-current="page">Overview</a>
+        <a href="DOCS.html">Guide</a>
+        <a href="examples/vanilla.html">Demo</a>
+      </nav>
+      <div class="bar-end">
+        <a class="icon-btn" href="https://www.npmjs.com/package/@seliseblocks/mailcraft" rel="noopener" aria-label="MailCraft on npm" title="npm — @seliseblocks/mailcraft">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M1.763 0C.786 0 0 .786 0 1.763v20.474C0 23.214.786 24 1.763 24h20.474c.977 0 1.763-.786 1.763-1.763V1.763C24 .786 23.214 0 22.237 0zM5.13 5.323l13.837.019-.009 13.836h-3.464l.01-10.382h-3.456L12.04 19.17H5.113z"></path></svg>
+        </a>
+        <a class="icon-btn" href="https://github.com/SELISEdigitalplatforms/blocks-mailcraft" rel="noopener" aria-label="MailCraft on GitHub" title="GitHub — blocks-mailcraft">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"></path></svg>
+        </a>
+        <button id="theme-toggle" class="icon-btn" type="button" aria-label="Switch colour theme" title="Switch colour theme">
+          <svg class="i-sun" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"></circle><path d="M12 2.6v2.2M12 19.2v2.2M4.2 12H2M22 12h-2.2M6.3 6.3 4.8 4.8M19.2 19.2l-1.5-1.5M17.7 6.3l1.5-1.5M4.8 19.2l1.5-1.5"></path></svg>
+          <svg class="i-moon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.5A8.6 8.6 0 0 1 9.5 3.5a8.6 8.6 0 1 0 11 11Z"></path></svg>
+        </button>
+      </div>
+    </div>
+    <div class="hero-grid">
+      <div class="stagger">
+        <span class="eyebrow" style="margin-bottom:14px">Open source &middot; from the SELISE Blocks platform</span>
+        <h1>The email editor you <em>ship</em>, not subscribe to.</h1>
+        <p class="lede">Drag-and-drop email templates in one Web Component — HTML in, send-ready HTML out. Open source from the team behind <a href="#platform" style="font-weight:700">SELISE Blocks</a>.</p>
+        <div class="install"><span class="ps1">$</span>npm install @seliseblocks/mailcraft</div>
+        <div class="hero-ctas">
+          <a class="btn btn-primary" href="examples/vanilla.html">Open the live demo</a>
+          <a class="btn btn-ghost" href="DOCS.html">Read the docs</a>
+        </div>
+      </div>
+      <div class="sheet-stack" aria-hidden="true">
+        <div class="sheet">
+          <div class="sheet-head"><span>{{ company }}</span></div>
+          <div class="sheet-body">
+            <div class="sk title"></div>
+            <div class="sk w80"></div>
+            <div class="sk w70"></div>
+            <div class="count" id="cd">
+              <span class="cell"><b data-u="d">02</b><i>days</i></span>
+              <span class="cell"><b data-u="h">11</b><i>hrs</i></span>
+              <span class="cell"><b data-u="m">47</b><i>min</i></span>
+              <span class="cell"><b data-u="s">05</b><i>sec</i></span>
+            </div>
+            <div class="sk-btn"></div>
+            <span class="tag">{{#if is_premium}}</span>
+            <div class="sk w70"></div>
+            <span class="tag">{{/if}}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- The spec card: the promise, measured. Hands the hero to chapter 01. -->
+  <div class="spec" role="list" aria-label="MailCraft in six numbers">
+    <div class="stat" role="listitem"><div class="n">0</div><div class="l">Runtime deps</div></div>
+    <div class="stat" role="listitem"><div class="n">178&hairsp;KB</div><div class="l">Gzipped, one file</div></div>
+    <div class="stat" role="listitem"><div class="n">31</div><div class="l">Languages, RTL auto</div></div>
+    <div class="stat" role="listitem"><div class="n">20</div><div class="l">Block types</div></div>
+    <div class="stat" role="listitem"><div class="n">385</div><div class="l">Automated tests</div></div>
+    <div class="stat" role="listitem"><div class="n">MIT</div><div class="l">All of it, no tiers</div></div>
+  </div>
+
+  <div class="bridge rv"><p>Six numbers are the whole pitch. Here's what they <em>unpack into</em>.</p></div>
+
+  <!-- ACT 1 · The product -->
+  <section id="features">
+    <div class="sec-head rv">
+      <span class="eyebrow"><span class="ch">01</span>The product</span>
+      <h2>Everything in the box</h2>
+      <p>One install ships the whole list below &mdash; nothing plan-gated, nothing metered, nothing behind &ldquo;contact sales.&rdquo;</p>
+    </div>
+    <div class="slip-stage rv">
+      <div class="slip">
+        <div class="slip-inner">
+          <h3>MailCraft &mdash; Packing Slip</h3>
+          <div class="meta">ORDER &#8470; npm install @seliseblocks/mailcraft</div>
+          <hr class="slip-rule">
+          <div class="slip-row"><span>Works in any framework</span><span class="dots"></span><em>INCLUDED</em></div>
+          <div class="slip-row"><span>Zero dependencies</span><span class="dots"></span><em>INCLUDED</em></div>
+          <div class="slip-row"><span>No vendor cloud, no tracking</span><span class="dots"></span><em>INCLUDED</em></div>
+          <div class="slip-row"><span>HTML in, HTML out &mdash; no lock-in</span><span class="dots"></span><em>INCLUDED</em></div>
+          <div class="slip-row"><span>Import your old templates</span><span class="dots"></span><em>INCLUDED</em></div>
+          <div class="slip-row"><span>31 languages, RTL automatic</span><span class="dots"></span><em>INCLUDED</em></div>
+          <div class="slip-row"><span>Reword all 189 labels</span><span class="dots"></span><em>INCLUDED</em></div>
+          <div class="slip-row"><span>Your brand color &amp; font</span><span class="dots"></span><em>INCLUDED</em></div>
+          <div class="slip-row"><span>White-label</span><span class="dots"></span><em>INCLUDED</em></div>
+          <div class="slip-row"><span>Conditions, loops &amp; merge tags</span><span class="dots"></span><em>INCLUDED</em></div>
+          <div class="slip-row"><span>Design + code, side by side</span><span class="dots"></span><em>INCLUDED</em></div>
+          <div class="slip-row"><span>20 blocks, previews, screenshots&hellip;</span><span class="dots"></span><em>INCLUDED</em></div>
+          <hr class="slip-rule">
+          <div class="slip-total"><span>TOTAL DUE</span><em>NOTHING &mdash; MIT</em></div>
+          <p class="fine">NO SEATS &middot; NO METERING &middot; NO &ldquo;CONTACT SALES&rdquo; &middot; KEEP THE BOX</p>
+        </div>
+        <div class="stamp">All included</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="bridge rv"><p>Every line on that slip is, somewhere else, <em>a line on a pricing page</em>.</p></div>
+
+  <!-- ACT 2 · The market -->
+  <section id="compare">
+    <div class="sec-head rv">
+      <span class="eyebrow"><span class="ch">02</span>The market · verified August 2026</span>
+      <h2>The same list, sold as tiers</h2>
+      <p>Each chip below is a paid or plan-gated capability at the hosted editors — struck out, because here it's simply included:</p>
+    </div>
+    <div class="chips rv">
+      <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 7.5-2"></path></svg>White-label <s>paid elsewhere</s></span>
+      <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 7.5-2"></path></svg>Editor localization <s>paid elsewhere</s></span>
+      <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 7.5-2"></path></svg>HTML import <s>metered elsewhere</s></span>
+      <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 7.5-2"></path></svg>Conditions &amp; loops <s>higher tiers</s></span>
+      <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 7.5-2"></path></svg>Custom storage <s>paid elsewhere</s></span>
+      <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 7.5-2"></path></svg>Self-hosting <s>enterprise only</s></span>
+    </div>
+    <div class="tablecard rv"><div class="scroller">
+      <table class="compare">
+        <thead><tr>
+          <th>Editor</th><th>Pricing</th><th>Truly open</th><th>Self-contained</th><th>Framework</th><th>White-label</th><th>Editor i18n / RTL</th><th>Conditions &amp; loops</th><th>HTML import</th><th>Status</th>
+        </tr></thead>
+        <tbody>
+          <tr class="hero-row">
+            <th>MailCraft</th>
+            <td><span class="yes">Free</span><span class="cellnote">MIT, everything included</span></td>
+            <td><span class="yes">✓</span><span class="cellnote">whole editor is source</span></td>
+            <td><span class="yes">✓</span><span class="cellnote">no cloud, no iframe</span></td>
+            <td><span class="yes">Any</span><span class="cellnote">Web Component</span></td>
+            <td><span class="yes">✓ Free</span></td>
+            <td><span class="yes">31 langs</span><span class="cellnote">RTL automatic</span></td>
+            <td><span class="yes">✓</span><span class="cellnote">Handlebars blocks</span></td>
+            <td><span class="yes">✓ Free</span><span class="cellnote">lossless round trip</span></td>
+            <td><span class="yes">Active</span></td>
+          </tr>
+          <tr>
+            <th>Unlayer</th>
+            <td><span class="fee">Paid plans</span><span class="cellnote">metered usage add-ons</span></td>
+            <td><span class="no">✗</span><span class="cellnote">MIT wrapper, closed editor</span></td>
+            <td><span class="no">✗</span><span class="cellnote">CDN iframe; on-prem = Enterprise</span></td>
+            <td>Any<span class="cellnote">via embed</span></td>
+            <td><span class="fee">Paid</span><span class="cellnote">branding on free tier</span></td>
+            <td><span class="fee">Paid</span><span class="cellnote">localization plan-gated</span></td>
+            <td><span class="fee">Paid tiers</span></td>
+            <td>✓</td>
+            <td>Active</td>
+          </tr>
+          <tr>
+            <th>Beefree SDK</th>
+            <td><span class="fee">Paid plans</span><span class="cellnote">metered by users and API calls</span></td>
+            <td><span class="no">✗</span></td>
+            <td><span class="no">✗</span><span class="cellnote">cloud auth, 12&nbsp;h tokens</span></td>
+            <td>Any<span class="cellnote">via widget</span></td>
+            <td><span class="fee">Paid</span></td>
+            <td>Up to 26 langs<span class="cellnote">plan-gated; RTL via assets</span></td>
+            <td><span class="fee">Paid</span><span class="cellnote">display conditions</span></td>
+            <td><span class="fee">Paid</span><span class="cellnote">metered per import</span></td>
+            <td>Active</td>
+          </tr>
+          <tr>
+            <th>Stripo Plugin</th>
+            <td><span class="fee">Paid plans</span><span class="cellnote">metered per email opened in editor</span></td>
+            <td><span class="no">✗</span></td>
+            <td><span class="no">✗</span></td>
+            <td>Any<span class="cellnote">via embed</span></td>
+            <td><span class="fee">Paid</span></td>
+            <td>✓<span class="cellnote">RTL switch; 25-lang translation</span></td>
+            <td>✓</td>
+            <td>✓</td>
+            <td>Active</td>
+          </tr>
+          <tr>
+            <th>Topol.io</th>
+            <td><span class="fee">Paid plans</span><span class="cellnote">metered per active user</span></td>
+            <td><span class="no">✗</span></td>
+            <td><span class="no">✗</span></td>
+            <td>Any<span class="cellnote">typed React/Vue/Svelte/TS pkgs</span></td>
+            <td><span class="fee">Paid</span></td>
+            <td>21 langs<span class="cellnote">RTL supported</span></td>
+            <td><span class="no">—</span></td>
+            <td>✓<span class="cellnote">HTML block</span></td>
+            <td>Active</td>
+          </tr>
+          <tr>
+            <th>Chamaileon SDK</th>
+            <td><span class="fee">Paid plans</span><span class="cellnote">metered by MAU and generator calls</span></td>
+            <td><span class="no">✗</span></td>
+            <td><span class="no">✗</span><span class="cellnote">cloud iframe modules</span></td>
+            <td>Any<span class="cellnote">JS API</span></td>
+            <td><span class="fee">Paid</span></td>
+            <td>Partial</td>
+            <td>✓</td>
+            <td>✓<span class="cellnote">migration tooling</span></td>
+            <td>Active</td>
+          </tr>
+          <tr>
+            <th>GrapesJS + MJML</th>
+            <td><span class="yes">Free</span><span class="cellnote">BSD-3</span></td>
+            <td><span class="yes">✓</span></td>
+            <td>✓<span class="cellnote">~12&nbsp;MB package + MJML compiler</span></td>
+            <td>Any</td>
+            <td>✓<span class="cellnote">you build the chrome</span></td>
+            <td><span class="no">Partial</span><span class="cellnote">open RTL issues</span></td>
+            <td><span class="no">✗</span><span class="cellnote">build it yourself</span></td>
+            <td><span class="no">Partial</span></td>
+            <td>Core active<span class="cellnote">newsletter preset unpublished since 2023</span></td>
+          </tr>
+          <tr>
+            <th>Easy Email</th>
+            <td><span class="yes">Free</span><span class="cellnote">MIT</span></td>
+            <td><span class="yes">✓</span></td>
+            <td>✓<span class="cellnote">MJML + Arco Design dep tree</span></td>
+            <td><span class="no">React only</span></td>
+            <td>✓</td>
+            <td><span class="no">EN/ZH</span><span class="cellnote">no RTL</span></td>
+            <td><span class="no">—</span></td>
+            <td>✓<span class="cellnote">via MJML</span></td>
+            <td><span class="no">Maintenance mode</span><span class="cellnote">author's focus moved to paid Pro</span></td>
+          </tr>
+          <tr>
+            <th>Maily.to</th>
+            <td><span class="yes">Free</span><span class="cellnote">MIT</span></td>
+            <td><span class="yes">✓</span></td>
+            <td>✓<span class="cellnote">36 dependencies</span></td>
+            <td><span class="no">React only</span></td>
+            <td>✓</td>
+            <td><span class="no">✗</span></td>
+            <td>✓<span class="cellnote">show-if, repeat</span></td>
+            <td><span class="no">✗</span><span class="cellnote">own JSON format</span></td>
+            <td>Active<span class="cellnote">notion-style, not a block canvas</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="legend">
+      <span><span class="yes">✓ / Free</span>&nbsp; included, no fee</span>
+      <span><span class="fee">$ / Paid</span>&nbsp; plan-gated or metered</span>
+      <span><span class="no">✗ / Partial</span>&nbsp; absent, or assembly required</span>
+      <span>MJML and react-email excluded: developer tools, not embeddable end-user editors.</span>
+    </div>
+    </div>
+  </section>
+
+  <div class="bridge rv"><p>And when you want more than an editor — the same team ships <em>the whole platform</em>.</p></div>
+
+  <!-- ACT 4 · The platform -->
+  <div class="platform rv" id="platform">
+    <span class="eyebrow"><span class="ch">03</span>The platform</span>
+    <h2>MailCraft is the editor. SELISE Blocks is the whole platform.</h2>
+    <p class="lede">Use it standalone in any app — or <b>pre-wired inside SELISE Blocks Cloud</b>, where email templates, <b>built-in file storage for your images</b>, identity, secrets and observability share one console, per project, per environment.</p>
+    <div class="modules">
+      <div class="module this"><span class="mono-chip">This editor, inside</span><b>Email Management</b><span>Templates and communications, edited with MailCraft, sent through your configured provider.</span></div>
+      <div class="module"><span class="mono-chip">Built-in</span><b>Cloud Storage</b><span>A file manager with presigned uploads — MailCraft's image library is wired to it out of the box.</span></div>
+      <div class="module"><span class="mono-chip">Built-in</span><b>Identity &amp; Access</b><span>Users, roles and permissions, SSO and OIDC providers.</span></div>
+      <div class="module"><span class="mono-chip">Built-in</span><b>Secrets &amp; Configs</b><span>Per-environment configuration and secret management.</span></div>
+      <div class="module"><span class="mono-chip">Built-in</span><b>Logs &amp; Traces</b><span>Observability across your project's services, same console.</span></div>
+      <div class="module"><span class="mono-chip">Workflow</span><b>Projects &amp; Environments</b><span>Dev, stage and production — the same template pipeline everywhere.</span></div>
+    </div>
+    <div class="hero-ctas" style="margin-top:28px">
+      <a class="btn btn-primary" href="https://os.seliseblocks.com">Sign up for Blocks OS — free</a>
+      <a class="btn btn-ghost" href="https://seliseblocks.com">Explore SELISE Blocks</a>
+      <a class="btn btn-ghost" href="https://github.com/SELISEdigitalplatforms">SELISE on GitHub</a>
+    </div>
+  </div>
+
+  <div class="bridge rv"><p>So of nine editors compared on four properties — <em>who holds all four?</em></p></div>
+
+  <!-- ACT 5 · The verdict -->
+  <div class="claim rv">
+    <span class="eyebrow"><span class="ch">04</span>The verdict</span>
+    <h2>Nobody else occupies this square.</h2>
+    <p>The hosted five give up openness and self-containment; the open-source three give up framework freedom, completeness, or upkeep. MailCraft alone holds all four &mdash; and when you want more than email, the platform it comes from is one free sign-up away.</p>
+    <div class="quad">
+      <div><b>MIT — actually open</b><span>The entire editor is source you can read, fork and ship — not an open wrapper around a closed iframe.</span></div>
+      <div><b>Framework-agnostic</b><span>One Web Component: the same tag in React, Angular, Vue, Svelte, or a plain &lt;script&gt;.</span></div>
+      <div><b>Self-contained</b><span>Zero dependencies, no vendor cloud, no metering. Runs from a file:// page.</span></div>
+      <div><b>Complete</b><span>Merge tags, conditions &amp; loops, HTML import, 31 locales with RTL, white-label — all included.</span></div>
+    </div>
+    <div class="hero-ctas" style="margin-top:28px">
+      <a class="btn btn-primary" href="https://os.seliseblocks.com">Start free on Blocks OS</a>
+      <a class="btn btn-ghost" href="examples/vanilla.html">Or just try the editor</a>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+  <div class="foot-grid">
+    <div class="foot-brand">
+      <div class="wordmark" style="font-size:18px">
+        <svg class="brand-mark" width="22" height="22" viewBox="0 0 32 32" aria-hidden="true">
+          <rect width="32" height="32" rx="7" fill="currentColor"></rect>
+          <rect x="7" y="9.5" width="18" height="13" rx="2.2" fill="none" stroke="#fff" stroke-width="2.2"></rect>
+          <path d="M7 11.5 16 18l9-6.5" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+        MailCraft
+      </div>
+      <p>The open-source email editor — one Web Component, zero dependencies, MIT. Built and maintained by the SELISE Blocks team.</p>
+      <a class="foot-cta" href="https://os.seliseblocks.com">Sign up for Blocks OS</a>
+    </div>
+    <div class="foot-col">
+      <h4>Product</h4>
+      <ul>
+        <li><a href="examples/vanilla.html">Live demo</a></li>
+        <li><a href="DOCS.html">Documentation</a></li>
+        <li><a href="https://www.npmjs.com/package/@seliseblocks/mailcraft">npm package</a></li>
+        <li><a href="README.html">Quick start</a></li>
+      </ul>
+    </div>
+    <div class="foot-col">
+      <h4>Platform</h4>
+      <ul>
+        <li><a href="https://os.seliseblocks.com">Blocks OS — sign up</a></li>
+        <li><a href="https://seliseblocks.com">SELISE Blocks</a></li>
+        <li><a href="https://github.com/SELISEdigitalplatforms">SELISE on GitHub</a></li>
+      </ul>
+    </div>
+    <div class="foot-col">
+      <h4>This page</h4>
+      <ul>
+        <li><a href="#features">01 · The product</a></li>
+        <li><a href="#compare">02 · The market</a></li>
+        <li><a href="#platform">03 · The platform</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot-base">
+    <span>MIT License · © 2026 SELISE Digital Platforms</span>
+    <span><a href="SECURITY.html" style="color:inherit">Security</a> · <a href="CODE_OF_CONDUCT.html" style="color:inherit">Code of conduct</a> · Made with the editor's own chrome tokens.</span>
+  </div>
+  <p class="sources">Competitive claims verified August 2026 against vendor pricing pages and live GitHub/npm data:
+    <a href="https://unlayer.com/pricing">Unlayer</a> ·
+    <a href="https://developers.beefree.io/pricing-plans">Beefree SDK</a> ·
+    <a href="https://plugin.stripo.email/">Stripo</a> ·
+    <a href="https://topol.io/tariff-plugin">Topol</a> ·
+    <a href="https://chamaileon.io/sdk/">Chamaileon</a> ·
+    <a href="https://github.com/GrapesJS/grapesjs">GrapesJS</a> ·
+    <a href="https://github.com/GrapesJS/preset-newsletter">preset-newsletter</a> ·
+    <a href="https://github.com/zalify/easy-email-editor">Easy Email</a> ·
+    <a href="https://github.com/arikchakma/maily.to">Maily.to</a> ·
+    <a href="https://github.com/mjmlio/mjml">MJML</a> ·
+    <a href="https://github.com/resend/react-email">react-email</a>.
+    Plan gating reflects the vendors' published pages on that date and may change. MailCraft's own figures are measured from the repository.</p>
+  </div>
+</footer>
+
+<script>
+// Live countdown in the hero mock — the editor's countdown block, working.
+(function () {
+  var target = Date.now() + (2 * 86400000) + (11 * 3600000) + (47 * 60000) + (5 * 1000);
+  var cells = {};
+  document.querySelectorAll('#cd [data-u]').forEach(function (n) { cells[n.getAttribute('data-u')] = n; });
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function tick() {
+    var ms = Math.max(0, target - Date.now());
+    cells.d.textContent = pad(Math.floor(ms / 86400000));
+    cells.h.textContent = pad(Math.floor(ms / 3600000) % 24);
+    cells.m.textContent = pad(Math.floor(ms / 60000) % 60);
+    cells.s.textContent = pad(Math.floor(ms / 1000) % 60);
+  }
+  tick();
+  setInterval(tick, 1000);
+})();
+
+// Scroll reveal; CSS neutralizes it under reduced motion too.
+(function () {
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.querySelectorAll('.rv').forEach(function (el) { el.classList.add('in'); });
+    return;
+  }
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, { rootMargin: '0px 0px -8% 0px' });
+  document.querySelectorAll('.rv').forEach(function (el) { io.observe(el); });
+})();
+</script>
+<script src="assets/js/site.js"></script>
+</body>
+</html>

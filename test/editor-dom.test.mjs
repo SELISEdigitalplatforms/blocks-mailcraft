@@ -401,6 +401,12 @@ await it('locale switches the chrome language and direction', async () => {
   el.setAttribute('locale', 'ar');
   await settle();
   assert.equal(el.getAttribute('dir') || q(el, '#mc').getAttribute('dir'), 'rtl');
+  // Value-shaped controls pin their own direction: the width slider's fill
+  // gradient is left-anchored, so a mirrored native track under RTL showed
+  // the thumb and the fill at opposite ends of the range.
+  el.core.setState({ tab: 'theme' });
+  await settle();
+  assert.equal(q(el, '.mc-slider').getAttribute('dir'), 'ltr', 'the slider track stays LTR under an RTL chrome');
 });
 
 await it('messages override individual strings', async () => {

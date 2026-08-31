@@ -47,16 +47,15 @@
       <span class="brand-name">{{ site.title }}</span>
     </a>
 
-    <!-- CONTRIBUTING.md and CODE_OF_CONDUCT.md build as pages only because they
-         carry an (empty) front-matter block: jekyll-optional-front-matter skips
-         community-health filenames, so without it Jekyll copies them to the site
-         as raw markdown and no .html is ever generated. Empty means no keys for
-         GitHub to render as a table above the content. -->
+    <!-- CODE_OF_CONDUCT.md builds as a page only because it carries an (empty)
+         front-matter block: jekyll-optional-front-matter skips community-health
+         filenames, so without it Jekyll copies it to the site as raw markdown
+         and no .html is ever generated. Empty means no keys for GitHub to
+         render as a table above the content. -->
     <nav class="nav" aria-label="Primary">
       <a href="./">Overview</a>
       <a href="DOCS.html">Guide</a>
       <a href="examples/vanilla.html">Demo</a>
-      <a href="CONTRIBUTING.html">Contributing</a>
     </nav>
 
     <div class="bar-end">
@@ -120,7 +119,6 @@
     <nav class="foot-links" aria-label="Footer">
       <a href="DOCS.html">Guide</a>
       <a href="examples/vanilla.html">Demo</a>
-      <a href="CONTRIBUTING.html">Contributing</a>
       <a href="SECURITY.html">Security</a>
       <a href="CODE_OF_CONDUCT.html">Code of conduct</a>
       <a href="https://www.npmjs.com/package/@seliseblocks/mailcraft" rel="noopener">npm</a>
