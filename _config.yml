@@ -4,8 +4,11 @@
 # GitHub Pages enables these plugins by default, and this site relies on them:
 #   jekyll-readme-index         (inert here: it only promotes README.md when
 #                               the site has no index file, and index.html is
-#                               the homepage -- README.md renders at /README.html)
+#                               the homepage -- so it claims nothing)
 #   jekyll-optional-front-matter  .md files render without needing front matter
+#                               (see optional_front_matter below: README.md
+#                               is on its default skip list, and with
+#                               readme-index inert nothing else would render it)
 #   jekyll-relative-links       [DOCS.md](DOCS.md) rewrites to DOCS.html
 #   jekyll-titles-from-headings page titles come from the first H1
 #
@@ -30,6 +33,18 @@ defaults:
       path: ""
     values:
       layout: default
+
+# jekyll-optional-front-matter skips README.md by default, leaving it for
+# jekyll-readme-index -- which only claims a README on a site that has no
+# index page. This site has index.html, so the two plugins handed README.md
+# to each other and neither rendered it: /README.html was a 404 while every
+# other .md on the site (DOCS, CONTRIBUTING, SECURITY) converted normally,
+# and the file shipped as raw markdown at /README.md instead. An empty
+# exclude list hands it back to the converter. Front matter in README.md
+# would fix it too, but that file is also the npm and GitHub landing page,
+# where a stray `---` block is visible clutter.
+optional_front_matter:
+  exclude: []
 
 exclude:
   - node_modules/
