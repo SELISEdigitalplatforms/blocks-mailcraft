@@ -300,6 +300,73 @@ await it('a content-area border survives the export -> import round trip', async
   assert.equal(bare.theme.borderW ?? 0, 0, 'no declared border imports none');
 });
 
+console.log();
+console.log('Importer -- columns that are not table cells');
+
+/*
+ * A row's columns do not have to be `<td>`s. MJML -- and to a degree Unlayer
+ * and Stripo -- emit them as sibling `<div>`s held side by side by
+ * `display:inline-block` and a percentage cap, with the table version buried
+ * in `<!--[if mso]>` conditionals that a DOM parser sees only as comments.
+ * All the walker saw was one `<td>` holding two divs, so a real 50/50 row
+ * imported as two stacked full-width rows: every block survived, the layout
+ * relationship did not.
+ *
+ * Grouping is deliberately strict -- a false positive welds unrelated
+ * sections into one row, which is worse than leaving them stacked -- so the
+ * rejections below matter as much as the conversions.
+ */
+const IB = 'display:inline-block;vertical-align:top;width:100%;max-width:';
+const colDiv = (style, label) => `<div style="${style}"><table><tr><td><h2 style="font-size:18px">${label}</h2></td></tr></table></div>`;
+const shapeOf = (inner) => rowsOf(email(`<tr><td>${inner}</td></tr>`)).map((r) => r.cols.map((c) => c.span));
+
+await it('sibling inline-block divs become one row with real columns', async () => {
+  assert.deepEqual(shapeOf(colDiv(IB + '50%', 'A') + colDiv(IB + '50%', 'B')), [[50, 50]]);
+});
+
+await it('their widths are preserved, not evened out', async () => {
+  assert.deepEqual(shapeOf(colDiv(IB + '40%', 'A') + colDiv(IB + '60%', 'B')), [[40, 60]]);
+  assert.deepEqual(shapeOf(colDiv(IB + '33%', 'A') + colDiv(IB + '33%', 'B') + colDiv(IB + '34%', 'C')), [[33, 33, 34]]);
+});
+
+await it('the older float idiom is recognised too', async () => {
+  assert.deepEqual(shapeOf(colDiv('float:left;width:50%', 'A') + colDiv('float:left;width:50%', 'B')), [[50, 50]]);
+});
+
+await it('the content lands in the right column', async () => {
+  const rows = rowsOf(email(`<tr><td>${colDiv(IB + '50%', 'Featured Deals')}${colDiv(IB + '50%', 'Countdown Timer')}</td></tr>`));
+  assert.equal(rows.length, 1, 'one row, not two');
+  assert.equal(rows[0].cols[0].blocks[0].props.text, 'Featured Deals');
+  assert.equal(rows[0].cols[1].blocks[0].props.text, 'Countdown Timer');
+});
+
+await it('stacked content is left stacked', async () => {
+  // Block divs with a width but no side-by-side instruction are sections.
+  assert.deepEqual(shapeOf(colDiv('width:50%', 'A') + colDiv('width:50%', 'B')), [[100], [100]]);
+  // Side by side but claiming no share of the row says nothing about layout.
+  assert.deepEqual(shapeOf(colDiv('display:inline-block', 'A') + colDiv('display:inline-block', 'B')), [[100], [100]]);
+});
+
+await it('widths that do not add up to a row are not a row', async () => {
+  assert.deepEqual(shapeOf(colDiv(IB + '80%', 'A') + colDiv(IB + '80%', 'B')), [[100], [100]]);
+});
+
+await it('a lone column, or too many siblings, is not grouped', async () => {
+  assert.deepEqual(shapeOf(colDiv(IB + '50%', 'A')), [[100]]);
+  const many = Array.from({ length: 7 }, (_, i) => colDiv(IB + '14%', 'X' + i)).join('');
+  assert.equal(shapeOf(many).length, 7, 'seven sections, not a seven-column row');
+});
+
+await it('a mixed run of a div and a table is left alone', async () => {
+  const mixed = colDiv(IB + '50%', 'A') + '<table><tr><td><h2 style="font-size:18px">B</h2></td></tr></table>';
+  assert.deepEqual(shapeOf(mixed), [[100], [100]]);
+});
+
+await it('classic table columns still work exactly as before', async () => {
+  const rows = rowsOf(email('<tr><td width="50%"><h2 style="font-size:18px">A</h2></td><td width="50%"><h2 style="font-size:18px">B</h2></td></tr>'));
+  assert.deepEqual(rows.map((r) => r.cols.map((c) => c.span)), [[50, 50]]);
+});
+
 console.log(`\n${passed} passed, ${failed} failed.`);
 closeDom();
 process.exit(failed ? 1 : 0);

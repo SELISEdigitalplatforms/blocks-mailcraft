@@ -631,10 +631,16 @@ function normalizeSpans(spans) {
 function spansFromCells(cells, tableWidthPx) {
   const parsed = cells.map((td) => {
     const sw = td.style.width || '';
+    // `max-width` before `width`, but only where `width` says nothing useful.
+    // A CSS-layout column is written `width:100%;max-width:50%` -- the 100%
+    // is the fluid instruction and the cap is the actual share of the row, so
+    // reading `width` first would score every column at 100.
+    const mw = td.style.maxWidth || '';
+    if (mw.endsWith('%') && (!sw || PX(sw) >= 100)) return { pct: PX(mw) };
     if (sw.endsWith('%')) return { pct: PX(sw) };
     const aw = td.getAttribute('width') || '';
     if (aw.endsWith('%')) return { pct: PX(aw) };
-    const px = PX(sw) || PX(aw);
+    const px = PX(sw) || PX(aw) || (mw.endsWith('px') ? PX(mw) : 0);
     return px ? { px } : null;
   });
   if (parsed.every((p) => p && p.pct != null)) {
@@ -646,6 +652,61 @@ function spansFromCells(cells, tableWidthPx) {
   const spans = cells.map(() => even);
   spans[spans.length - 1] += 100 - even * cells.length;
   return spans;
+}
+
+/*
+ * Columns that are not table cells.
+ *
+ * A row's columns do not have to be `<td>`s. MJML, and to a degree Unlayer and
+ * Stripo, emit them as sibling `<div>`s that sit side by side through
+ * `display:inline-block` and a percentage cap, with the table version hidden
+ * inside `<!--[if mso]>` conditionals for Outlook. Those comments are comments
+ * to a DOM parser, so all the walker ever saw was one `<td>` holding two
+ * divs -- and a real 50/50 row imported as two stacked full-width rows. The
+ * blocks all survived; the layout relationship did not.
+ *
+ * Returning the divs here hands them to exactly the same machinery the table
+ * path already uses -- `spansFromCells` for the widths, gap and gutter
+ * detection, per-column background and padding -- so there is no second
+ * column model, only a second way of recognising one.
+ *
+ * Deliberately conservative, because a wrong grouping is worse than none: a
+ * false positive welds unrelated sections into one row, which the user then
+ * has to take apart by hand. Every one of these has to hold.
+ */
+function inlineColumnGroup(nodes) {
+  const kids = Array.from(nodes).filter((n) => {
+    if (n.nodeType === 8) return false;                                  // the MSO conditionals themselves
+    if (n.nodeType === 3) return !!String(n.textContent || '').trim();   // layout whitespace between the divs
+    return n.nodeType === 1 && !/^(STYLE|SCRIPT)$/.test(n.tagName);
+  });
+  // Two to six siblings, all plain containers. A run of one is not a row, and
+  // a run of many is far more likely to be stacked content than columns.
+  if (kids.length < 2 || kids.length > 6) return null;
+  if (!kids.every((k) => k.nodeType === 1 && k.tagName === 'DIV')) return null;
+  // Side-by-side has to be stated, not guessed. `inline-block` is the email
+  // idiom; floats are the older one. A plain block div is stacked content and
+  // must not be swept up.
+  const sideBySide = (k) => {
+    const s = k.style || {};
+    return /inline-block|inline-flex/.test(s.display || '') || /^(left|right)$/.test(s.cssFloat || s.float || '');
+  };
+  if (!kids.every(sideBySide)) return null;
+  // Every sibling must declare a share of the row, and the shares must add up
+  // to one row. Anything else is a layout this cannot claim to understand.
+  const shareOf = (k) => {
+    const s = k.style || {};
+    const mw = s.maxWidth || '';
+    if (mw.endsWith('%')) return PX(mw);
+    const w = s.width || '';
+    if (w.endsWith('%') && PX(w) < 100) return PX(w);
+    return 0;
+  };
+  const shares = kids.map(shareOf);
+  if (!shares.every((w) => w > 0)) return null;
+  const total = shares.reduce((a, b) => a + b, 0);
+  if (total < 90 || total > 110) return null;
+  return kids;
 }
 
 /** Detects MailCraft's own two-table row shape -- an outer `<td>` (row padding/bg/border) wrapping a single-row `role="presentation"` table that holds the actual column(s), per `core/export.js` -- and widens to its cells (one or many) so rows round-trip back into real columns instead of one opaque `html` block. */
@@ -809,8 +870,14 @@ function rowsFromContentTable(table) {
     const bgSource = outerCells[0];
     let cells = outerCells;
     if (outerCells.length === 1) {
+      // The table shape first, since it is unambiguous; the CSS-layout shape
+      // only when there is no table row to read.
       const nested = unwrapNestedLayout(outerCells[0]);
       if (nested) cells = nested;
+      else {
+        const inline = inlineColumnGroup(outerCells[0].childNodes);
+        if (inline) cells = inline;
+      }
     }
     // Spacer columns: a content-free `<td>` (often `class="column gap"`,
     // holding only an empty fixed-width table) between real columns exists
@@ -963,6 +1030,33 @@ function rowsFromContentTable(table) {
  * its ancestor's.
  */
 function collectRows(nodes) {
+  /*
+   * Before anything else: are these siblings one row's columns rather than a
+   * sequence of sections? This has to be asked here, of the whole list, and
+   * not inside the loop below -- that loop's job is to walk each structural
+   * container in its own right, which is exactly what flattened a real 50/50
+   * row into two stacked full-width ones. The relationship between the
+   * siblings is only visible while they are still siblings.
+   */
+  const columns = inlineColumnGroup(nodes);
+  if (columns) {
+    const row = mkRow(spansFromCells(columns, 0));
+    row.props.py = 0; row.props.px = 0; row.props.gap = 0;
+    columns.forEach((k, i) => {
+      // A MailCraft column holds a flat list of blocks, so whatever the
+      // column div decomposes into is flattened into it. Recursing through
+      // collectRows rather than blocksFromNodes is what lets a column hold a
+      // content table (the usual MJML shape) instead of one opaque blob.
+      row.cols[i].blocks = collectRows(Array.from(k.childNodes))
+        .reduce((acc, r) => acc.concat(r.cols.reduce((a, c) => a.concat(c.blocks), [])), []);
+      const cbg = bgOf(k); if (cbg) row.cols[i].bg = cbg;
+      const crad = radiusOf(k.style); if (crad) row.cols[i].radius = crad;
+      const cpd = padOf(k); if (cpd) { row.cols[i].padY = cpd.py; row.cols[i].padX = cpd.px; }
+    });
+    // If nothing recognisable came out of it, it was not a row after all --
+    // fall through and let the ordinary walk have it.
+    if (row.cols.some((c) => c.blocks.length)) return [row];
+  }
   const rows = [];
   let buf = [];
   const flushBuf = () => {

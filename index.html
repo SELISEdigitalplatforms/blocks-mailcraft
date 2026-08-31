@@ -45,8 +45,6 @@
 
 <link rel="icon" href="assets/brand/icon.svg" media="(prefers-color-scheme: light)">
 <link rel="icon" href="assets/brand/icon-white.svg" media="(prefers-color-scheme: dark)">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <script>
   try {
     var t = localStorage.getItem('mailcraft-docs-theme');
@@ -54,7 +52,7 @@
   } catch (e) { /* private mode: follow the OS */ }
 </script>
 
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="assets/fonts/fonts.css">
 <style>
 /* ————— The page wears the editor's own chrome tokens ————— */
 :root {
@@ -277,6 +275,10 @@ td code, .features code { font-family: "IBM Plex Mono", monospace; font-size: 12
 .fee { color: var(--paid); font-weight: 600; }
 .cellnote { display: block; font-size: 11px; color: var(--faint); margin-top: 1px; }
 .legend { display: flex; gap: 20px; flex-wrap: wrap; padding: 12px 18px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); background: var(--panel-2); }
+/* The as-of / trademark notices: full-width rows under the key, quieter than it. */
+.legend-note { flex: 1 0 100%; font-size: 11.5px; line-height: 1.55; color: var(--faint); }
+.legend-note a { color: var(--faint); text-decoration: underline; text-decoration-color: var(--line); }
+.legend-note a:hover { color: var(--accent); }
 
 /* SELISE Blocks band — the one dark, loud moment */
 .platform {
@@ -307,10 +309,45 @@ td code, .features code { font-family: "IBM Plex Mono", monospace; font-size: 12
 @media (max-width: 640px) { .claim { padding: 30px 24px; } }
 .claim h2 { font-size: clamp(24px, 3.2vw, 32px); font-weight: 800; letter-spacing: -0.016em; margin-top: 12px; }
 .claim p { margin-top: 14px; color: var(--muted); }
-.quad { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0; margin-top: 26px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-.quad div { padding: 17px 19px; border-top: 1px solid var(--line-soft); border-inline-start: 1px solid var(--line-soft); background: var(--panel-2); }
-.quad b { display: block; font-family: "Bricolage Grotesque", sans-serif; font-size: 16px; font-weight: 700; margin-bottom: 3px; }
-.quad span { font-size: 12.5px; color: var(--muted); }
+/* Carousel — the four properties, one swipe at a time. Native scroll-snap does
+   the work, so touch swipe and keyboard scrolling come for free; the buttons
+   and dots are a thin layer over the same scroll position, and the whole thing
+   still reads as a plain horizontal list with JS off. */
+.car { margin-top: 26px; }
+.car-track {
+  display: flex; gap: 14px; padding: 2px;
+  overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth;
+  scrollbar-width: none; -ms-overflow-style: none;
+}
+.car-track::-webkit-scrollbar { display: none; }
+@media (prefers-reduced-motion: reduce) { .car-track { scroll-behavior: auto; } }
+.car-slide {
+  flex: 0 0 100%; scroll-snap-align: start;
+  display: flex; flex-direction: column; gap: 7px;
+  padding: 22px 24px 24px; background: var(--panel-2);
+  border: 1px solid var(--line); border-radius: 12px;
+}
+@media (min-width: 700px) { .car-slide { flex-basis: calc(50% - 7px); } }
+.car-slide .n {
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; font-weight: 600;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent);
+}
+.car-slide b { font-family: "Bricolage Grotesque", sans-serif; font-size: 17.5px; font-weight: 700; letter-spacing: -0.014em; }
+.car-slide span:not(.n) { font-size: 13.2px; color: var(--muted); }
+.car-nav { display: flex; align-items: center; gap: 9px; margin-top: 16px; }
+.car-btn {
+  width: 34px; height: 34px; flex: none; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 9px;
+  cursor: pointer; transition: border-color .16s ease, color .16s ease, opacity .16s ease;
+}
+.car-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.car-btn:disabled { opacity: 0.35; cursor: default; }
+.car-dots { display: flex; align-items: center; gap: 7px; margin-inline-start: auto; }
+.car-dot {
+  width: 7px; height: 7px; padding: 0; border: 0; border-radius: 50%;
+  background: var(--none); cursor: pointer; transition: background .16s ease, transform .16s ease;
+}
+.car-dot[aria-current="true"] { background: var(--accent); transform: scale(1.35); }
 
 .vh {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
@@ -320,18 +357,34 @@ td code, .features code { font-family: "IBM Plex Mono", monospace; font-size: 12
 /* FAQ — answers stay open rather than sitting in <details>, because the
    unit a search snippet or an AI answer lifts is a whole paragraph, and a
    collapsed one reads as lower-confidence to both. */
+/* One column of disclosures rather than a responsive grid of open answers: ten
+   questions read as a list you scan, not a wall you wade through. Built on
+   <details>, so it opens with the keyboard, survives JS being off, and keeps
+   every answer in the DOM for search engines and in-page find. */
 .faq {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
-  gap: 0; background: var(--panel); margin-top: 4px;
+  background: var(--panel); margin-top: 4px;
   border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
   box-shadow: var(--sheet-shadow);
 }
-/* Hairlines on the cells rather than a 1px grid gap over a tinted container:
-   ten answers never fill the last row of a responsive grid, and the gap trick
-   paints those empty tracks in the divider colour. Same approach as .quad. */
-.faq > div { padding: 21px 23px; border-top: 1px solid var(--line-soft); border-inline-start: 1px solid var(--line-soft); }
+.faq-item { border-top: 1px solid var(--line-soft); }
+.faq-item:first-child { border-top: 0; }
+.faq-item > summary {
+  display: flex; align-items: flex-start; gap: 14px; cursor: pointer;
+  padding: 18px 23px; list-style: none; transition: background .16s ease;
+}
+.faq-item > summary::-webkit-details-marker { display: none; }
+.faq-item > summary:hover { background: var(--panel-2); }
+.faq-item > summary::after {
+  content: ""; flex: none; width: 10px; height: 10px; margin: 5px 0 0 auto;
+  border-right: 2px solid var(--faint); border-bottom: 2px solid var(--faint);
+  transform: rotate(45deg); transform-origin: 60% 60%;
+  transition: transform .18s ease, border-color .18s ease;
+}
+.faq-item[open] > summary::after { transform: rotate(-135deg); border-color: var(--accent); }
+@media (prefers-reduced-motion: reduce) { .faq-item > summary::after { transition: none; } }
 .faq h3 { font-size: 16.5px; font-weight: 700; letter-spacing: -0.012em; }
-.faq p { margin-top: 9px; font-size: 13.8px; color: var(--muted); max-width: none; }
+.faq-item[open] h3 { color: var(--accent); }
+.faq p { margin: 0 23px 21px; padding-inline-end: 24px; font-size: 13.8px; color: var(--muted); max-width: 68ch; }
 .faq code {
   font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 0.92em;
   background: var(--accent-soft); color: var(--accent); border-radius: 4px; padding: 1px 5px;
@@ -477,146 +530,96 @@ footer {
     </div>
   </section>
 
-  <div class="bridge rv"><p>Every line on that slip is, somewhere else, <em>a line on a pricing page</em>.</p></div>
+  <div class="bridge rv"><p>Twelve lines on a slip. Here they are <em>as a spec sheet</em>.</p></div>
 
   <!-- ACT 2 · The market -->
   <section id="compare">
     <div class="sec-head rv">
-      <span class="eyebrow"><span class="ch">02</span>The market · verified August 2026</span>
-      <h2>The same list, sold as tiers</h2>
-      <p>Each chip below is a paid or plan-gated capability at the hosted editors — struck out, because here it's simply included:</p>
+      <span class="eyebrow"><span class="ch">02</span>The spec</span>
+      <h2>The whole spec, on one sheet</h2>
+      <p>Every chip below ships in the install &mdash; no plan to pick, no meter to watch, no API key to fetch:</p>
     </div>
     <div class="chips rv">
-      <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 7.5-2"></path></svg>White-label <s>paid elsewhere</s></span>
-      <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 7.5-2"></path></svg>Editor localization <s>paid elsewhere</s></span>
-      <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 7.5-2"></path></svg>HTML import <s>metered elsewhere</s></span>
-      <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 7.5-2"></path></svg>Conditions &amp; loops <s>higher tiers</s></span>
-      <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 7.5-2"></path></svg>Custom storage <s>paid elsewhere</s></span>
-      <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 7.5-2"></path></svg>Self-hosting <s>enterprise only</s></span>
+      <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 7.5-2"></path></svg>White-label</span>
+      <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 7.5-2"></path></svg>Editor localization</span>
+      <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 7.5-2"></path></svg>HTML import</span>
+      <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 7.5-2"></path></svg>Conditions &amp; loops</span>
+      <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 7.5-2"></path></svg>Custom storage</span>
+      <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 7.5-2"></path></svg>Self-hosting</span>
     </div>
     <div class="tablecard rv"><div class="scroller">
       <table class="compare">
-        <caption class="vh">Blocks MailCraft compared with Unlayer, Beefree SDK, Stripo Plugin, Topol.io, Chamaileon SDK, GrapesJS + MJML, Easy Email and Maily.to, on pricing, openness, self-containment, framework support, white-labelling, editor localization and RTL, conditions and loops, HTML import and maintenance status. Verified August 2026.</caption>
+        <caption class="vh">The Blocks MailCraft specification: licence, editor source, runtime dependencies, vendor service, framework support, white-labelling, editor languages and RTL, conditions and loops, HTML import, export format, storage and block count &mdash; every figure measured from this repository.</caption>
         <thead><tr>
-          <th scope="col">Editor</th><th scope="col">Pricing</th><th scope="col">Truly open</th><th scope="col">Self-contained</th><th scope="col">Framework</th><th scope="col">White-label</th><th scope="col">Editor i18n / RTL</th><th scope="col">Conditions &amp; loops</th><th scope="col">HTML import</th><th scope="col">Status</th>
+          <th scope="col">Capability</th><th scope="col">Blocks MailCraft</th><th scope="col">What that means for you</th>
         </tr></thead>
         <tbody>
           <tr class="hero-row">
-            <th scope="row">Blocks MailCraft</th>
-            <td><span class="yes">Free</span><span class="cellnote">MIT, everything included</span></td>
-            <td><span class="yes">✓</span><span class="cellnote">whole editor is source</span></td>
-            <td><span class="yes">✓</span><span class="cellnote">no cloud, no iframe</span></td>
-            <td><span class="yes">Any</span><span class="cellnote">Web Component</span></td>
-            <td><span class="yes">✓ Free</span></td>
-            <td><span class="yes">31 langs</span><span class="cellnote">RTL automatic</span></td>
-            <td><span class="yes">✓</span><span class="cellnote">Handlebars blocks</span></td>
-            <td><span class="yes">✓ Free</span><span class="cellnote">lossless round trip</span></td>
-            <td><span class="yes">Active</span></td>
+            <th scope="row">Licence</th>
+            <td><span class="yes">MIT</span></td>
+            <td>One licence for the whole editor. Use it commercially, fork it, ship it inside your own product.</td>
           </tr>
           <tr>
-            <th scope="row">Unlayer</th>
-            <td><span class="fee">Paid plans</span><span class="cellnote">metered usage add-ons</span></td>
-            <td><span class="no">✗</span><span class="cellnote">MIT wrapper, closed editor</span></td>
-            <td><span class="no">✗</span><span class="cellnote">CDN iframe; on-prem = Enterprise</span></td>
-            <td>Any<span class="cellnote">via embed</span></td>
-            <td><span class="fee">Paid</span><span class="cellnote">branding on free tier</span></td>
-            <td><span class="fee">Paid</span><span class="cellnote">localization plan-gated</span></td>
-            <td><span class="fee">Paid tiers</span></td>
-            <td>✓</td>
-            <td>Active</td>
+            <th scope="row">Editor source</th>
+            <td><span class="yes">Open</span></td>
+            <td>Every file that renders the editing surface is in the repository. Nothing is a compiled blob.</td>
           </tr>
           <tr>
-            <th scope="row">Beefree SDK</th>
-            <td><span class="fee">Paid plans</span><span class="cellnote">metered by users and API calls</span></td>
-            <td><span class="no">✗</span></td>
-            <td><span class="no">✗</span><span class="cellnote">cloud auth, 12&nbsp;h tokens</span></td>
-            <td>Any<span class="cellnote">via widget</span></td>
-            <td><span class="fee">Paid</span></td>
-            <td>Up to 26 langs<span class="cellnote">plan-gated; RTL via assets</span></td>
-            <td><span class="fee">Paid</span><span class="cellnote">display conditions</span></td>
-            <td><span class="fee">Paid</span><span class="cellnote">metered per import</span></td>
-            <td>Active</td>
+            <th scope="row">Runtime dependencies</th>
+            <td><span class="yes">0</span></td>
+            <td>Nothing to audit, and no transitive tree to patch on someone else's release schedule.</td>
           </tr>
           <tr>
-            <th scope="row">Stripo Plugin</th>
-            <td><span class="fee">Paid plans</span><span class="cellnote">metered per email opened in editor</span></td>
-            <td><span class="no">✗</span></td>
-            <td><span class="no">✗</span></td>
-            <td>Any<span class="cellnote">via embed</span></td>
-            <td><span class="fee">Paid</span></td>
-            <td>✓<span class="cellnote">RTL switch; 25-lang translation</span></td>
-            <td>✓</td>
-            <td>✓</td>
-            <td>Active</td>
+            <th scope="row">Vendor service</th>
+            <td><span class="yes">None</span></td>
+            <td>No cloud, no iframe, no API key. It renders from a <code>file://</code> page with the network off.</td>
           </tr>
           <tr>
-            <th scope="row">Topol.io</th>
-            <td><span class="fee">Paid plans</span><span class="cellnote">metered per active user</span></td>
-            <td><span class="no">✗</span></td>
-            <td><span class="no">✗</span></td>
-            <td>Any<span class="cellnote">typed React/Vue/Svelte/TS pkgs</span></td>
-            <td><span class="fee">Paid</span></td>
-            <td>21 langs<span class="cellnote">RTL supported</span></td>
-            <td><span class="no">—</span></td>
-            <td>✓<span class="cellnote">HTML block</span></td>
-            <td>Active</td>
+            <th scope="row">Framework</th>
+            <td><span class="yes">Any</span></td>
+            <td>A standard custom element. The same tag in React, Angular, Vue, Svelte, or a plain script.</td>
           </tr>
           <tr>
-            <th scope="row">Chamaileon SDK</th>
-            <td><span class="fee">Paid plans</span><span class="cellnote">metered by MAU and generator calls</span></td>
-            <td><span class="no">✗</span></td>
-            <td><span class="no">✗</span><span class="cellnote">cloud iframe modules</span></td>
-            <td>Any<span class="cellnote">JS API</span></td>
-            <td><span class="fee">Paid</span></td>
-            <td>Partial</td>
-            <td>✓</td>
-            <td>✓<span class="cellnote">migration tooling</span></td>
-            <td>Active</td>
+            <th scope="row">White-label</th>
+            <td><span class="yes">Included</span></td>
+            <td>Your brand colour and font, all 189 interface labels overridable, no vendor mark anywhere.</td>
           </tr>
           <tr>
-            <th scope="row">GrapesJS + MJML</th>
-            <td><span class="yes">Free</span><span class="cellnote">BSD-3</span></td>
-            <td><span class="yes">✓</span></td>
-            <td>✓<span class="cellnote">~12&nbsp;MB package + MJML compiler</span></td>
-            <td>Any</td>
-            <td>✓<span class="cellnote">you build the chrome</span></td>
-            <td><span class="no">Partial</span><span class="cellnote">open RTL issues</span></td>
-            <td><span class="no">✗</span><span class="cellnote">build it yourself</span></td>
-            <td><span class="no">Partial</span></td>
-            <td>Core active<span class="cellnote">newsletter preset unpublished since 2023</span></td>
+            <th scope="row">Editor locales</th>
+            <td><span class="yes">31</span><span class="cellnote">RTL automatic</span></td>
+            <td>The interface itself is translated, and right-to-left layout switches on without configuration.</td>
           </tr>
           <tr>
-            <th scope="row">Easy Email</th>
-            <td><span class="yes">Free</span><span class="cellnote">MIT</span></td>
-            <td><span class="yes">✓</span></td>
-            <td>✓<span class="cellnote">MJML + Arco Design dep tree</span></td>
-            <td><span class="no">React only</span></td>
-            <td>✓</td>
-            <td><span class="no">EN/ZH</span><span class="cellnote">no RTL</span></td>
-            <td><span class="no">—</span></td>
-            <td>✓<span class="cellnote">via MJML</span></td>
-            <td><span class="no">Maintenance mode</span><span class="cellnote">author's focus moved to paid Pro</span></td>
+            <th scope="row">Conditions &amp; loops</th>
+            <td><span class="yes">Included</span></td>
+            <td>Handlebars-style <code>{{#if}}</code> and <code>{{#each}}</code> blocks on the canvas, alongside merge tags.</td>
           </tr>
           <tr>
-            <th scope="row">Maily.to</th>
-            <td><span class="yes">Free</span><span class="cellnote">MIT</span></td>
-            <td><span class="yes">✓</span></td>
-            <td>✓<span class="cellnote">36 dependencies</span></td>
-            <td><span class="no">React only</span></td>
-            <td>✓</td>
-            <td><span class="no">✗</span></td>
-            <td>✓<span class="cellnote">show-if, repeat</span></td>
-            <td><span class="no">✗</span><span class="cellnote">own JSON format</span></td>
-            <td>Active<span class="cellnote">notion-style, not a block canvas</span></td>
+            <th scope="row">HTML import</th>
+            <td><span class="yes">Included</span></td>
+            <td>Existing templates come in as editable blocks, unmetered. Recognized structure converts; the rest is preserved as raw HTML.</td>
+          </tr>
+          <tr>
+            <th scope="row">Export</th>
+            <td><span class="yes">Clean HTML</span></td>
+            <td>Table-based, inline styles, Outlook-safe. Plain HTML you can send through any provider.</td>
+          </tr>
+          <tr>
+            <th scope="row">Storage</th>
+            <td><span class="yes">Yours</span></td>
+            <td>Bring your own adapter for templates and images &mdash; or use the one already wired in SELISE Blocks Cloud.</td>
+          </tr>
+          <tr>
+            <th scope="row">Block types</th>
+            <td><span class="yes">20</span></td>
+            <td>Text, headings, buttons, images, dividers, spacers, social, countdown, menus, tables and more.</td>
           </tr>
         </tbody>
       </table>
     </div>
     <div class="legend">
-      <span><span class="yes">✓ / Free</span>&nbsp; included, no fee</span>
-      <span><span class="fee">$ / Paid</span>&nbsp; plan-gated or metered</span>
-      <span><span class="no">✗ / Partial</span>&nbsp; absent, or assembly required</span>
-      <span>MJML and react-email excluded: developer tools, not embeddable end-user editors.</span>
+      <span class="legend-note"><b>Not the right fit if</b> you want a service: no SLA, no support desk beyond the issue tracker, and it does not send email &mdash; it hands you HTML. Authored dark-mode variants aren't supported yet, and unusual vendor markup survives import as raw HTML rather than editable blocks.</span>
+      <span class="legend-note">Every figure above is measured from this repository &mdash; check any of them yourself.</span>
     </div>
     </div>
   </section>
@@ -643,18 +646,41 @@ footer {
     </div>
   </div>
 
-  <div class="bridge rv"><p>So of nine editors compared on four properties — <em>who holds all four?</em></p></div>
+  <div class="bridge rv"><p>Four properties hold the whole thing up. <em>These four.</em></p></div>
 
-  <!-- ACT 5 · The verdict -->
+  <!-- ACT 5 · What it adds up to -->
   <div class="claim rv">
-    <span class="eyebrow"><span class="ch">04</span>The verdict</span>
-    <h2>Nobody else occupies this square.</h2>
-    <p>The hosted five give up openness and self-containment; the open-source three give up framework freedom, completeness, or upkeep. Blocks MailCraft alone holds all four &mdash; and when you want more than email, the platform it comes from is one free sign-up away.</p>
-    <div class="quad">
-      <div><b>MIT — actually open</b><span>The entire editor is source you can read, fork and ship — not an open wrapper around a closed iframe.</span></div>
-      <div><b>Framework-agnostic</b><span>One Web Component: the same tag in React, Angular, Vue, Svelte, or a plain &lt;script&gt;.</span></div>
-      <div><b>Self-contained</b><span>Zero dependencies, no vendor cloud, no metering. Runs from a file:// page.</span></div>
-      <div><b>Complete</b><span>Merge tags, conditions &amp; loops, HTML import, 31 locales with RTL, white-label — all included.</span></div>
+    <span class="eyebrow"><span class="ch">04</span>What it adds up to</span>
+    <h2>Open, portable, self-contained, complete.</h2>
+    <p>Each one is worth something on its own; together they are the reason this exists. You can read the source, drop it into any stack, run it with nothing else, and find the whole feature set already in the box &mdash; and when you want more than email, the platform it comes from is one free sign-up away.</p>
+    <div class="car" data-car>
+      <div class="car-track" tabindex="0" role="region" aria-label="The four properties, as a carousel">
+        <article class="car-slide">
+          <span class="n">01 · Open</span>
+          <b>MIT, all the way down</b>
+          <span>The entire editor is source you can read, fork and ship. Nothing in it is a compiled blob.</span>
+        </article>
+        <article class="car-slide">
+          <span class="n">02 · Portable</span>
+          <b>Framework-agnostic</b>
+          <span>One Web Component: the same tag in React, Angular, Vue, Svelte, or a plain &lt;script&gt;.</span>
+        </article>
+        <article class="car-slide">
+          <span class="n">03 · Self-contained</span>
+          <b>Nothing to call home to</b>
+          <span>Zero dependencies and no vendor service. It runs from a <code>file://</code> page with the network off.</span>
+        </article>
+        <article class="car-slide">
+          <span class="n">04 · Complete</span>
+          <b>The whole set, in the box</b>
+          <span>Merge tags, conditions &amp; loops, HTML import, 31 locales with RTL, and white-label.</span>
+        </article>
+      </div>
+      <div class="car-nav">
+        <button type="button" class="car-btn" data-car-prev aria-label="Previous slide"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5 8 12l7 7"></path></svg></button>
+        <button type="button" class="car-btn" data-car-next aria-label="Next slide"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"></path></svg></button>
+        <div class="car-dots" aria-label="Choose a slide"></div>
+      </div>
     </div>
     <div class="hero-ctas" style="margin-top:28px">
       <a class="btn btn-primary" href="https://os.seliseblocks.com">Start free on Blocks OS</a>
@@ -665,59 +691,67 @@ footer {
   <div class="bridge rv"><p>What people ask before they <em>npm install</em>.</p></div>
 
   <!-- ACT 6 · The questions.
-       Written answer-first on purpose: every <p> opens with a sentence that
+       Written answer-first on purpose: every answer opens with a sentence that
        survives being quoted on its own, since that is the unit a search
        snippet or a generated answer takes. The same ten pairs are repeated
        verbatim in the FAQPage JSON-LD at the end of the document -- if you
        edit one, edit the other, or the markup stops matching the page and
-       becomes worse than none at all. -->
+       becomes worse than none at all.
+
+       Each pair is a <details>, so the list opens with the keyboard and works
+       with JS off. Collapsed answers stay in the DOM, which is what keeps the
+       structured data honest and in-page find working; only the first is open.
+       One deliberate difference between the two copies: prose that shows a tag
+       renders as <code>&lt;script&gt;</code> here but is written plainly as
+       "script tag" in the JSON-LD, since angle brackets inside a JSON-LD
+       string buy nothing and read badly in a rich result. -->
   <section id="faq">
     <div class="sec-head rv">
       <span class="eyebrow"><span class="ch">05</span>The questions</span>
-      <h2>Frequently asked</h2>
-      <p>The ten that arrive by email and issue most often, answered in one paragraph each.</p>
+      <h2>Questions, answered</h2>
+      <p>The ten that reach us most often by email and on the issue tracker. Open any one &mdash; each is a single paragraph, and none of them is a sales pitch.</p>
     </div>
     <div class="faq rv">
-      <div>
-        <h3>What is Blocks MailCraft?</h3>
+      <details class="faq-item" open>
+        <summary><h3>What is Blocks MailCraft?</h3></summary>
         <p>Blocks MailCraft is an open-source drag-and-drop editor for HTML email templates, shipped as a single Web Component &mdash; one <code>&lt;mailcraft-editor&gt;</code> tag. You hand it HTML and it hands back send-ready HTML, with no proprietary document format in between. It is MIT licensed and published on npm as <code>@seliseblocks/mailcraft</code>.</p>
-      </div>
-      <div>
-        <h3>Is it really free, or is there a paid tier?</h3>
+      </details>
+      <details class="faq-item">
+        <summary><h3>Is it really free, or is there a paid tier?</h3></summary>
         <p>It is free, and there is no paid tier to graduate to. The whole editor is MIT-licensed source: no seats, no per-email metering, no plan-gated features and no &ldquo;contact sales&rdquo; &mdash; white-label, editor localization, HTML import and conditional logic all arrive in the one install.</p>
-      </div>
-      <div>
-        <h3>Which frameworks does Blocks MailCraft work with?</h3>
+      </details>
+      <details class="faq-item">
+        <summary><h3>Which frameworks does Blocks MailCraft work with?</h3></summary>
         <p>All of them, because it is a standard custom element rather than a framework component. The same tag runs in React, Angular, Vue and Svelte, and in a plain HTML page loaded with a <code>&lt;script&gt;</code> tag &mdash; there is no per-framework wrapper package to keep up with.</p>
-      </div>
-      <div>
-        <h3>Does it need a server, an account or an API key?</h3>
+      </details>
+      <details class="faq-item">
+        <summary><h3>Does it need a server, an account or an API key?</h3></summary>
         <p>No. Blocks MailCraft has zero runtime dependencies and makes no network requests of its own &mdash; no vendor cloud, no iframe, no telemetry, no token to refresh. It runs from a <code>file://</code> page, which is also the short answer to where your templates go: nowhere you did not send them.</p>
-      </div>
-      <div>
-        <h3>Can I import the email templates I already have?</h3>
+      </details>
+      <details class="faq-item">
+        <summary><h3>Can I import the email templates I already have?</h3></summary>
         <p>Yes, and it is not metered. Existing HTML imports into an editable block canvas and exports as HTML again; opening a design and saving it without touching anything gives you back what you put in, so migrating off another editor is not a one-way door.</p>
-      </div>
-      <div>
-        <h3>How many languages does the editor interface support?</h3>
+      </details>
+      <details class="faq-item">
+        <summary><h3>How many languages does the editor interface support?</h3></summary>
         <p>Thirty-one, with right-to-left layout switched on automatically for Arabic. Beyond translation, all 189 interface labels can be overridden from your own copy deck, so the editor can use your product&rsquo;s vocabulary rather than ours &mdash; and be white-labelled while it does.</p>
-      </div>
-      <div>
-        <h3>How does Blocks MailCraft compare to Unlayer, Beefree, Stripo, Topol or Chamaileon?</h3>
-        <p>Those are hosted SDKs: the editor itself is closed source and loads from the vendor&rsquo;s cloud, and white-label, localization, HTML import and conditional logic sit behind paid or metered tiers. Blocks MailCraft is the entire editor as MIT source, running inside your own page with nothing to call home to.</p>
-      </div>
-      <div>
-        <h3>How does it compare to GrapesJS, Easy Email or Maily.to?</h3>
-        <p>Those are genuinely open source, but each asks for a trade. GrapesJS needs an MJML toolchain and its newsletter preset has been unpublished since 2023; Easy Email and Maily.to are React-only; none of the three ships editor localization with RTL. Blocks MailCraft is framework-agnostic and dependency-free.</p>
-      </div>
-      <div>
-        <h3>How do I install Blocks MailCraft?</h3>
+      </details>
+      <details class="faq-item">
+        <summary><h3>How do I choose between this and a hosted editor SDK?</h3></summary>
+        <p>It comes down to what you want to own. A hosted SDK is a service: someone else runs the editor, ships the improvements and carries the support burden, on the terms they publish — worth evaluating directly with the vendor against your own requirements. Blocks MailCraft is the other trade. The entire editor is MIT source running inside your own page, with no vendor service to authenticate against and nothing to call home to. You own it outright, which also means you maintain it.</p>
+      </details>
+      <details class="faq-item">
+        <summary><h3>Are there open-source alternatives?</h3></summary>
+        <p>Yes, several good ones, and which one fits depends on your stack — most are React libraries, or general-purpose page builders adapted to email with a compiler in front. Blocks MailCraft makes a narrower bet: a framework-agnostic Web Component with zero runtime dependencies and email-client-safe export, so it drops into any page without bringing a toolchain along. Compare them against your own requirements rather than ours.</p>
+      </details>
+      <details class="faq-item">
+        <summary><h3>How do I install Blocks MailCraft?</h3></summary>
         <p>Run <code>npm install @seliseblocks/mailcraft</code> and import the module, or drop the prebuilt bundle into a page with a script tag from unpkg or jsDelivr &mdash; no build step either way. The <a href="README.html">quick start</a> is five minutes end to end; the <a href="DOCS.html">guide</a> covers framework wiring, storage, AI and i18n contracts.</p>
-      </div>
-      <div>
-        <h3>How does it relate to SELISE Blocks?</h3>
+      </details>
+      <details class="faq-item">
+        <summary><h3>How does it relate to SELISE Blocks?</h3></summary>
         <p>Same team, two ways to use it. Blocks MailCraft is standalone and stays that way, and it also ships pre-wired inside <a href="https://os.seliseblocks.com">SELISE Blocks Cloud</a>, where Email Management, file storage for the image library, identity, secrets and observability share one console per project and environment.</p>
-      </div>
+      </details>
     </div>
   </section>
 </main>
@@ -764,23 +798,61 @@ footer {
     <span>MIT License · © 2026 SELISE Digital Platforms</span>
     <span><a href="SECURITY.html" style="color:inherit">Security</a> · <a href="CODE_OF_CONDUCT.html" style="color:inherit">Code of conduct</a> · Made with the editor's own chrome tokens.</span>
   </div>
-  <p class="sources">Competitive claims verified August 2026 against vendor pricing pages and live GitHub/npm data:
-    <a href="https://unlayer.com/pricing">Unlayer</a> ·
-    <a href="https://developers.beefree.io/pricing-plans">Beefree SDK</a> ·
-    <a href="https://plugin.stripo.email/">Stripo</a> ·
-    <a href="https://topol.io/tariff-plugin">Topol</a> ·
-    <a href="https://chamaileon.io/sdk/">Chamaileon</a> ·
-    <a href="https://github.com/GrapesJS/grapesjs">GrapesJS</a> ·
-    <a href="https://github.com/GrapesJS/preset-newsletter">preset-newsletter</a> ·
-    <a href="https://github.com/zalify/easy-email-editor">Easy Email</a> ·
-    <a href="https://github.com/arikchakma/maily.to">Maily.to</a> ·
-    <a href="https://github.com/mjmlio/mjml">MJML</a> ·
-    <a href="https://github.com/resend/react-email">react-email</a>.
-    Plan gating reflects the vendors' published pages on that date and may change. Blocks MailCraft's own figures are measured from the repository.</p>
   </div>
 </footer>
 
 <script>
+// Carousel — a thin layer over native scroll-snap. The track is already a
+// scrollable, snapping, swipeable list on its own; this only adds the buttons
+// and dots, and keeps them in step with wherever the user scrolled to. With JS
+// off the slides remain visible and scrollable, so nothing is lost.
+(function () {
+  var smooth = !window.matchMedia || !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  document.querySelectorAll('[data-car]').forEach(function (car) {
+    var track = car.querySelector('.car-track');
+    var prev = car.querySelector('[data-car-prev]');
+    var next = car.querySelector('[data-car-next]');
+    var dots = car.querySelector('.car-dots');
+    if (!track || !prev || !next || !dots) return;
+    var behavior = smooth ? 'smooth' : 'auto';
+    // Page count from the scroll extent rather than the slide count: how many
+    // slides fit at once is a media query's business, not this script's.
+    function pages() { return Math.max(1, Math.round(track.scrollWidth / track.clientWidth)); }
+    function current() { return Math.round(track.scrollLeft / track.clientWidth); }
+    function sync() {
+      var i = current(), n = pages();
+      Array.prototype.forEach.call(dots.children, function (d, k) { d.setAttribute('aria-current', k === i ? 'true' : 'false'); });
+      prev.disabled = i <= 0;
+      next.disabled = i >= n - 1;
+    }
+    function build() {
+      var n = pages();
+      if (dots.children.length !== n) {
+        dots.textContent = '';
+        for (var i = 0; i < n; i++) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'car-dot';
+          b.setAttribute('aria-label', 'Go to slide ' + (i + 1) + ' of ' + n);
+          b.setAttribute('data-i', i);
+          dots.appendChild(b);
+        }
+      }
+      sync();
+    }
+    prev.addEventListener('click', function () { track.scrollBy({ left: -track.clientWidth, behavior: behavior }); });
+    next.addEventListener('click', function () { track.scrollBy({ left: track.clientWidth, behavior: behavior }); });
+    dots.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('.car-dot') : null;
+      if (b) track.scrollTo({ left: Number(b.getAttribute('data-i')) * track.clientWidth, behavior: behavior });
+    });
+    var raf = 0;
+    track.addEventListener('scroll', function () { cancelAnimationFrame(raf); raf = requestAnimationFrame(sync); });
+    window.addEventListener('resize', build);
+    build();
+  });
+})();
+
 // Live countdown in the hero mock — the editor's countdown block, working.
 (function () {
   var target = Date.now() + (2 * 86400000) + (11 * 3600000) + (47 * 60000) + (5 * 1000);
@@ -992,18 +1064,18 @@ footer {
         },
         {
           "@type": "Question",
-          "name": "How does Blocks MailCraft compare to Unlayer, Beefree, Stripo, Topol or Chamaileon?",
+          "name": "How do I choose between this and a hosted editor SDK?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Those are hosted SDKs: the editor itself is closed source and loads from the vendor’s cloud, and white-label, localization, HTML import and conditional logic sit behind paid or metered tiers. Blocks MailCraft is the entire editor as MIT source, running inside your own page with nothing to call home to."
+            "text": "It comes down to what you want to own. A hosted SDK is a service: someone else runs the editor, ships the improvements and carries the support burden, on the terms they publish — worth evaluating directly with the vendor against your own requirements. Blocks MailCraft is the other trade. The entire editor is MIT source running inside your own page, with no vendor service to authenticate against and nothing to call home to. You own it outright, which also means you maintain it."
           }
         },
         {
           "@type": "Question",
-          "name": "How does it compare to GrapesJS, Easy Email or Maily.to?",
+          "name": "Are there open-source alternatives?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Those are genuinely open source, but each asks for a trade. GrapesJS needs an MJML toolchain and its newsletter preset has been unpublished since 2023; Easy Email and Maily.to are React-only; none of the three ships editor localization with RTL. Blocks MailCraft is framework-agnostic and dependency-free."
+            "text": "Yes, several good ones, and which one fits depends on your stack — most are React libraries, or general-purpose page builders adapted to email with a compiler in front. Blocks MailCraft makes a narrower bet: a framework-agnostic Web Component with zero runtime dependencies and email-client-safe export, so it drops into any page without bringing a toolchain along. Compare them against your own requirements rather than ours."
           }
         },
         {
