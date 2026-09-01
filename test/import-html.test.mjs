@@ -547,6 +547,126 @@ await it('a card split across stacked tables does not double its frame', async (
   assert.equal(rows.some((r) => r.props.radius), false, 'no second rounded box inside the card');
 });
 
+console.log();
+console.log('Importer — fonts, inherit and the styling that used to vanish on save');
+
+// A block font is only an *override* when the document font differs, so these
+// fixtures declare the document's own face on the body -- exactly what
+// core/export.js writes. Where a source declares one family and nothing else,
+// that family IS the document font and the blocks are right to inherit it
+// (the fold in htmlToDoc), which the two "restates the theme" cases below own.
+const themed = (inner) => email(inner, "background:#eef2f7;font-family:'DM Sans', Arial, sans-serif");
+
+await it('a block-level font family is read back (heading, button, menu, list, table)', async () => {
+  const h = firstOf(themed('<tr><td><h2 style="font-family:Georgia, serif">T</h2></td></tr>'), 'heading');
+  assert.equal(h.props.fontFamily, 'Georgia, serif');
+  const btn = firstOf(themed('<tr><td><a href="#" style="display:inline-block;background:#0065b3;color:#fff;padding:12px 24px;font-family:Tahoma, Geneva, sans-serif">Go</a></td></tr>'), 'button');
+  assert.match(btn.props.fontFamily || '', /Tahoma/);
+  const menu = firstOf(themed('<tr><td><a href="/a" style="font-family:Verdana, sans-serif;margin:0 10px">One</a><a href="/b" style="margin:0 10px">Two</a></td></tr>'), 'menu');
+  assert.match(menu.props.fontFamily || '', /Verdana/);
+  assert.equal(menu.props.gap, 20, 'anchor margins fold back into the gap');
+  const list = firstOf(themed('<tr><td><ul style="font-family:Georgia, serif;font-size:17px;color:#ff0000;line-height:1.9;padding:3px 0 3px 22px"><li style="margin-bottom:9px">a</li><li style="margin-bottom:9px">b</li></ul></td></tr>'), 'list');
+  assert.equal(list.props.fontFamily, 'Georgia, serif');
+  assert.equal(list.props.size, 17);
+  assert.equal(list.props.color, '#ff0000');
+  assert.equal(list.props.lh, 1.9);
+  assert.equal(list.props.py, 3);
+  assert.equal(list.props.gap, 9);
+  const tbl = firstOf(themed('<tr><td><table style="width:100%;font-family:Georgia, serif;font-size:13px"><tr style="background:#ffeecc"><th style="padding:7px 8px;text-align:center">A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr><tr><td>3</td><td>4</td></tr></table></td></tr>'), 'table');
+  assert.equal(tbl.props.fontFamily, 'Georgia, serif');
+  assert.equal(tbl.props.size, 13);
+  assert.equal(tbl.props.headBg, '#ffeecc');
+  assert.equal(tbl.props.pad, 7);
+  assert.equal(tbl.props.align, 'center');
+  assert.equal(tbl.props.striped, false, 'no stripe tint in the source, no stripes on import');
+});
+
+await it('a uniform text run claims its family at block level and folds the inline copies', async () => {
+  const b = firstOf(themed('<tr><td><p style="font-family:Georgia, serif;font-size:15px">One</p><p style="font-family:Georgia, serif">Two</p></td></tr>'), 'text');
+  assert.equal(b.props.fontFamily, 'Georgia, serif');
+  assert.doesNotMatch(b.props.html, /font-family/, 'claimed means consumed — it must not ship twice');
+});
+
+await it('a mixed-family run keeps its inline declarations and claims nothing', async () => {
+  const b = firstOf(themed('<tr><td><p style="font-family:Georgia, serif">One</p><p style="font-family:Courier, monospace">Two</p></td></tr>'), 'text');
+  assert.equal(b.props.fontFamily || '', '', 'no block-level font on a mixed run');
+  assert.match(b.props.html, /Georgia/);
+  assert.match(b.props.html, /Courier/);
+});
+
+await it('a lone family with no document font of its own becomes the theme, not a per-block override', async () => {
+  // The other half of the fold: a foreign email that declares one face and
+  // nothing on the body is a document IN that face -- promoting it to the
+  // theme is what makes the Font control reach the whole template afterwards.
+  const doc = htmlToDoc(email('<tr><td><h2 style="font-family:Georgia, serif">T</h2><p style="font-family:Georgia, serif">copy</p></td></tr>'));
+  assert.match(doc.theme.font, /Georgia/);
+  const blocks = doc.rows.flatMap((r) => r.cols.flatMap((c) => c.blocks));
+  assert.ok(blocks.every((b) => !b.props.fontFamily), 'every block inherits it instead of restating it');
+});
+
+await it('the condensed heading stack folds back into the style toggle', async () => {
+  const b = firstOf(email(`<tr><td><h2 style="font-family:'Arial Narrow', 'Helvetica Neue Condensed', Helvetica, Arial, sans-serif">T</h2></td></tr>`), 'heading');
+  assert.equal(b.props.font, 'condensed');
+  assert.equal(b.props.fontFamily || '', '', 'the stack itself is not stored');
+});
+
+await it("the body's own family wins the theme font over the first block's", async () => {
+  const src = `<!doctype html><html><body style="font-family:'DM Sans', Arial, sans-serif">
+<table width="600"><tr><td><h1 style="font-family:Georgia, serif">Fancy</h1><p>Body copy</p></td></tr></table></body></html>`;
+  const doc = htmlToDoc(src);
+  assert.match(doc.theme.font, /DM Sans/, 'theme font from the body');
+  const h = doc.rows.flatMap((r) => r.cols.flatMap((c) => c.blocks)).find((b) => b.type === 'heading');
+  assert.match(h.props.fontFamily, /Georgia/, 'the heading keeps its own font as an override');
+});
+
+await it('values that restate the theme fold back to inherit', async () => {
+  const src = `<!doctype html><html><body style="font-family:Georgia, serif;color:#172033;background:#eef2f7">
+<table role="presentation" width="100%"><tr><td align="center">
+<table role="presentation" width="600" style="width:600px;background:#ffffff">
+<tr><td style="background:#ffffff"><h2 style="font-family:Georgia, serif;color:#172033">Same as theme</h2></td></tr>
+<tr><td style="background:#101418"><p style="color:#ffffff">Own colors</p></td></tr>
+</table></td></tr></table></body></html>`;
+  const doc = htmlToDoc(src);
+  const blocks = doc.rows.flatMap((r) => r.cols.flatMap((c) => c.blocks));
+  const h = blocks.find((b) => b.type === 'heading');
+  assert.equal(h.props.fontFamily || '', '', 'a restated theme font is inherit again');
+  assert.equal(h.props.color || '', '', 'a restated theme ink is inherit again');
+  assert.equal(doc.rows[0].props.bg || '', '', 'a row repainted in the content background is inherit again');
+  assert.equal(doc.rows[1].props.bg, '#101418', 'a genuinely different row background stays explicit');
+  const p = blocks.find((b) => b.type === 'text');
+  assert.equal(p.props.color, '#ffffff', 'a genuinely different ink stays explicit');
+});
+
+await it("the exporter's overlay gradient folds back into the overlay percentage", async () => {
+  const rows = rowsOf(email('<tr><td style="background-color:#101418;background-image:linear-gradient(rgba(20,22,24,0.4),rgba(20,22,24,0.4)),url(https://cdn.test/hero.jpg);background-size:cover"><p style="color:#fff">Hero</p></td></tr>'));
+  const r = rows.find((x) => x.props.bgImage);
+  assert.ok(r, 'the image survived');
+  assert.equal(r.props.overlay, 40);
+  const foreign = rowsOf(email('<tr><td style="background-image:linear-gradient(rgba(255,0,0,0.5),rgba(0,0,255,0.5)),url(https://cdn.test/x.jpg)"><p>x</p></td></tr>'))
+    .find((x) => x.props.bgImage);
+  assert.equal(foreign.props.overlay || 0, 0, 'a foreign gradient claims nothing');
+});
+
+await it('a styled column keeps its border through the wrapper hoist', async () => {
+  const row = rowsOf(email(`<tr><td><table><tr>
+    <td width="50%"><div style="background:#fff4e5;border:2px dashed #cc6600;border-radius:8px;padding:12px 14px"><p>Card</p></div></td>
+    <td width="50%"><p>Plain</p></td>
+  </tr></table></td></tr>`)).find((r) => r.cols.length === 2);
+  assert.ok(row);
+  assert.equal(row.cols[0].border, 2);
+  assert.equal(row.cols[0].borderStyle, 'dashed');
+  assert.equal(row.cols[0].lineColor, '#cc6600');
+  assert.equal(row.cols[0].bg, '#fff4e5');
+});
+
+await it("an image wrapper's padding and a divider wrapper's spacing are the block's own again", async () => {
+  const img = firstOf(email('<tr><td><div style="padding:18px 6px;text-align:center"><img src="https://cdn.test/i.png" width="120"></div></td></tr>'), 'image');
+  assert.equal(img.props.py, 18);
+  assert.equal(img.props.px, 6);
+  const div = firstOf(email('<tr><td><div style="padding:3px 0"><div style="height:2px;background:#cccccc"></div></div></td></tr>'), 'divider');
+  assert.equal(div.props.py, 3);
+});
+
 console.log(`\n${passed} passed, ${failed} failed.`);
 closeDom();
 process.exit(failed ? 1 : 0);

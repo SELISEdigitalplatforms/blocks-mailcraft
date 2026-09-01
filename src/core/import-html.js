@@ -29,6 +29,22 @@ function onlyChild(el, tag) {
   return el.children.length === 1 && el.firstElementChild.tagName === tag ? el.firstElementChild : null;
 }
 
+/** Font stacks for equality only: CSSOM and the exporter disagree on quoting (`"DM Sans"` vs `'DM Sans'`), spacing and case, so families are compared with quotes stripped, whitespace collapsed and case folded. Never used as a value -- the original string is what gets stored. */
+function fontKey(v) {
+  return String(v || '').replace(/["']/g, '').replace(/\s*,\s*/g, ',').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+/** Whether `el` (its own style, or any styled descendant) declares a font family different from `family`. The guard that keeps a block-level font read from flattening a mixed-typography run: once a block owns a font, the renderer's overrideRichFont strips every descendant's family, so a run whose pieces genuinely differ must stay font-less at block level and keep its inline declarations instead. */
+function mixedFamily(el, family) {
+  const key = fontKey(family);
+  const off = (v) => { const k = fontKey(v); return !!k && k !== key; };
+  if (el.style && off(el.style.fontFamily)) return true;
+  return !!el.querySelectorAll && Array.from(el.querySelectorAll('[style*="font-family"]')).some((d) => d.style && off(d.style.fontFamily));
+}
+
+/** The heading block's Condensed style ships as this exact stack (render/block-body.js); read back, it becomes the `font: 'condensed'` toggle again rather than an opaque per-block family. */
+const CONDENSED_KEY = fontKey("'Arial Narrow', 'Helvetica Neue Condensed', Helvetica, Arial, sans-serif");
+
 function textAlignOf(el) {
   let n = el;
   while (n && n.nodeType === 1) {
@@ -135,14 +151,24 @@ function bgImageOf(el) {
   return (el.getAttribute && el.getAttribute('background')) || '';
 }
 
+/** The exporter's own overlay idiom, read back: a section image ships as `linear-gradient(rgba(20,22,24,a),rgba(20,22,24,a)),url(...)` (core/export.js), and the alpha is the row's `overlay` percentage. Only that exact neutral-dark signature is folded back -- a foreign gradient says nothing about MailCraft's tint and stays out of the model, exactly as before. Without this the tint silently vanished on every save/reload while the photo survived. */
+function overlayOf(el) {
+  const st = el.style;
+  if (!st) return 0;
+  const m = ((st.backgroundImage || '') + ' ' + (st.background || '')).match(/linear-gradient\(rgba\(20,\s*22,\s*24,\s*(0?\.\d+|1|0)\s*\)/);
+  return m ? Math.round(parseFloat(m[1]) * 100) : 0;
+}
+
 /** Carries a wrapper's background image (hero photo sections) onto the rows it produced, mirroring applyBg -- fit/position/repeat come along when declared. */
 function applyBgImage(rows, el) {
   const url = bgImageOf(el);
   if (!url) return rows;
   const st = el.style || {};
+  const ov = overlayOf(el);
   rows.forEach((r) => {
     if (r.props.bgImage) return;
     r.props.bgImage = url;
+    if (ov) r.props.overlay = ov;
     if (st.backgroundSize) r.props.bgSize = st.backgroundSize;
     if (st.backgroundPosition) r.props.bgPos = st.backgroundPosition;
     if (st.backgroundRepeat) r.props.bgRepeat = st.backgroundRepeat;
@@ -259,7 +285,7 @@ function classifyImage(el) {
   } else if (isPct(img.style.width) && PX(img.style.width)) {
     width = PX(img.style.width);
   }
-  return blk('image', {
+  const over = {
     src: img.getAttribute('src') || '',
     alt: img.getAttribute('alt') || '',
     href,
@@ -268,7 +294,14 @@ function classifyImage(el) {
     // Always explicit: the block *default* is 10px, which quietly rounded
     // the corners of every imported image that had none.
     radius: PX(img.style.borderRadius) || 0,
-  });
+  };
+  // The block's own spacing lives on the wrapper the exporter writes
+  // (`padding: py px`); unread, it reset to 0/0 on every save.
+  if (el !== img && el.style) {
+    const pd = paddingOf(el.style);
+    if (pd) { over.py = pd.py; over.px = pd.px; }
+  }
+  return blk('image', over);
 }
 
 function classifyButton(el) {
@@ -337,6 +370,11 @@ function classifyButton(el) {
   };
   const size = fontPx(st.fontSize) || fontPx(a.style.fontSize);
   if (size) over.size = size;
+  // The label's family sits on the anchor in this exporter's shape, on the
+  // pill in most foreign ones. The theme-equality fold in htmlToDoc turns a
+  // value that merely restates the document font back into "inherit".
+  const family = a.style.fontFamily || st.fontFamily || inheritedStyle(a, 'fontFamily');
+  if (family) over.fontFamily = family;
   // Outline buttons: transparent fill, the pill drawn by its border. The
   // border is looked for on the cell as well as the pill, because in the
   // one-cell shape the paint and the frame are on different elements -- the
@@ -416,6 +454,12 @@ function classifyMenu(el) {
   if (size) over.size = size;
   const color = inheritedStyle(anchors[0], 'color');
   if (color) over.color = color;
+  const family = inheritedStyle(anchors[0], 'fontFamily');
+  if (family) over.fontFamily = family;
+  // Item spacing ships as symmetric horizontal margins on each anchor
+  // (`margin: 0 gap/2`); unread, a chosen gap snapped back to the default.
+  const mg = PX(anchors[0].style.marginLeft) + PX(anchors[0].style.marginRight);
+  if (mg) over.gap = mg;
   return blk('menu', over);
 }
 
@@ -436,7 +480,12 @@ function classifyDivider(el) {
   const bg = bar.style.backgroundColor || bar.style.background || bar.style.borderTopColor;
   if (!(h > 0 && h <= 10 && bg)) return null;
   const sw = bar.style.width || '';
-  return blk('divider', { thickness: h, lineStyle: borderStyleOf(bar.style), color: bg, width: sw.endsWith('%') ? PX(sw) : 100 });
+  const over = { thickness: h, lineStyle: borderStyleOf(bar.style), color: bg, width: sw.endsWith('%') ? PX(sw) : 100 };
+  // The wrapper's vertical padding is the block's own spacing (the exporter
+  // writes `padding: py 0` around the rule); a declared zero counts too, so
+  // a tightened divider does not spring back to the 14px default on reload.
+  if (bar !== el && el.style && el.style.paddingTop !== '') over.py = PX(el.style.paddingTop);
+  return blk('divider', over);
 }
 
 function classifySpacer(el) {
@@ -462,6 +511,13 @@ function classifyHeading(el) {
   const color = st.color || inheritedStyle(el.parentElement, 'color');
   if (color) over.color = hexOf(color);
   if (st.fontWeight) over.weight = st.fontWeight;
+  // The family, like color, may live on the section cell. The renderer's own
+  // Condensed stack folds back into the style toggle it came from; any other
+  // family is a per-block font (the theme-equality fold in htmlToDoc turns a
+  // restated document font back into "inherit").
+  const family = st.fontFamily || inheritedStyle(el.parentElement, 'fontFamily');
+  if (fontKey(family) === CONDENSED_KEY) over.font = 'condensed';
+  else if (family) over.fontFamily = family;
   return blk('heading', over);
 }
 
@@ -473,10 +529,34 @@ function classifyList(el) {
   // and the export while every other path stripped them. The newline swap is
   // because `items` is a one-fragment-per-line string -- a linebreak inside a
   // source <li> would otherwise split it into two items on render.
-  const items = Array.from(el.children).filter((c) => c.tagName === 'LI')
-    .map((li) => cleanImportHtml(li.innerHTML).replace(/\n/g, ' '));
-  if (!items.length) return null;
-  return blk('list', { items: items.join('\n'), ordered: el.tagName === 'OL' });
+  const lis = Array.from(el.children).filter((c) => c.tagName === 'LI');
+  if (!lis.length) return null;
+  const over = { ordered: el.tagName === 'OL' };
+  // The list's own typography lives on the UL/OL (this exporter stamps it
+  // there; table emails may hang it on the cell above). Unread, a styled
+  // list reset to the 15px default ink on every save/reload.
+  const st = el.style;
+  const size = fontPx(st.fontSize) || fontPx(inheritedStyle(el.parentElement, 'fontSize'));
+  if (size) over.size = size;
+  const color = st.color || inheritedStyle(el.parentElement, 'color');
+  if (color) over.color = hexOf(color);
+  const lh = lineHeightRatio(st.lineHeight || inheritedStyle(el.parentElement, 'lineHeight'), size);
+  if (lh) over.lh = lh;
+  // Same mixed-run guard as a text block: a block-level family makes the
+  // renderer strip descendant families, so it is only claimed when no item
+  // declares a different one -- and a claimed family folds the items' own
+  // restated declarations away (same byte-stability reasoning as flush).
+  const family = st.fontFamily || inheritedStyle(el.parentElement, 'fontFamily');
+  if (family && !mixedFamily(el, family)) over.fontFamily = family;
+  over.items = lis
+    .map((li) => cleanImportHtml(li.innerHTML, over.fontFamily ? ['font-family'] : null).replace(/\n/g, ' '))
+    .join('\n');
+  // Declared zeros count: `padding-top:0` / `margin-bottom:0` are choices,
+  // absence is what falls to the defaults.
+  if (st.paddingTop !== '') over.py = PX(st.paddingTop);
+  const li0 = el.querySelector(':scope > li');
+  if (li0 && li0.style.marginBottom !== '') over.gap = PX(li0.style.marginBottom);
+  return blk('list', over);
 }
 
 function classifyTable(el) {
@@ -492,11 +572,38 @@ function classifyTable(el) {
   const cellStyle = firstCell && firstCell.style;
   const borderWidth = cellStyle ? borderSidesOf(cellStyle).width : 0;
   const borders = !!borderWidth;
-  return blk('table', {
+  const over = {
     data, header, borders, borderWidth: borderWidth || 1,
     borderStyle: cellStyle ? borderStyleOf(cellStyle) : 'solid',
     lineColor: cellStyle ? (borderColorOf(cellStyle) || '#e2e8f0') : '#e2e8f0',
-  });
+  };
+  // Presentation the renderer writes on the table and its cells, read back so
+  // a styled table stops resetting to the stock look on every save/reload.
+  const st = el.style;
+  const size = fontPx(st.fontSize);
+  if (size) over.size = size;
+  if (st.fontFamily) over.fontFamily = st.fontFamily;
+  const w = st.width || el.getAttribute('width') || '';
+  if (String(w).endsWith('%') && PX(w)) over.width = PX(w);
+  if (cellStyle) {
+    // The renderer's cell padding is `pad` on top, `pad*1.2` at the sides --
+    // the top edge is the stored prop. A declared zero is a choice.
+    if (cellStyle.paddingTop !== '') over.pad = PX(cellStyle.paddingTop);
+    if (cellStyle.textAlign) over.align = cellStyle.textAlign;
+  }
+  if (header) {
+    const hb = bgOf(rows[0]) || bgOf(firstCell);
+    if (hb && hb !== 'transparent') over.headBg = hb;
+  }
+  // Striping is claimed only from this renderer's own signature tint; with
+  // enough body rows to tell, its absence means the source is not striped --
+  // the old behaviour striped every imported table by default.
+  const stripeAt = header ? 2 : 0;
+  if (rows.length > stripeAt) {
+    over.striped = rows.some((r, i) => !(header && i === 0) && i % 2 === 0
+      && /rgba\(29,\s*31,\s*32/.test((r.style && (r.style.backgroundColor || r.style.background)) || ''));
+  }
+  return blk('table', over);
 }
 
 const CLASSIFIERS = [classifyImage, classifyButton, classifySocial, classifyMenu, classifyDivider, classifySpacer, classifyHeading, classifyList, classifyTable];
@@ -590,6 +697,10 @@ function blocksFromNodes(nodes) {
   const out = [];
   let buf = [];
   let bufFirstEl = null;
+  // Every element buffered into the current run, for the mixed-family check
+  // below: the first element alone cannot say whether a *later* piece of the
+  // run declares its own font.
+  let bufEls = [];
   // The parent of a leading bare text node. A run with no element of its own
   // (`<td style="font-size:30px;...">{{Code}}</td>`) still has real
   // typography -- it lives on the ancestors, and with no bufFirstEl the
@@ -597,7 +708,8 @@ function blocksFromNodes(nodes) {
   // at the theme default (a 30px/800 verification code became 16px plain).
   let bufTextEl = null;
   const flush = () => {
-    const html = cleanImportHtml(buf.join(''));
+    const raw = buf.join('');
+    const html = cleanImportHtml(raw);
     // A run with nothing visible in it -- no text beyond whitespace/hair
     // spaces, no image or line break (an `<nbsp;>` still counts as a blank
     // line someone wrote) -- is markup residue (`<p style="margin:0"></p>`),
@@ -613,6 +725,10 @@ function blocksFromNodes(nodes) {
         const weight = inheritedStyle(bufTextEl, 'fontWeight'); if (weight) over.weight = weight;
         const lh = lineHeightRatio(inheritedStyle(bufTextEl, 'lineHeight'), size);
         if (lh) over.lh = lh;
+        // A bare run has no inline tags to carry a family, so the ancestor's
+        // is the block's -- no mixed-run risk here.
+        const family = inheritedStyle(bufTextEl, 'fontFamily');
+        if (family) over.fontFamily = family;
       }
       if (bufFirstEl) {
         // The block's *base* style: the first buffered element when it's a
@@ -644,10 +760,27 @@ function blocksFromNodes(nodes) {
         const weight = inheritedStyle(baseEl, 'fontWeight'); if (weight) over.weight = weight;
         const lh = lineHeightRatio(inheritedStyle(baseEl, 'lineHeight'), size);
         if (lh) over.lh = lh;
+        // The run's base family, read exactly like size/color -- but claimed
+        // at block level only when no piece of the run declares a different
+        // one, since the renderer strips descendant families the moment the
+        // block owns a font (overrideRichFont). A mixed run keeps its inline
+        // declarations instead, exactly as before. The theme-equality fold in
+        // htmlToDoc turns a restated document font back into "inherit".
+        const family = inheritedStyle(baseEl, 'fontFamily');
+        if (family && !bufEls.some((e) => mixedFamily(e, family))) {
+          over.fontFamily = family;
+          // Claimed means consumed: every family in the run restates the one
+          // just read (the mixed check above), so the inline declarations
+          // fold into the block prop instead of shipping twice. This is also
+          // what keeps export -> import -> export byte-stable -- left in the
+          // html, the renderer strips them from the live DOM (overrideRichFont)
+          // and the re-serialized attributes drift on the next save.
+          over.html = cleanImportHtml(raw, ['font-family']);
+        }
       }
       out.push(blk('text', over));
     }
-    buf = []; bufFirstEl = null; bufTextEl = null;
+    buf = []; bufFirstEl = null; bufTextEl = null; bufEls = [];
   };
   nodes.forEach((n) => {
     if (n.nodeType === 3) {
@@ -692,6 +825,7 @@ function blocksFromNodes(nodes) {
     // -- the second lost its padding, size, everything -- on every save.
     if (n.nodeType === 1 && !INLINE_TAGS.test(target.tagName) && hasOwnRunPad(target) && buf.length) flush();
     if (!bufFirstEl) bufFirstEl = target;
+    bufEls.push(target);
     buf.push(n.outerHTML);
     if (n.nodeType === 1 && !INLINE_TAGS.test(target.tagName) && hasOwnRunPad(target)) flush();
   });
@@ -1185,6 +1319,15 @@ function rowsFromContentTable(table) {
         if (col) {
           const cbg = bgOf(lone); if (cbg && !col.bg) col.bg = cbg;
           const crad = radiusOf(lone.style); if (crad && !col.radius) col.radius = crad;
+          // The column's own border ships on this same wrapper (core/export.js
+          // writes bg, border, radius and padding together); reading everything
+          // but the border dropped a column frame on every save/reload.
+          const cframe = borderSidesOf(lone.style);
+          if (cframe.width && !col.border) {
+            col.border = cframe.width;
+            col.borderStyle = borderStyleOf(lone.style);
+            col.lineColor = borderColorOf(lone.style) || '#e2e2e5';
+          }
           const cpd = paddingOf(lone.style);
           if (cpd && col.padY === undefined) { col.padY = cpd.py; col.padX = cpd.px; }
         }
@@ -1497,14 +1640,21 @@ function themeFromParsedDoc(doc) {
       }
     }
   }
-  // Prefer the first *real* stack (has a comma or quotes) over a lone generic
-  // keyword: builders wrap everything in a `font-family:sans-serif` shim div
-  // with the actual `'DM Sans', Arial, ...` declared a level deeper.
+  // The body's own family first: it is where this exporter writes the theme
+  // font, and `querySelectorAll` never sees the body itself -- so the scan
+  // below used to crown the *first block's* effective font instead, and one
+  // custom-font heading at the top of a document flipped the whole theme on
+  // reload. The element scan stays as the fallback for foreign emails that
+  // declare nothing on the body, preferring the first *real* stack (has a
+  // comma or quotes) over a lone generic keyword: builders wrap everything in
+  // a `font-family:sans-serif` shim div with the actual `'DM Sans', Arial,
+  // ...` declared a level deeper.
+  const bodyFont = (body.style && body.style.fontFamily) || '';
   const fonts = Array.from(body.querySelectorAll('[style*="font-family"]'))
     .filter((el) => (el.textContent || '').trim())
     .map((el) => el.style.fontFamily)
     .filter(Boolean);
-  const font = fonts.find((v) => /[,"']/.test(v)) || fonts[0];
+  const font = bodyFont || fonts.find((v) => /[,"']/.test(v)) || fonts[0];
   if (font) theme.font = font;
   // Link color: the most common inline anchor color -- skipping button
   // pills, whose (usually white) label color would otherwise dominate a
@@ -1551,6 +1701,40 @@ function foldLogicWrappers(src) {
   return s;
 }
 
+/**
+ * The exporter writes every inherited value as a concrete declaration
+ * (`p.fontFamily || t.font`, `p.color || t.text`, a row's
+ * `rp.bg || t.contentBg || 'transparent'`), so a round trip used to come back
+ * with the theme stamped onto every block and row as an explicit override --
+ * visually identical, but the inherit relationship was gone: a later theme
+ * edit (font, text ink, content background) no longer reached anything. A
+ * value that merely restates what the imported theme already says folds back
+ * to "inherit"; anything genuinely different is a real override and stays.
+ */
+function foldThemeInherits(rows, theme) {
+  const tFont = fontKey(theme.font);
+  const tText = String(theme.text || '').toLowerCase();
+  const cBg = String(theme.contentBg || '').toLowerCase();
+  // Only the types whose renderer falls back `p.color || t.text` -- an empty
+  // color means "theme ink" for exactly these; other blocks' colors are
+  // structural (a button label, a divider line) and must stay explicit.
+  const inheritsInk = { text: 1, heading: 1, list: 1 };
+  rows.forEach((row) => {
+    const bg = String(row.props.bg || '').toLowerCase();
+    if (bg && bg === cBg) row.props.bg = '';
+    row.cols.forEach((col) => {
+      // A see-through column wrapper is the exporter's own scaffolding
+      // (`background: transparent` is always written on a styled column),
+      // never a chosen paint.
+      if (String(col.bg || '').toLowerCase() === 'transparent') col.bg = '';
+      col.blocks.forEach((b) => {
+        if (tFont && b.props.fontFamily && fontKey(b.props.fontFamily) === tFont) b.props.fontFamily = '';
+        if (tText && inheritsInk[b.type] && String(b.props.color || '').toLowerCase() === tText) b.props.color = '';
+      });
+    });
+  });
+}
+
 /** Full import entry point: the rows plus the theme patch read from the same source. `theme` only carries keys the source actually declared -- the caller merges it over the current theme so unspecified fields keep their values. */
 export function htmlToDoc(src) {
   let doc;
@@ -1562,7 +1746,9 @@ export function htmlToDoc(src) {
   // Theme first: themeFromParsedDoc consumes the styles it claims off the
   // scaffold nodes, and the row walker must see the cleaned DOM.
   const theme = themeFromParsedDoc(doc);
-  return { rows: collectRows(Array.from(doc.body.childNodes)), theme };
+  const rows = collectRows(Array.from(doc.body.childNodes));
+  foldThemeInherits(rows, theme);
+  return { rows, theme };
 }
 
 export function htmlToRows(src) {

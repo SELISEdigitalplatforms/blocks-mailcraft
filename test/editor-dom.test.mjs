@@ -323,6 +323,44 @@ await it('every shipped template is a save round-trip fixed point', async () => 
   }
 });
 
+await it('block fonts and inherit-adjacent styling survive save -> reload', async () => {
+  // The reported defect: choose a per-block font (or lean on theme inherit),
+  // save (exportHtml), load the save back (importHtml) -- and the font, the
+  // table's header tint, the hero overlay all silently reset.
+  const el = await mountEditor();
+  ['heading', 'text', 'list', 'button', 'table'].forEach((t) => el.core.insertBlock(t));
+  await settle(2);
+  const byType = (t) => allBlocks(el).find((b) => b.type === t);
+  el.core.setProp(byType('heading').id, 'fontFamily', 'Georgia, serif');
+  el.core.setProp(byType('list').id, 'fontFamily', 'Tahoma, Geneva, sans-serif');
+  el.core.setProp(byType('list').id, 'color', '#8a1010');
+  el.core.setProp(byType('button').id, 'fontFamily', 'Verdana, Geneva, sans-serif');
+  el.core.setProp(byType('table').id, 'headBg', '#ffeecc');
+  el.core.setProp(byType('table').id, 'striped', false);
+  // On a row that actually holds a block: a content-free row is dropped on
+  // import by design, so styling one would not survive for reasons of its own.
+  el.core.commit((doc) => {
+    const row = doc.rows.find((r) => r.cols.some((c) => c.blocks.length));
+    row.props.bgImage = 'https://example.com/hero.jpg';
+    row.props.overlay = 35;
+  });
+  await settle(2);
+  el.importHtml(el.exportHtml());
+  await settle(2);
+  const back = (t) => allBlocks(el).find((b) => b.type === t);
+  assert.equal(back('heading').props.fontFamily, 'Georgia, serif', 'heading font survived the save');
+  assert.equal(back('list').props.fontFamily, 'Tahoma, Geneva, sans-serif', 'list font survived');
+  assert.match(String(back('list').props.color), /#8a1010/i, 'list ink survived');
+  assert.match(String(back('button').props.fontFamily), /Verdana/, 'button font survived');
+  assert.match(String(back('table').props.headBg), /#ffeecc/i, 'table header tint survived');
+  assert.equal(back('table').props.striped, false, 'striping stayed off');
+  assert.equal(back('text').props.fontFamily || '', '', 'an untouched block is still inherit, not a stamped theme font');
+  const hero = el.getContent().rows.find((r) => r.props.bgImage);
+  assert.ok(hero, 'the hero image survived');
+  assert.equal(hero.props.overlay, 35, 'the hero overlay survived');
+  assert.equal(hero.props.bg || '', '', 'a row that inherited its background still inherits it');
+});
+
 await it('the code modal round-trips the document through html', async () => {
   const el = await mountEditor();
   el.importHtml(EMAIL);
