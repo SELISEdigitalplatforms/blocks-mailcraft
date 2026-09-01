@@ -13,6 +13,23 @@ function el(tag, style, attrs) {
 }
 
 /**
+ * The native `<input type="color">` accepts ONLY `#rrggbb` -- handed an
+ * imported `rgba(...)`, `rgb(...)`, `#abc` or a keyword it silently stays at
+ * black, so opening the picker on such a value read as "the color was not
+ * picked up". Normalizes what can be normalized (alpha is dropped -- the
+ * picker cannot represent it; the text field beside it still holds the exact
+ * value); anything else returns '' and the picker keeps its default.
+ */
+function pickerHex(v) {
+  const s = String(v == null ? '' : v).trim();
+  if (/^#[0-9a-f]{6}$/i.test(s)) return s;
+  if (/^#[0-9a-f]{3}$/i.test(s)) return '#' + s.slice(1).split('').map((c) => c + c).join('');
+  const m = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i.exec(s);
+  if (m) return '#' + [m[1], m[2], m[3]].map((n) => Math.min(255, Number(n)).toString(16).padStart(2, '0')).join('');
+  return '';
+}
+
+/**
  * Trailing debounce for free-typing inputs. Every commit rebuilds the whole
  * canvas and panel (full re-render, no diffing) -- fine per click, but per
  * keystroke it floors low-end hardware. Typing therefore commits 120ms after
@@ -570,7 +587,8 @@ export function renderField(f) {
       });
     }
     const picker = el('input', { position: 'absolute', inset: '0', width: '100%', height: '100%', opacity: '0', cursor: 'pointer', padding: '0', border: '0' }, { type: 'color' });
-    picker.value = f.swatch;
+    const ph = pickerHex(f.swatch);
+    if (ph) picker.value = ph;
     // The native picker fires `input` continuously while dragging the hue
     // wheel -- committed raw, that is a full re-render per mouse move.
     const pickCommit = typeCommit(f.onChange);

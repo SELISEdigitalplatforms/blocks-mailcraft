@@ -150,6 +150,43 @@ function applyBgImage(rows, el) {
   return rows;
 }
 
+/**
+ * A wrapper that paints one background image is one visual band: builders
+ * (Beefree, Stripo) write a hero section as `table.row[background-image]`
+ * holding a single-column stack of per-block tables, and letting the generic
+ * walk turn each block into its own row stamped the image onto every one --
+ * so the export re-drew the hero's top slice once per block instead of one
+ * image flowing behind the section. Folds those rows back into a single row,
+ * moving each row's padding onto its blocks (same convention as the
+ * block-table unwrap in `blocksFromNodes`). Deliberately conservative: only
+ * single-column rows with no styling of their own (a differing background,
+ * frame or image on a row is a real band boundary) are merged, so everything
+ * that isn't the hero shape walks exactly as before.
+ */
+function mergeBandRows(rows, el) {
+  if (rows.length < 2 || !bgImageOf(el)) return rows;
+  const bg0 = rows[0].props.bg || '';
+  const plain = rows.every((r) => r.cols.length === 1
+    && !r.props.bgImage && !r.props.border && !r.props.radius && !r.props.shadow
+    && (r.props.bg || '') === bg0);
+  if (!plain) return rows;
+  const merged = mkRow([100]);
+  merged.props.py = 0; merged.props.px = 0; merged.props.gap = 0;
+  if (bg0) merged.props.bg = bg0;
+  merged.cols[0].blocks = rows.reduce((acc, r) => {
+    const padded = r.props.py || r.props.px || r.props.pt !== undefined;
+    r.cols[0].blocks.forEach((b) => {
+      if (padded && b.type !== 'button' && 'py' in b.props) {
+        b.props.py = r.props.py;
+        if ('px' in b.props) b.props.px = r.props.px;
+      }
+      acc.push(b);
+    });
+    return acc;
+  }, []);
+  return merged.cols[0].blocks.length ? [merged] : rows;
+}
+
 /** Padding read from the longhands, which are populated by the `padding` shorthand too -- but not vice versa: builders that write `padding-top/-left/...` individually (Beefree et al.) read back an empty `style.padding`, which is how every one of their cells imported with zero padding. Carries the exact per-side values plus the averaged py/px pair for consumers that only have a pair to store. */
 function paddingOf(st) {
   if (!st) return null;
@@ -415,8 +452,15 @@ function classifyHeading(el) {
   const st = el.style;
   const over = { text: (el.textContent || '').trim(), level: el.tagName.toLowerCase() };
   const size = fontPx(st.fontSize); if (size) over.size = size;
-  if (st.textAlign) over.align = st.textAlign;
-  if (st.color) over.color = st.color;
+  // Color and alignment inherit in CSS, and hero sections declare them on
+  // the section `<td>` -- a white heading over a dark photo whose color
+  // lived on the cell imported in the default dark ink and vanished into
+  // the image. Own values still win; the walk up only fills the gaps,
+  // exactly like the text-run path.
+  const align = st.textAlign || inheritedStyle(el.parentElement, 'textAlign');
+  if (align) over.align = align;
+  const color = st.color || inheritedStyle(el.parentElement, 'color');
+  if (color) over.color = hexOf(color);
   if (st.fontWeight) over.weight = st.fontWeight;
   return blk('heading', over);
 }
@@ -546,10 +590,30 @@ function blocksFromNodes(nodes) {
   const out = [];
   let buf = [];
   let bufFirstEl = null;
+  // The parent of a leading bare text node. A run with no element of its own
+  // (`<td style="font-size:30px;...">{{Code}}</td>`) still has real
+  // typography -- it lives on the ancestors, and with no bufFirstEl the
+  // inheritedStyle reads below were skipped wholesale, so the run imported
+  // at the theme default (a 30px/800 verification code became 16px plain).
+  let bufTextEl = null;
   const flush = () => {
     const html = cleanImportHtml(buf.join(''));
-    if (html) {
+    // A run with nothing visible in it -- no text beyond whitespace/hair
+    // spaces, no image or line break (an `<nbsp;>` still counts as a blank
+    // line someone wrote) -- is markup residue (`<p style="margin:0"></p>`),
+    // not content; as a block it rendered as a phantom padded row.
+    const visible = html && (/<(img|br|hr)\b/i.test(html)
+      || html.replace(/<[^>]*>/g, '').replace(/[ \t\r\n\u2009\u200a\u200b]/g, '') !== '');
+    if (visible) {
       const over = { html };
+      if (!bufFirstEl && bufTextEl) {
+        const size = fontPx(inheritedStyle(bufTextEl, 'fontSize')); if (size) over.size = size;
+        const color = inheritedStyle(bufTextEl, 'color'); if (color) over.color = hexOf(color);
+        over.align = textAlignOf(bufTextEl);
+        const weight = inheritedStyle(bufTextEl, 'fontWeight'); if (weight) over.weight = weight;
+        const lh = lineHeightRatio(inheritedStyle(bufTextEl, 'lineHeight'), size);
+        if (lh) over.lh = lh;
+      }
       if (bufFirstEl) {
         // The block's *base* style: the first buffered element when it's a
         // block-level thing (a styled <p>/<div> speaks for the run), else its
@@ -575,7 +639,7 @@ function blocksFromNodes(nodes) {
         ) { baseEl = baseEl.firstElementChild; if (!runPad) runPad = paddingOf(baseEl.style); }
         if (runPad) { over.py = runPad.py; over.px = runPad.px; }
         const size = fontPx(inheritedStyle(baseEl, 'fontSize')); if (size) over.size = size;
-        const color = inheritedStyle(baseEl, 'color'); if (color) over.color = color;
+        const color = inheritedStyle(baseEl, 'color'); if (color) over.color = hexOf(color);
         over.align = textAlignOf(baseEl);
         const weight = inheritedStyle(baseEl, 'fontWeight'); if (weight) over.weight = weight;
         const lh = lineHeightRatio(inheritedStyle(baseEl, 'lineHeight'), size);
@@ -583,13 +647,16 @@ function blocksFromNodes(nodes) {
       }
       out.push(blk('text', over));
     }
-    buf = []; bufFirstEl = null;
+    buf = []; bufFirstEl = null; bufTextEl = null;
   };
   nodes.forEach((n) => {
     if (n.nodeType === 3) {
       const markers = logicMarkersOf(n.textContent);
       if (markers) { flush(); markers.forEach((mb) => out.push(mb)); return; }
-      if (n.textContent && n.textContent.trim()) buf.push(escapeText(n.textContent));
+      if (n.textContent && n.textContent.trim()) {
+        if (!bufFirstEl && !bufTextEl) bufTextEl = n.parentElement;
+        buf.push(escapeText(n.textContent));
+      }
       return;
     }
     if (n.nodeType !== 1) return;
@@ -1052,7 +1119,10 @@ function rowsFromContentTable(table) {
     // outer wrapper around all columns. When bgSource IS cells[0] (flat rows),
     // falling back to it would re-promote the first card's color to the row.
     const outerBg = cells.indexOf(bgSource) > -1 ? '' : bgOf(bgSource);
-    const bg = (cellsUniform && cellBg) || outerBg || bgOf(table);
+    // The tr between the cells and the table carries the legacy per-row
+    // `bgcolor` old-school templates still set; it sits between the two in
+    // specificity.
+    const bg = (cellsUniform && cellBg) || bgOf(tr) || outerBg || bgOf(table);
     if (bg) row.props.bg = bg;
     // Differently-styled cells become per-column styling: each column keeps
     // its own background/radius/padding (the pastel-cards pattern).
@@ -1209,7 +1279,7 @@ function collectRows(nodes) {
     }
     if (n.nodeType === 1 && (n.tagName === 'DIV' || n.tagName === 'CENTER') && looksLikeContainer(n) && !classifyNode(unwrapBoxDiv(n))) {
       flushBuf();
-      const inner = collectRows(Array.from(n.childNodes));
+      const inner = mergeBandRows(collectRows(Array.from(n.childNodes)), n);
       rows.push(...applyBgImage(applyFrame(applyPad(applyBg(inner, bgOf(n)), padOf(n)), n), n));
       return;
     }
@@ -1250,11 +1320,37 @@ function collectRows(nodes) {
           rows.push(row);
           return;
         }
-        const inner = collectRows(Array.from(td.childNodes));
+        // The other table-email rule idiom: a content-free cell whose only
+        // drawing is a `border-top` (Beefree's `td.divider_inner`, usually in
+        // a width="20%" inner table). As a text run it imported as a junk row
+        // holding one hair space; recognized, it is the divider it draws.
+        const dSides = borderSidesOf(td.style);
+        if (dSides.sides.top > 0 && dSides.sides.top <= 10
+          && !dSides.sides.right && !dSides.sides.bottom && !dSides.sides.left
+          && !bgOf(td) && !bgImageOf(td)
+          && !Array.from(td.children).some((c) => c.tagName !== 'SPAN' && c.tagName !== 'BR')
+          && !(td.textContent || '').replace(/\s/g, '')) {
+          const dw = String(n.getAttribute('width') || n.style.width || '');
+          const row = mkRow([100]);
+          row.props.py = 0; row.props.px = 0; row.props.gap = 0;
+          row.cols[0].blocks = [blk('divider', {
+            thickness: dSides.sides.top,
+            lineStyle: borderStyleOf(td.style),
+            color: borderColorOf(td.style) || '#d9dade',
+            width: dw.endsWith('%') ? PX(dw) : 100,
+          })];
+          rows.push(row);
+          return;
+        }
+        const inner = mergeBandRows(mergeBandRows(collectRows(Array.from(td.childNodes)), td), n);
         // Frame styles live on the td for some builders and on the table
         // itself for others (`table.row-content` carries the card border) --
         // applyFrame fills only what's still unset, so trying both is safe.
-        rows.push(...applyBgImage(applyBgImage(applyFrame(applyFrame(applyPad(applyBg(inner, bgOf(n) || bgOf(td)), padOf(td) || padOf(n) || cellPadOf(n)), td), n), td), n));
+        // The td is the more specific background-color source -- a dark hero
+        // cell inside a white content table keeps its own color, not the
+        // wrapper's (the image already reads td-first via the applyBgImage
+        // order). The tr between them carries the legacy per-row bgcolor.
+        rows.push(...applyBgImage(applyBgImage(applyFrame(applyFrame(applyPad(applyBg(inner, bgOf(td) || bgOf(tr) || bgOf(n)), padOf(td) || padOf(n) || cellPadOf(n)), td), n), td), n));
         return;
       }
       flushBuf();
@@ -1296,6 +1392,16 @@ function fixedWidthOf(tb) {
   return 0;
 }
 
+/** A border present on some sides but not all, or a radius rounding some corners but not all -- the signature of one piece of a card that was drawn across several stacked tables, never of a standalone card. */
+function partialFrame(st) {
+  if (!st) return false;
+  const { sides } = borderSidesOf(st);
+  const on = ['top', 'right', 'bottom', 'left'].filter((k) => sides[k] > 0).length;
+  const corners = String(st.borderRadius || '').split(/\s+/).map(PX);
+  const uneven = corners.length > 1 && corners.some((v) => v > 0) && corners.some((v) => !v);
+  return (on > 0 && on < 4) || uneven;
+}
+
 function themeFromParsedDoc(doc) {
   const theme = {};
   const body = doc.body;
@@ -1320,6 +1426,10 @@ function themeFromParsedDoc(doc) {
   if (bestWidth) {
     const content = Array.from(body.querySelectorAll('table')).find((tb) => fixedWidthOf(tb) === Number(bestWidth));
     if (content) {
+      // Read before the frame is consumed below -- a fragment here means the
+      // sibling tables hold the rest of the same card (see the pass further
+      // down).
+      const contentPartial = partialFrame(content.style);
       // The content column's own background -- including the literal
       // `transparent` the exporter always writes for a see-through column.
       // Without this the round trip lost it: export wrote
@@ -1360,6 +1470,30 @@ function themeFromParsedDoc(doc) {
         if (padY > 0) theme.padY = padY;
         if (padX > 0) theme.padX = padX;
         cell.style.padding = '';
+      }
+      // A card drawn across several sibling content-width tables (top piece:
+      // `border-radius:16px 16px 0 0; border-bottom:none`, middle pieces:
+      // side borders only, bottom piece: `border-radius:0 0 16px 16px`) is
+      // ONE visual frame -- the one just claimed. Left in place, the sibling
+      // fragments imported as row borders inside the already-framed canvas:
+      // doubled verticals down every row and a second rounded, shadowed box
+      // around the last section. Only the split-card idiom trips this: the
+      // claimed table must itself be a fragment (partial border or uneven
+      // corners), and only fragments are stripped -- a template of genuinely
+      // separate full cards has neither and is untouched. Horizontal edges
+      // stay, since between two sections they read as a real separator; the
+      // last fragment's bottom edge coincides with the frame's and goes.
+      if (contentPartial) {
+        const same = Array.from(body.querySelectorAll('table'))
+          .filter((tb) => tb !== content && tb.style && fixedWidthOf(tb) === Number(bestWidth));
+        same.forEach((tb, k) => {
+          if (!partialFrame(tb.style)) return;
+          tb.style.borderLeft = '';
+          tb.style.borderRight = '';
+          tb.style.borderRadius = '';
+          tb.style.boxShadow = '';
+          if (k === same.length - 1) tb.style.borderBottom = '';
+        });
       }
     }
   }

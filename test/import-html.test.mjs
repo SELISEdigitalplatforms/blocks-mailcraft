@@ -439,6 +439,114 @@ await it('an ordinary hidden preheader is still dropped', async () => {
   assert.match(text, /Real copy/);
 });
 
+/*
+ * Sections that paint one background. Cut down from real Beefree templates
+ * (`table.row[background-image]` > `table.row-content` > one `td.column`
+ * holding a stack of per-block tables) and this exporter's own MFA email.
+ * Each of these regressed in the wild before being pinned here.
+ */
+console.log();
+console.log('Importer — sections as one visual band');
+
+const heroSection = (inner, rowStyle) => `<!doctype html><html><body style="background-color:#0c0e19">
+<table width="100%"><tbody><tr><td>
+<table class="row" align="center" width="100%" style="${rowStyle}"><tbody><tr><td>
+<table class="row-content" align="center" width="680" style="color:#000;width:680px;margin:0 auto"><tbody><tr>
+<td class="column" width="100%" style="text-align:left;vertical-align:top">${inner}</td>
+</tr></tbody></table></td></tr></tbody></table>
+</td></tr></tbody></table></body></html>`;
+
+await it('a bg-image section keeps its blocks in ONE row, the image applied once', async () => {
+  const src = heroSection(
+    '<div style="height:40px;line-height:40px;font-size:1px">&#8202;</div>'
+    + '<table width="100%"><tr><td style="padding:10px 40px"><div style="color:#fadbb1;font-size:58px;text-align:center"><p style="margin:0"><span style="color:#ffffff">BIG GAME</span></p></div></td></tr></table>'
+    + '<div style="height:500px;line-height:500px;font-size:1px">&#8202;</div>'
+    + '<table width="100%"><tr><td style="padding:10px 40px"><div style="color:#ddd;font-size:16px"><p style="margin:0">Join us Sunday.</p></div></td></tr></table>',
+    'background-color:#0c0e19;background-image:url(https://cdn.test/hero-band.png);background-position:top center;background-repeat:no-repeat',
+  );
+  const rows = rowsOf(src);
+  assert.equal(rows.length, 1, 'one section, one row — got ' + rows.length);
+  const r = rows[0];
+  assert.equal(r.props.bgImage, 'https://cdn.test/hero-band.png');
+  assert.equal(r.props.bg, '#0c0e19');
+  assert.deepEqual(r.cols[0].blocks.map((b) => b.type), ['spacer', 'text', 'spacer', 'text']);
+  const texts = r.cols[0].blocks.filter((b) => b.type === 'text');
+  assert.equal(texts[0].props.px, 40, "each block keeps its own source row's padding");
+});
+
+await it('rows with their own styling are never merged into a band', async () => {
+  const src = heroSection(
+    '<table width="100%"><tr><td style="background-color:#111111;padding:10px"><p>dark</p></td></tr></table>'
+    + '<table width="100%"><tr><td style="background-color:#eeeeee;padding:10px"><p>light</p></td></tr></table>',
+    'background-image:url(https://cdn.test/band2.png)',
+  );
+  const rows = rowsOf(src);
+  assert.equal(rows.length, 2, 'differing backgrounds are real band boundaries');
+});
+
+await it("the section cell's own background beats every wrapper's", async () => {
+  const src = email('<tr><td style="background-color:#1a1a2e;background-image:url(https://cdn.test/h.jpg);color:#ffffff;padding:48px 32px"><h1 style="font-size:36px">Sale</h1><p>Everything</p></td></tr>');
+  const r = rowsOf(src)[0];
+  assert.equal(r.props.bg, '#1a1a2e', 'not the content table\'s #ffffff');
+  assert.equal(r.props.bgImage, 'https://cdn.test/h.jpg');
+});
+
+await it('a heading inherits color and alignment from the section cell, like text does', async () => {
+  const src = email('<tr><td style="color:#ffffff;text-align:center;padding:20px"><h1 style="font-size:36px">Over the photo</h1></td></tr>');
+  const b = firstOf(src, 'heading');
+  assert.equal(b.props.color, '#ffffff');
+  assert.equal(b.props.align, 'center');
+  const own = firstOf(email('<tr><td style="color:#ffffff"><h1 style="color:#f3a61d">Own color</h1></td></tr>'), 'heading');
+  assert.equal(own.props.color, '#f3a61d', 'an own value still wins');
+});
+
+await it('a bare text node reads its typography off the cell around it', async () => {
+  const src = email('<tr><td style="padding:14px 24px;font-size:30px;font-weight:800;color:#0065b2">{{TwoFactorCode}}</td></tr>');
+  const b = firstOf(src, 'text');
+  assert.match(b.props.html, /\{\{TwoFactorCode\}\}/);
+  assert.equal(b.props.size, 30);
+  assert.equal(b.props.weight, '800');
+  assert.equal(b.props.color, '#0065b2');
+});
+
+await it('bgcolor on the tr itself is read', async () => {
+  const r = rowsOf(email('<tr bgcolor="#123456"><td style="padding:10px"><p>on the tr</p></td></tr>'))[0];
+  assert.equal(r.props.bg, '#123456');
+});
+
+await it('an empty paragraph does not become a phantom row', async () => {
+  const types = typesOf(email('<tr><td><p style="margin:0"></p><p>Real</p></td></tr>'));
+  assert.deepEqual(types, ['text']);
+  const b = firstOf(email('<tr><td><p style="margin:0"></p><p>Real</p></td></tr>'), 'text');
+  assert.equal(/Real/.test(b.props.html), true);
+});
+
+await it("a border-top-only empty cell is the divider it draws (Beefree's divider_inner)", async () => {
+  const src = email('<tr><td><table width="100%" cellpadding="40"><tr><td><div align="center">'
+    + '<table width="20%"><tr><td style="font-size:1px;line-height:1px;border-top:1px solid #ca1029"><span>&#8202;</span></td></tr></table>'
+    + '</div></td></tr></table></td></tr>');
+  const b = firstOf(src, 'divider');
+  assert.ok(b, 'classified, got ' + typesOf(src).join(','));
+  assert.equal(b.props.thickness, 1);
+  assert.equal(b.props.color, '#ca1029');
+  assert.equal(b.props.width, 20);
+});
+
+await it('a card split across stacked tables does not double its frame', async () => {
+  const card = (style, inner) => '<table align="center" width="600" style="width:600px;margin:0 auto;' + style + '"><tbody><tr><td>' + inner + '</td></tr></tbody></table>';
+  const src = '<!doctype html><html><body style="background-color:#f1f5f9">'
+    + card('background-color:#fff;border:1px solid #e2e8f0;border-bottom:none;border-radius:16px 16px 0 0', '<p style="padding:10px">top</p>')
+    + card('background-color:#fff;border-left:1px solid #e2e8f0;border-right:1px solid #e2e8f0', '<p style="padding:10px">middle</p>')
+    + card('background-color:#fff;border:1px solid #e2e8f0;border-radius:0 0 16px 16px', '<p style="padding:10px">bottom</p>')
+    + '</body></html>';
+  const { rows, theme } = htmlToDoc(src);
+  assert.equal(theme.borderW, 1, 'the frame lives on the theme once');
+  assert.equal(theme.radius, 16);
+  const framed = rows.filter((r) => r.props.border && (r.props.bLeft || r.props.bRight));
+  assert.equal(framed.length, 0, 'no row keeps the vertical fragments — got ' + JSON.stringify(framed.map((r) => r.props)));
+  assert.equal(rows.some((r) => r.props.radius), false, 'no second rounded box inside the card');
+});
+
 console.log(`\n${passed} passed, ${failed} failed.`);
 closeDom();
 process.exit(failed ? 1 : 0);
