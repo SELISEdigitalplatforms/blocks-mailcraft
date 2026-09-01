@@ -59,7 +59,7 @@ Exported HTML is valid input to `loadTemplate`, so saving the export *is* saving
 
 Every attribute is also a property. TypeScript declarations ship with the package. Full reference and integration recipes: **[DOCS.md](DOCS.md)**.
 
-## For AI agents
+## Paste into your AI agent
 
 Everything an assistant needs to wire this up correctly:
 

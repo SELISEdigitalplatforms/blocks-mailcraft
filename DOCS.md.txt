@@ -8,18 +8,18 @@
 - [Why it is built this way](#why-it-is-built-this-way)
 - [How to use it](#how-to-use-it)
   - [Install](#install)
-  - [Two ways to mount](#two-ways-to-mount)
-  - [Framework wiring](#framework-wiring)
-  - [Saving and restoring](#saving-and-restoring)
-  - [Templates](#templates)
-  - [Merge variables](#merge-variables)
-  - [Image uploads](#image-uploads)
-  - [Choosing what the top bar shows](#choosing-what-the-top-bar-shows)
-  - [Keyboard shortcuts](#keyboard-shortcuts)
-  - [The footer strip](#the-footer-strip)
-  - [Language, direction and theme](#language-direction-and-theme)
-  - [Matching your app's typography](#matching-your-apps-typography)
-  - [Matching your brand color](#matching-your-brand-color)
+  - [Mount the editor](#mount-the-editor)
+  - [Wire it into a framework](#wire-it-into-a-framework)
+  - [Save and restore](#save-and-restore)
+  - [Load templates](#load-templates)
+  - [Add merge variables](#add-merge-variables)
+  - [Accept image uploads](#accept-image-uploads)
+  - [Choose what the top bar shows](#choose-what-the-top-bar-shows)
+  - [Use the keyboard shortcuts](#use-the-keyboard-shortcuts)
+  - [Configure the footer strip](#configure-the-footer-strip)
+  - [Set language, direction and theme](#set-language-direction-and-theme)
+  - [Match your app's typography](#match-your-apps-typography)
+  - [Match your brand color](#match-your-brand-color)
 - [API reference](#api-reference)
 - [How it works inside](#how-it-works-inside)
 
@@ -55,7 +55,7 @@ A user drags rows and blocks onto a canvas, edits text in place, styles it in an
 
 Four decisions shape the whole API. Each is a constraint the host would otherwise inherit.
 
-### 1. HTML in, HTML out — no document format
+### 1. HTML in, HTML out — there is no document format
 
 The obvious design is to expose the editor's internal document as JSON and let hosts store that. It is also the one that ages worst: the moment a host persists that JSON, its shape becomes a public contract. Every new block type, every renamed prop, every changed default becomes a migration the host has to run against rows in its own database.
 
@@ -101,7 +101,7 @@ Validation runs *before* the provider is called, so a rejected file never reache
 
 An editor embedded in a product that already has a header, a breadcrumb and a Save button ends up with two bars and two logos stacked on each other. So the top bar is switchable down to the individual control, and can be removed entirely.
 
-Most of what the bar does survives without it. Undo, redo and export are element methods; the screenshot methods never needed the bar at all; and the keyboard shortcuts are bound at the window level, not on the bar, so `Ctrl/Cmd+Z`, `Shift+Ctrl/Cmd+Z` and `Ctrl/Cmd+E` keep working either way. Three panels are opened only from the bar, though — the live **preview** overlay, the **Code** modal and the **AI draft** panel — so dropping those parts does take them out of reach. The table under [Choosing what the top bar shows](#choosing-what-the-top-bar-shows) says which is which.
+Most of what the bar does survives without it. Undo, redo and export are element methods; the screenshot methods never needed the bar at all; and the keyboard shortcuts are bound at the window level, not on the bar, so `Ctrl/Cmd+Z`, `Shift+Ctrl/Cmd+Z` and `Ctrl/Cmd+E` keep working either way. Three panels are opened only from the bar, though — the live **preview** overlay, the **Code** modal and the **AI draft** panel — so dropping those parts does take them out of reach. The table under [Choose what the top bar shows](#choose-what-the-top-bar-shows) says which is which.
 
 ---
 
@@ -133,7 +133,7 @@ Without a bundler:
 <script src="https://unpkg.com/@seliseblocks/mailcraft/dist/mailcraft-editor.bundle.js"></script>
 ```
 
-## Two ways to mount
+## Mount the editor
 
 **As a tag**, when the container is part of your markup:
 
@@ -183,7 +183,7 @@ It is a wrapper, not a second implementation — it creates the same element and
 
 By default the editor is appended, so existing content in the container survives; pass `{ replace: true }` to empty it first.
 
-## Framework wiring
+## Wire it into a framework
 
 The element is framework-agnostic; only the plumbing differs.
 
@@ -217,7 +217,7 @@ export function EmailEditor({ html, onSave }) {
 
 **Vue / Svelte** — both set DOM properties for non-string bindings automatically, so `<mailcraft-editor :toolbar="cfg">` works as written.
 
-## Saving and restoring
+## Save and restore
 
 ```js
 // save
@@ -231,7 +231,7 @@ Editing continues where it left off. Anything the importer cannot classify into 
 
 The editor also autosaves to `localStorage`, scoped **per browser tab**, so two tabs are two independent documents. That is a convenience for reload, not your persistence layer.
 
-## Templates
+## Load templates
 
 Templates are host content **and** host UI. The editor ships no catalogue and has no Templates tab — you render your own picker and push the choice in:
 
@@ -241,7 +241,7 @@ editor.loadTemplate({ name: 'Welcome', html });
 
 Applying one is a normal undoable edit with a toast, and your string is never mutated. Ready-made examples ship in the package under `examples/templates/`, with a working picker in [`examples/vanilla.html`](examples/vanilla.html) — both host-app content, shipped in the package for you to lift but not part of its API.
 
-## Merge variables
+## Add merge variables
 
 ```html
 <mailcraft-editor variables="first_name,company,unsubscribe_url"></mailcraft-editor>
@@ -267,7 +267,7 @@ The exporter balances the document as a whole: a stray end marker emits nothing,
 
 A start marker's expression field suggests the host's `variables` in a dropdown but stays free text, since conditions and loops routinely reference names that aren't inline tokens (`order.items`, a boolean flag, whatever your engine understands).
 
-## Image uploads
+## Accept image uploads
 
 A provider and a `maxBytes` ceiling are both required. The package ships no files of its own: with no provider the library opens empty and holds only what is dropped into it — data URIs, kept in the local draft, which no email client renders. With a provider but no `maxBytes` every upload is refused.
 
@@ -322,7 +322,7 @@ Setting `editor.storageProvider = null` drops back to that empty local library.
 
 `examples/vanilla.html` wires a working provider over IndexedDB — latency, cursor paging, server-side folders and search, uploads that survive a reload, deletes that stay deleted. It is the shape of a real integration with `fetch` swapped out, and it is where every file in the live demo's Assets modal comes from.
 
-## Choosing what the top bar shows
+## Choose what the top bar shows
 
 ```html
 <mailcraft-editor toolbar="none"></mailcraft-editor>                <!-- no bar -->
@@ -340,7 +340,7 @@ The **attribute names what to keep**; the **property names what to drop**. Marku
 
 `none` is the documented spelling for "no bar"; `hidden`, `off` and `false` are accepted as the same thing, and `toolbar="all"` is the explicit form of the default. The property takes `false` for no bar, and an object where only the keys set to `false` do anything — unlisted parts stay on.
 
-### What a hidden part costs you
+### The cost of a hidden part
 
 | part | with the bar gone |
 |---|---|
@@ -356,7 +356,7 @@ Screenshots are unaffected by any of this: `screenshotPng()`, `previewScreenshot
 
 `editor.core` reaches the rest (`core.openCode()`, `core.setState({ aiOpen: true })`, `core.setState({ previewOpen: true })`), but `EditorCore` is internal — its shape is free to change between versions. Keep `code`, `ai` or `preview` in the bar if you need them.
 
-## Keyboard shortcuts
+## Use the keyboard shortcuts
 
 Bound at the window level while the editor is connected, so they work with any bar configuration, including none.
 
@@ -374,7 +374,7 @@ Typing is never hijacked: inside a form field, `Ctrl/Cmd+Z` is the browser's own
 
 One caveat if your app binds the same keys: the handler asks whether the event came from a text field, not whether it came from inside the editor. `Ctrl/Cmd+E` anywhere on the page opens the export dialog, and `Backspace` on a non-field element elsewhere in your UI deletes the editor's selected block. An editor kept on a route of its own never notices; one sitting beside your own keyboard-driven UI might, and the fix is to `stopPropagation()` on the keydowns you own before they reach `window`.
 
-## The footer strip
+## Configure the footer strip
 
 The editor carries a one-line attribution along the bottom of the shell:
 
@@ -411,7 +411,7 @@ editor.messages = { 'footer.poweredBy': 'Powered by Acme' };
 
 Hiding the strip collapses its row — the canvas keeps every pixel it had.
 
-## Language, direction and theme
+## Set language, direction and theme
 
 ```html
 <mailcraft-editor locale="de" theme="dark"></mailcraft-editor>
@@ -429,7 +429,7 @@ editor.messages = { 'action.export': 'Send to campaign' };
 
 Every key, with its English default, is listed in [Every message key](#every-message-key). English is always the floor: a key your table leaves out shows the built-in English rather than a gap, and `missingKeys(yourTable)` tells you what a full replacement still lacks.
 
-## Matching your app's typography
+## Match your app's typography
 
 ```html
 <mailcraft-editor ui-font="inherit"></mailcraft-editor>
@@ -438,7 +438,7 @@ Every key, with its English default, is listed in [Every message key](#every-mes
 
 Editor chrome only — never the fonts inside the email being edited.
 
-## Matching your brand color
+## Match your brand color
 
 ```html
 <mailcraft-editor accent="#e11d48"></mailcraft-editor>
