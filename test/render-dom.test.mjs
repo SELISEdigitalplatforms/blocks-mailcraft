@@ -291,19 +291,56 @@ await it('inserting a merge tag reaches the document', async () => {
   assert.ok(true, 'no throw through the insert path');
 });
 
-await it('the font size nudges clamp at both ends', async () => {
+// The old version of this test called `el.core.nudge(-2)` -- the block
+// *reorder* method, a silent no-op for an id of -2 -- so it asserted only the
+// values `setProp` had just written and `core.size()` ran with no coverage at
+// all. That vacuum hid a real bug: size() clamped to a private 10–64 while the
+// panel allowed 8–96 (text) and 12–120 (heading), so one "Larger text" click
+// on a 96px block shrank it to 64. These call the real ± path and pin the
+// shared span.
+await it('the RTE font size ± clamps at the panel\'s own ends (text 8–96)', async () => {
   const { el, block } = await withText();
-  el.core.select('block', block.id);
-  el.core.setProp(block.id, 'size', 10);
-  for (let i = 0; i < 4; i++) el.core.nudge(-2);
+  const cur = () => el.getContent().rows.flatMap((r) => r.cols.flatMap((c) => c.blocks))[0];
+  el.core.setProp(block.id, 'size', 9);
+  for (let i = 0; i < 4; i++) el.core.size(cur(), -2);
   await settle();
-  const min = el.getContent().rows.flatMap((r) => r.cols.flatMap((c) => c.blocks))[0].props.size;
-  assert.ok(min >= 10, 'clamped at the floor, got ' + min);
-  el.core.setProp(block.id, 'size', 62);
-  for (let i = 0; i < 4; i++) el.core.nudge(2);
+  assert.equal(cur().props.size, 8, 'clamped at the panel floor');
+  el.core.setProp(block.id, 'size', 95);
+  for (let i = 0; i < 4; i++) el.core.size(cur(), 2);
   await settle();
-  const max = el.getContent().rows.flatMap((r) => r.cols.flatMap((c) => c.blocks))[0].props.size;
-  assert.ok(max <= 64, 'clamped at the ceiling, got ' + max);
+  assert.equal(cur().props.size, 96, 'clamped at the panel ceiling');
+});
+
+await it('one ± click on a heading at the panel edge no longer collapses it', async () => {
+  const el = await mountEditor();
+  el.core.insertBlock('heading');
+  await settle(2);
+  const cur = () => el.getContent().rows.flatMap((r) => r.cols.flatMap((c) => c.blocks))[0];
+  el.core.setProp(cur().id, 'size', 120);
+  el.core.size(cur(), 1);
+  await settle();
+  assert.equal(cur().props.size, 120, 'a 120px heading stays 120px, not 64');
+  el.core.setProp(cur().id, 'size', 12);
+  el.core.size(cur(), -1);
+  await settle();
+  assert.equal(cur().props.size, 12, 'floor holds at the panel minimum');
+});
+
+await it('the RTE size controls appear only on blocks that render a size', async () => {
+  const { el, block } = await withText();
+  el.core.setState({ editing: block.id, sel: { type: 'block', id: block.id } });
+  await settle(3);
+  assert.ok(q(el, '[data-rte-root] [title="Larger text"]'), 'text keeps the ± pair');
+
+  const el2 = await mountEditor();
+  el2.core.insertBlock('box');
+  await settle(2);
+  const box = el2.getContent().rows.flatMap((r) => r.cols.flatMap((c) => c.blocks))[0];
+  el2.core.setState({ editing: box.id, sel: { type: 'block', id: box.id } });
+  await settle(3);
+  assert.ok(q(el2, '[data-rte-root]'), 'a box still gets the toolbar');
+  assert.equal(q(el2, '[data-rte-root] [title="Larger text"]'), null,
+    'no ± on a box — it hardcodes 15px, so the buttons only wrote a junk size prop');
 });
 
 await it('an explicit text-block font overrides imported inline families', async () => {
@@ -323,6 +360,126 @@ await it('an explicit text-block font overrides imported inline families', async
   const html = el.exportHtml();
   assert.match(html, /font-family:\s*Tahoma/i);
   assert.doesNotMatch(html, /font-family:\s*Georgia/i);
+});
+
+// Imported (and AI-drafted) text blocks keep per-element inline typography on
+// purpose, and those declarations beat inheritance from the wrapper -- so the
+// block-level Text size / color / Line spacing / weight controls were dead on
+// exactly those blocks. The repair happens at mutation time (core setProp):
+// size *scales* descendants so the imported hierarchy survives, the others
+// strip the descendant property the way the Font control already does.
+const MIXED_IMPORT =
+  '<p style="font-size:15px;color:rgb(71, 85, 105);line-height:22px">Hi {{DisplayName}},</p>'
+  + '<p style="font-size:26px;font-weight:800">Welcome</p>'
+  + '<p style="font-size:15px;color:rgb(71, 85, 105)">Login now</p>';
+
+await it('Text size on a mixed-size block rescales the inline sizes proportionally', async () => {
+  const { el, block } = await withText();
+  el.core.setProp(block.id, 'size', 15);
+  el.core.setProp(block.id, 'html', MIXED_IMPORT);
+  el.core.setProp(block.id, 'size', 45);
+  await settle(2);
+  const content = q(el, '[data-mc-content="' + block.id + '"]');
+  assert.equal(content.style.fontSize, '45px', 'the wrapper carries the new base');
+  const ps = Array.from(content.querySelectorAll('p'));
+  assert.deepEqual(ps.map((p) => p.style.fontSize), ['45px', '78px', '45px'], '15/26/15 became 45/78/45');
+  assert.equal(ps[0].style.lineHeight, '66px', 'a px line-height scales with its font-size');
+  assert.match(el.exportHtml(), /font-size:\s*78px/, 'the scaled hierarchy ships');
+
+  el.core.undo();
+  await settle(2);
+  const back = el.getContent().rows.flatMap((r) => r.cols.flatMap((c) => c.blocks))[0];
+  assert.equal(back.props.size, 15, 'one undo step reverts the size...');
+  assert.match(back.props.html, /font-size:\s*26px/, '...and the rescaled html with it');
+});
+
+await it('an untouched block is never rewritten, and a size change on plain copy leaves the html alone', async () => {
+  const { el, block } = await withText();
+  const before = el.getContent().rows.flatMap((r) => r.cols.flatMap((c) => c.blocks))[0].props.html;
+  el.core.setProp(block.id, 'size', 45);
+  await settle(2);
+  const after = el.getContent().rows.flatMap((r) => r.cols.flatMap((c) => c.blocks))[0];
+  assert.equal(after.props.html, before, 'no inline sizes, nothing to rewrite');
+  assert.equal(q(el, '[data-mc-content="' + block.id + '"]').style.fontSize, '45px', 'inheritance does the work');
+});
+
+await it('the AI-headline shape (27px strong over a 16px base) follows the control', async () => {
+  const { el, block } = await withText();
+  // exactly what the AI draft's "Insert as heading" writes (editor-core addText)
+  el.core.setProp(block.id, 'html', '<strong style="font-size:27px;line-height:1.15;display:block">Big headline</strong>');
+  el.core.setProp(block.id, 'size', 32); // 16 -> 32: the strong must double
+  await settle(2);
+  const strong = q(el, '[data-mc-content="' + block.id + '"]').querySelector('strong');
+  assert.equal(strong.style.fontSize, '54px', '27px scaled by the same ratio');
+  assert.equal(strong.style.lineHeight, '1.15', 'a unitless line-height is left alone');
+});
+
+await it('an explicit Text color overrides imported inline colors', async () => {
+  const { el, block } = await withText();
+  el.core.setProp(block.id, 'html', MIXED_IMPORT);
+  el.core.setProp(block.id, 'color', '#ff0000');
+  await settle(2);
+  const content = q(el, '[data-mc-content="' + block.id + '"]');
+  assert.equal(content.querySelectorAll('[style*="color"]').length, 0, 'descendant colors stripped');
+  assert.doesNotMatch(el.exportHtml(), /71, 85, 105/, 'the imported grey no longer ships');
+});
+
+await it('Line spacing and Text weight override imported inline copies the same way', async () => {
+  const { el, block } = await withText();
+  el.core.setProp(block.id, 'html', MIXED_IMPORT);
+  el.core.setProp(block.id, 'lh', 2);
+  el.core.setProp(block.id, 'weight', '700');
+  await settle(2);
+  const content = q(el, '[data-mc-content="' + block.id + '"]');
+  assert.equal(content.style.lineHeight, '2');
+  assert.equal(content.querySelectorAll('[style*="line-height"]').length, 0, 'inline 22px line-height gone');
+  assert.equal(content.querySelectorAll('[style*="font-weight"]').length, 0, 'inline 800 gone — the block weight owns it');
+  assert.match(content.querySelector('p:nth-child(2)').style.fontSize, /26px/, 'sizes untouched by the other controls');
+});
+
+// The native colour dialog is bound to its <input type="color"> node:
+// Chromium closes it when the node leaves the document. Committing a picked
+// colour re-renders everything, so the panel must not rebuild under a
+// focused picker -- the canvas still must (it is the live preview).
+await it('an open colour dialog survives its own commits', async () => {
+  const { el, block } = await withText();
+  el.core.select('block', block.id);
+  await settle(3);
+  const picker = q(el, '.mc-color-control input[type="color"]');
+  assert.ok(picker, 'the colour pill renders its native picker');
+  picker.focus();
+  picker.value = '#ff0000';
+  picker.dispatchEvent(new (win().Event)('input', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 170)); // past typeCommit's 120ms debounce
+  await settle(2);
+  assert.equal(picker.isConnected, true, 'the dialog-owning input was not rebuilt');
+  assert.equal(el.shadowRoot.activeElement, picker, 'focus (and with it the dialog) stays put');
+  const after = el.getContent().rows.flatMap((r) => r.cols.flatMap((c) => c.blocks))[0];
+  assert.equal(after.props.color, '#ff0000', 'the colour still committed');
+  const content = q(el, '[data-mc-content="' + block.id + '"]');
+  assert.equal(content.style.color, 'rgb(255, 0, 0)', 'the canvas re-rendered live');
+  const hex = q(el, '.mc-color-control input.mc-stepper-input');
+  assert.equal(hex.value, '#ff0000', 'the pill previews itself while rebuilds are skipped');
+
+  // The skip is scoped to a focused picker: once focus moves on, the panel
+  // rebuilds as it always did.
+  picker.blur();
+  el.core.setProp(block.id, 'size', 20);
+  await settle(2);
+  assert.equal(picker.isConnected, false, 'with focus elsewhere the panel rebuilds normally');
+});
+
+await it('list items rescale per line without merging', async () => {
+  const el = await mountEditor();
+  el.core.insertBlock('list');
+  await settle(2);
+  const block = el.getContent().rows.flatMap((r) => r.cols.flatMap((c) => c.blocks))[0];
+  el.core.setProp(block.id, 'items', '<span style="font-size:20px">First</span>\nSecond');
+  el.core.setProp(block.id, 'size', 30); // list default is 15 -> doubles
+  await settle(2);
+  const after = el.getContent().rows.flatMap((r) => r.cols.flatMap((c) => c.blocks))[0];
+  assert.equal(after.props.items.split('\n').length, 2, 'still two items');
+  assert.match(after.props.items, /font-size:\s*40px/, 'the styled item scaled with the base');
 });
 
 await it('every block with a Font control renders the selected family', async () => {

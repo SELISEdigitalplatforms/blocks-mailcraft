@@ -49,6 +49,7 @@
     "examples",
     "README.md",
     "DOCS.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "engines": {

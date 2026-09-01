@@ -103,6 +103,67 @@ export const cleanImportHtml = (html) => {
 };
 
 /**
+ * Mutation-time repairs for rich block HTML. Imported content keeps its
+ * per-element inline typography on purpose (`cleanImportHtml` above), but a
+ * descendant's own `font-size`/`color`/`line-height` always outranks the
+ * inherited value from the block wrapper -- so the inspector's Text size,
+ * Text color, Line spacing and Text weight controls were dead on any block
+ * whose paragraphs carried their own styles. The render-time strip that fixed
+ * the Font control (`overrideRichFont`, render/block-body.js) can't be reused
+ * here: `fontFamily` defaults to empty so "unset" means "leave the import
+ * alone", while `size`/`color`/`lh`/`weight` always hold a value -- stripping
+ * at render time would flatten every imported design on first paint. These
+ * run once, at the moment the user moves the control (core `setProp`), so an
+ * untouched document renders byte-identical and the rewrite lands in the same
+ * undo step as the prop change.
+ *
+ * Both return the input string untouched (same reference, no reparse churn)
+ * when there is nothing to rewrite.
+ */
+
+/** Drops trailing float noise without inventing integers: 60.75 stays, 78.00 becomes 78. */
+const trimNum = (n) => String(Number(n.toFixed(2)));
+
+/**
+ * Multiplies every absolute inline font-size by `ratio`, so the block's Text
+ * size acts as a master scale and a 15/26/15px imported hierarchy survives a
+ * base change instead of being flattened. Only px/pt scale -- em/% are
+ * relative and already follow the wrapper. A px line-height sitting beside a
+ * scaled font-size scales with it, or the imported `line-height:22px` would
+ * strangle 45px glyphs.
+ */
+export const scaleInlineSizes = (html, ratio) => {
+  const src = String(html == null ? '' : html);
+  if (!src || !Number.isFinite(ratio) || ratio <= 0 || ratio === 1 || !/font-size/i.test(src)) return src;
+  const doc = new DOMParser().parseFromString(src, 'text/html');
+  let changed = false;
+  doc.body.querySelectorAll('[style]').forEach((node) => {
+    const size = /^([\d.]+)(px|pt)$/.exec(node.style.fontSize || '');
+    if (!size) return;
+    node.style.fontSize = trimNum(parseFloat(size[1]) * ratio) + size[2];
+    const lh = /^([\d.]+)px$/.exec(node.style.lineHeight || '');
+    if (lh) node.style.lineHeight = trimNum(parseFloat(lh[1]) * ratio) + 'px';
+    changed = true;
+  });
+  return changed ? doc.body.innerHTML : src;
+};
+
+/** Removes one CSS property from every descendant's inline style -- the block-level control now owns it. The property name is exact (`color` never touches `background-color`). */
+export const stripInlineStyle = (html, prop) => {
+  const src = String(html == null ? '' : html);
+  if (!src || src.indexOf(prop) === -1) return src;
+  const doc = new DOMParser().parseFromString(src, 'text/html');
+  let changed = false;
+  doc.body.querySelectorAll('[style]').forEach((node) => {
+    if (!node.style.getPropertyValue(prop)) return;
+    node.style.removeProperty(prop);
+    if (!node.getAttribute('style')) node.removeAttribute('style');
+    changed = true;
+  });
+  return changed ? doc.body.innerHTML : src;
+};
+
+/**
  * Makes an image URL safe to drop inside `url("...")`.
  *
  * These URLs are not ours: they come from a storage provider's backend, or from

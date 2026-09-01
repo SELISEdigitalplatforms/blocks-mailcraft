@@ -423,7 +423,14 @@ function classifyHeading(el) {
 
 function classifyList(el) {
   if (el.tagName !== 'UL' && el.tagName !== 'OL') return null;
-  const items = Array.from(el.children).filter((c) => c.tagName === 'LI').map((li) => li.innerHTML.trim());
+  // Through the same whitelist as a text run: this was the one classifier
+  // that carried raw source innerHTML into props, so classes, ids and event
+  // handlers (`onerror` on an <img> in a list item) rode into the canvas DOM
+  // and the export while every other path stripped them. The newline swap is
+  // because `items` is a one-fragment-per-line string -- a linebreak inside a
+  // source <li> would otherwise split it into two items on render.
+  const items = Array.from(el.children).filter((c) => c.tagName === 'LI')
+    .map((li) => cleanImportHtml(li.innerHTML).replace(/\n/g, ' '));
   if (!items.length) return null;
   return blk('list', { items: items.join('\n'), ordered: el.tagName === 'OL' });
 }

@@ -109,6 +109,18 @@ await it('a list becomes a list block with its items', async () => {
   assert.ok(ol, 'ordered lists too');
 });
 
+await it('list items pass through the import sanitizer like every other path', async () => {
+  const b = firstOf(email('<tr><td><ul>'
+    + '<li class="x" onclick="hack()"><img src="pic.png" onerror="hack()">One</li>'
+    + '<li><span style="font-size:13px;color:#334155;mso-line-height-rule:exactly">Two</span></li>'
+    + '</ul></td></tr>'), 'list');
+  assert.ok(b, 'still classified');
+  assert.doesNotMatch(b.props.items, /onerror|onclick|class=|mso-/, 'handlers, classes and mso-* are stripped');
+  assert.match(b.props.items, /src="pic\.png"/, 'the image itself survives');
+  assert.match(b.props.items, /font-size:\s*13px/, 'whitelisted inline typography survives');
+  assert.equal(b.props.items.split('\n').length, 2, 'one line per item');
+});
+
 // A table that is a direct child of a layout cell is read as layout -- which is
 // correct, that is what those tables are. A wrapped one is content.
 await it('a wrapped data table becomes a table block', async () => {

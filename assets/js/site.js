@@ -26,6 +26,33 @@
     });
   }
 
+  // ---- brand art in page content: follow the page theme, not the OS -------
+  // README.md's hero is a <picture> that picks its artwork on
+  // prefers-color-scheme — the right idiom on GitHub and npm, which theme by
+  // the OS. This site themes itself: the header toggle pins data-theme
+  // independent of the OS, so an OS-dark visitor reading the site in light
+  // got the near-white wordmark painted on a white page instead of the
+  // colour logo. Rebuild such pictures as the header brand's two-img class
+  // swap; site.css then shows whichever artwork the *page* theme calls for,
+  // and the toggle re-swaps it live. With JS off the OS-driven picture
+  // stays — correct, because without this file the page itself follows the
+  // OS too.
+  if (body) {
+    Array.prototype.forEach.call(body.querySelectorAll('picture'), function (pic) {
+      var img = pic.querySelector('img');
+      var source = pic.querySelector('source[srcset]');
+      if (!img || !source) return;
+      if ((img.getAttribute('src') || '').indexOf('assets/brand/') === -1) return;
+      var dark = img.cloneNode(false);
+      img.className = 'brand-logo logo-light';
+      dark.className = 'brand-logo logo-dark';
+      dark.src = (source.getAttribute('srcset') || '').split(/[\s,]+/)[0];
+      pic.parentNode.insertBefore(img, pic);
+      pic.parentNode.insertBefore(dark, pic);
+      pic.parentNode.removeChild(pic);
+    });
+  }
+
   // ---- "Copy for AI" — the page's markdown source, whole ------------------
   // The link points at the raw .md.txt mirror, which is the no-JS behavior;
   // with JS the click copies the file instead, so the markdown lands in the

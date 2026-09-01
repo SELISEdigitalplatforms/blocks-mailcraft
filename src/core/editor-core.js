@@ -3,7 +3,7 @@ import { mk, blk, mkRow, GROUPS, LAYOUTS, migrateDoc, normalizeDoc, blankDoc } f
 import { binder, decorate, group } from './binder.js';
 import { ALL_FOLDER_ID, normalizeAsset, resolveLimits, providerProblems } from './storage.js';
 import { validateFiles, limitsProblem } from './storage-limits.js';
-import { migrateTokens, cleanHtml, escHtml, linkHref } from './sanitize.js';
+import { migrateTokens, cleanHtml, escHtml, linkHref, scaleInlineSizes, stripInlineStyle } from './sanitize.js';
 import { buildHtml as buildHtmlFn } from './export.js';
 import { htmlToDoc } from './import-html.js';
 import { boxCss } from './layout-style.js';
@@ -35,6 +35,48 @@ const UPLOAD_CONCURRENCY = 3;
  */
 const RETIRED_SEED = /^data:image\/svg\+xml;utf8,.*%3Cpattern%20id%3D%22s%22/;
 const withoutRetiredSeeds = (assets) => (Array.isArray(assets) ? assets.filter((a) => !RETIRED_SEED.test(String((a && a.url) || ''))) : []);
+/**
+ * The one span Text size moves in, per block type -- shared by the inspector
+ * range and the RTE's ± buttons. They used to disagree: the panel allowed
+ * 8–96 (text) and 12–120 (heading) while `size()` clamped to a private
+ * 10–64, so a single "Larger text" click on a 96px block *shrank* it to 64.
+ */
+const SIZE_SPAN = { text: [8, 96], heading: [12, 120] };
+/** The blocks whose content is rich HTML in props, and the prop it lives in. Only these need the descendant rewrites below. */
+const RICH_HTML_PROP = { text: 'html', list: 'items' };
+/** Inspector key -> the inline CSS property whose descendant copies mask it (see `stripInlineStyle`). */
+const RICH_OWNED_STYLE = { color: 'color', lh: 'line-height', weight: 'font-weight', align: 'text-align' };
+
+/**
+ * Keeps a rich block's descendants in agreement with the block-level control
+ * being moved. Imported HTML deliberately keeps per-element inline typography
+ * (sanitize.js `cleanImportHtml`), and a descendant's own declaration beats
+ * inheritance from the wrapper -- so without this, Text size / color / Line
+ * spacing / weight / Align silently did nothing on any imported (or
+ * AI-drafted) block. Size *scales* descendants so a 15/26/15px hierarchy
+ * survives as 45/78/45 instead of flattening; the others strip the descendant
+ * property, exactly the semantics the Font control already shipped with.
+ * Runs inside the same `commit` as the prop write: one undo step, and a
+ * document nobody touches is never rewritten.
+ */
+function syncRichContent(block, key, val) {
+  const prop = RICH_HTML_PROP[block.type];
+  if (!prop) return;
+  // list items are one fragment per line; the rewrite must not run across the joins.
+  const perLine = (src, fn) => (prop === 'items' ? String(src).split('\n').map(fn).join('\n') : fn(String(src)));
+  const src = block.props[prop];
+  if (src == null || src === '') return;
+  if (key === 'size') {
+    const cur = Number(block.props.size);
+    const next = Number(val);
+    // An unknown base (imports that carried no readable size) can't be scaled
+    // against -- the first explicit size just establishes the base.
+    if (cur > 0 && next > 0 && next !== cur) block.props[prop] = perLine(src, (s) => scaleInlineSizes(s, next / cur));
+  } else if (RICH_OWNED_STYLE[key]) {
+    block.props[prop] = perLine(src, (s) => stripInlineStyle(s, RICH_OWNED_STYLE[key]));
+  }
+}
+
 const BORDER_STYLES = [
   { value: 'solid', label: 'Solid' },
   { value: 'dashed', label: 'Dashed' },
@@ -524,7 +566,8 @@ export class EditorCore {
       if (b.props[key] !== val) this.setProp(b.id, key, val);
     }
     const cur = Number(b.props.size) || 16;
-    this.setProp(b.id, 'size', Math.max(10, Math.min(64, cur + delta)));
+    const [lo, hi] = SIZE_SPAN[b.type] || [10, 64];
+    this.setProp(b.id, 'size', Math.max(lo, Math.min(hi, cur + delta)));
   }
 
   hasCountdown() { return this.state.doc.rows.some((r) => r.cols.some((c) => c.blocks.some((b) => b.type === 'countdown'))); }
@@ -620,7 +663,10 @@ export class EditorCore {
     this.commit((doc) => {
       const f = this.find(doc, id);
       const target = f.block ? f.block.props : (f.row ? f.row.props : null);
-      if (target) target[key] = val;
+      if (!target) return;
+      // Before the write: the size rewrite needs the outgoing value as its base.
+      if (f.block) syncRichContent(f.block, key, val);
+      target[key] = val;
     });
   }
 
@@ -1190,6 +1236,12 @@ export class EditorCore {
     this.flash(this.t('toast.htmlCopied'));
   };
 
+  /** Code view's source pane onto the clipboard, unsaved edits included: `codeSrc` is what the pane shows, which may be ahead of what Apply has pushed to the canvas. */
+  copyCode = () => {
+    if (navigator.clipboard) navigator.clipboard.writeText(this.state.codeSrc).catch(() => {});
+    this.flash(this.t('toast.htmlCopied'));
+  };
+
   downloadExport = () => {
     const blob = new Blob([this.state.exportCode], { type: 'text/html' });
     const a = document.createElement('a');
@@ -1321,7 +1373,7 @@ export class EditorCore {
           /<a(?:\s|>)/i.test(String(b.props.html || ''))
             ? [{ kind: 'richLinks', label: 'Links', html: b.props.html || '', onChange: (v) => this.setProp(b.id, 'html', v) }]
             : [],
-          [B.area('Text', 'html'), B.sel('Font', 'fontFamily', this.fontOptions(true)), B.range('Text size', 'size', 8, 96, 1, 'px'), B.range('Line spacing', 'lh', 0.8, 3, 0.05, ''), B.seg('Align', 'align', ALIGN), B.sel('Text weight', 'weight', [{ value: '400', label: 'Regular' }, { value: '500', label: 'Medium' }, { value: '700', label: 'Bold' }]), B.color('Text color', 'color')], padF));
+          [B.area('Text', 'html'), B.sel('Font', 'fontFamily', this.fontOptions(true)), B.range('Text size', 'size', ...SIZE_SPAN.text, 1, 'px'), B.range('Line spacing', 'lh', 0.8, 3, 0.05, ''), B.seg('Align', 'align', ALIGN), B.sel('Text weight', 'weight', [{ value: '400', label: 'Regular' }, { value: '500', label: 'Medium' }, { value: '700', label: 'Bold' }]), B.color('Text color', 'color')], padF));
         case 'image': return decorate(base.concat([B.btn('Choose from library', () => this.openLibrary({ id: b.id, key: 'src' })), B.text('Alt text', 'alt', 'Describe the image'), B.text('Link URL', 'href', 'https://'), B.range('Width', 'width', 5, 100, 1, '%'), B.seg('Align', 'align', ALIGN), B.range('Rounded corners', 'radius', 0, 200, 1, 'px')], padF));
         case 'button': return decorate(base.concat([B.text('Label', 'label'), B.text('Link URL', 'href', 'https://'), B.color('Button color', 'bg'), B.color('Text color', 'color'), B.sel('Font', 'fontFamily', this.fontOptions(true)), B.range('Text size', 'size', 8, 48, 1, 'px'), B.range('Rounded corners', 'radius', 0, 60, 1, 'px'), B.range('Outline thickness', 'borderW', 0, 6, 1, 'px')].concat(b.props.borderW ? [B.sel('Outline style', 'borderStyle', BORDER_STYLES), B.color('Outline color', 'borderColor')] : []).concat([B.range('Button height', 'py', 0, 60, 1, 'px'), B.range('Button width', 'px', 0, 120, 2, 'px'), B.seg('Align', 'align', ALIGN), B.tog('Full width', 'full')])));
         case 'divider': return decorate(base.concat([B.range('Thickness', 'thickness', 1, 20, 1, 'px'), B.sel('Line style', 'lineStyle', BORDER_STYLES), B.range('Width', 'width', 5, 100, 5, '%'), B.color('Color', 'color'), B.range('Space above & below', 'py', 0, 160, 2, 'px')]));
@@ -1355,7 +1407,7 @@ export class EditorCore {
         case 'html': return decorate(base.concat([B.area('Raw HTML', 'code')]));
         case 'countdown': return decorate(base.concat([B.text('Ends at (YYYY-MM-DDTHH:MM)', 'target'), B.text('Label', 'label'), B.sel('Font', 'fontFamily', this.fontOptions(true)), B.color('Color', 'color')]));
         case 'menu': return decorate(base.concat([B.area('Items — one per line as Label|URL', 'items'), B.seg('Align', 'align', ALIGN), B.sel('Font', 'fontFamily', this.fontOptions(true)), B.range('Text size', 'size', 8, 32, 1, 'px'), B.range('Space between items', 'gap', 0, 80, 2, 'px'), B.color('Text color', 'color')]));
-        case 'heading': return decorate(base.concat([B.area('Text', 'text'), B.sel('Heading level', 'level', [{ value: 'h1', label: 'H1 — largest' }, { value: 'h2', label: 'H2' }, { value: 'h3', label: 'H3' }, { value: 'h4', label: 'H4 — smallest' }]), B.seg('Font style', 'font', [{ value: 'condensed', label: 'Condensed' }, { value: 'body', label: 'Body' }]), B.sel('Font', 'fontFamily', this.fontOptions(true)), B.range('Text size', 'size', 12, 120, 1, 'px'), B.range('Line spacing', 'lh', 0.8, 2.2, 0.02, ''), B.seg('Align', 'align', ALIGN), B.sel('Text weight', 'weight', [{ value: '400', label: 'Regular' }, { value: '600', label: 'Semibold' }, { value: '700', label: 'Bold' }]), B.color('Text color', 'color')], padF));
+        case 'heading': return decorate(base.concat([B.area('Text', 'text'), B.sel('Heading level', 'level', [{ value: 'h1', label: 'H1 — largest' }, { value: 'h2', label: 'H2' }, { value: 'h3', label: 'H3' }, { value: 'h4', label: 'H4 — smallest' }]), B.seg('Font style', 'font', [{ value: 'condensed', label: 'Condensed' }, { value: 'body', label: 'Body' }]), B.sel('Font', 'fontFamily', this.fontOptions(true)), B.range('Text size', 'size', ...SIZE_SPAN.heading, 1, 'px'), B.range('Line spacing', 'lh', 0.8, 2.2, 0.02, ''), B.seg('Align', 'align', ALIGN), B.sel('Text weight', 'weight', [{ value: '400', label: 'Regular' }, { value: '600', label: 'Semibold' }, { value: '700', label: 'Bold' }]), B.color('Text color', 'color')], padF));
         case 'list': return decorate(base.concat([B.area('Items — one per line', 'items'), B.tog('Numbered', 'ordered'), B.sel('Font', 'fontFamily', this.fontOptions(true)), B.range('Text size', 'size', 8, 48, 1, 'px'), B.range('Line spacing', 'lh', 0.8, 3, 0.05, ''), B.range('Space between items', 'gap', 0, 60, 1, 'px'), B.color('Text color', 'color')], padF));
         case 'table': return decorate(base.concat([
           // Custom kind (render/fields.js `renderTableGrid`): a real grid of

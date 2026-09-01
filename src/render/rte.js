@@ -110,6 +110,12 @@ export function renderRte(core, b) {
     btn('inlineCode', 'Inline code', () => core.exec('insertHTML', '<code style="font-family:ui-monospace,monospace;font-size:0.92em;background:var(--ed-soft);padding:1px 4px">' + (core.getSelection().toString() || 'code') + '</code>')),
     btn('superscript', 'Superscript', () => core.exec('superscript'), st('superscript')),
     btn('subscript', 'Subscript', () => core.exec('subscript'), st('subscript')),
+  );
+  // Only where a size is actually rendered: `box` hardcodes 15px and `html`
+  // sets no font-size at all, so on those two the ± pair moved nothing while
+  // still persisting a junk `size` prop into the saved document, with the
+  // readout counting up beside it.
+  if (b.type === 'text' || b.type === 'heading') r1.append(
     sep(),
     btn('minus', 'Smaller text', () => core.size(b, -1)),
     el('span', { fontFamily: 'var(--ed-font)', fontSize: '9.5px', color: 'var(--rte-muted)', minWidth: '32px', textAlign: 'center' }, { text: (b.props.size || 16) + 'px' }),

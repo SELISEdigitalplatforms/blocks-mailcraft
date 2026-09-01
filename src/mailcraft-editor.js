@@ -1039,6 +1039,22 @@ export class MailCraftEditor extends ElementBase {
   }
 
   renderTabBody() {
+    // The browser's native colour dialog is bound to the identity of its
+    // <input type="color"> node: Chromium closes the dialog the moment that
+    // node leaves the document -- even if the same node is spliced back into
+    // the rebuilt tree within the same task (unlike the range slider's mouse
+    // capture, which focus-preserve.js does save that way). The picker lives
+    // in this panel, and its `input` events commit (debounced) to the doc, so
+    // every colour the user tried used to rebuild the panel ~120ms later and
+    // slam the dialog shut. While the picker holds focus -- the only time its
+    // dialog can be open -- the panel therefore skips its rebuild: the canvas
+    // has already re-rendered above (that is the live preview), and the pill
+    // previews itself (fields.js mutates its swatch and hex text directly on
+    // every `input`). Nothing else in the panel changes on a colour commit,
+    // so nothing is stale; the moment focus moves anywhere else, the next
+    // render rebuilds the panel as usual.
+    const active = this.shadowRoot.activeElement;
+    if (active && active.tagName === 'INPUT' && active.type === 'color' && this.tabBody.contains(active)) return;
     this.tabBody.innerHTML = '';
     const tab = this.core.state.tab;
     if (tab === 'design') this.tabBody.appendChild(this.renderDesignTab());
@@ -1579,7 +1595,30 @@ export class MailCraftEditor extends ElementBase {
     this.codeStatusEl = elS('div', 'font-family: var(--ed-font); font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ed-muted);', { class: 'mc-code-kicker' });
     headText.append(this.codeStatusEl, elS('div', 'font-family: var(--ed-font); font-weight: 600; font-size: 15px; line-height: 1.2;', { text: t('modal.rawHtmlTitle'), 'data-i18n': 'modal.rawHtmlTitle', class: 'mc-code-heading' }));
     this.codeWidthSeg = elS('div', '', { class: 'mc-segment' });
-    const reloadBtn = elS('button', 'border: 1px solid var(--ed-line); background: transparent; color: var(--ed-text); cursor: pointer; height: 30px; padding: 0 11px; display: flex; align-items: center; gap: 6px; font-family: var(--ed-font); font-size: 11px; font-weight: 600; transition: border-color 0.16s, background 0.16s;', { type: 'button', title: t('action.reloadHint'), 'data-i18n-title': 'action.reloadHint' });
+    // Ghost-button chrome shared by the header's Copy and Reload.
+    const GHOST_BTN = 'border: 1px solid var(--ed-line); background: transparent; color: var(--ed-text); cursor: pointer; height: 30px; padding: 0 11px; display: flex; align-items: center; gap: 6px; font-family: var(--ed-font); font-size: 11px; font-weight: 600; transition: border-color 0.16s, background 0.16s;';
+    const copyBtn = elS('button', GHOST_BTN, { type: 'button', title: t('toast.htmlCopied'), 'data-i18n-title': 'toast.htmlCopied', class: 'mc-code-copy' });
+    copyBtn.appendChild(icon('copy', 14));
+    // Reuses keys every locale already carries (story.copy / export.copied)
+    // rather than minting new ones across 32 translations.
+    const copyLabel = elS('span', '', { text: t('story.copy'), 'data-i18n': 'story.copy' });
+    copyBtn.appendChild(copyLabel);
+    copyBtn.addEventListener('mouseenter', () => { copyBtn.style.borderColor = 'var(--ed-accent)'; copyBtn.style.background = 'var(--ed-soft)'; });
+    copyBtn.addEventListener('mouseleave', () => { copyBtn.style.borderColor = 'var(--ed-line)'; copyBtn.style.background = 'transparent'; });
+    copyBtn.addEventListener('click', () => {
+      this.core.copyCode();
+      // Momentary "Copied": swap the i18n key itself, not just the text --
+      // refreshStrings relabels every [data-i18n] node on each render and
+      // would otherwise revert the feedback mid-flash.
+      copyLabel.setAttribute('data-i18n', 'export.copied');
+      copyLabel.textContent = this.core.t('export.copied');
+      clearTimeout(this._codeCopyTimer);
+      this._codeCopyTimer = setTimeout(() => {
+        copyLabel.setAttribute('data-i18n', 'story.copy');
+        copyLabel.textContent = this.core.t('story.copy');
+      }, 1600);
+    });
+    const reloadBtn = elS('button', GHOST_BTN, { type: 'button', title: t('action.reloadHint'), 'data-i18n-title': 'action.reloadHint' });
     reloadBtn.appendChild(icon('refresh', 14));
     reloadBtn.appendChild(elS('span', '', { text: t('action.reload'), 'data-i18n': 'action.reload' }));
     reloadBtn.addEventListener('mouseenter', () => { reloadBtn.style.borderColor = 'var(--ed-accent)'; reloadBtn.style.background = 'var(--ed-soft)'; });
@@ -1601,7 +1640,7 @@ export class MailCraftEditor extends ElementBase {
     closeBtn.addEventListener('mouseleave', () => { closeBtn.style.borderColor = 'var(--ed-line)'; });
     closeBtn.addEventListener('click', () => this.core.setState({ libraryOpen: false, exportOpen: false, aiOpen: false, codeOpen: false, assetTarget: null, libHot: false }));
     tip(closeBtn, t('action.closeWithoutApplyingHint'), 'down', 'end');
-    head.append(headIcon, headText, this.codeWidthSeg, reloadBtn, applyBtn, closeBtn);
+    head.append(headIcon, headText, this.codeWidthSeg, copyBtn, reloadBtn, applyBtn, closeBtn);
     overlay.appendChild(head);
 
     const cols = elS('div', 'display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; min-height: 0; background: var(--ed-work);', { class: 'mc-code-split' });

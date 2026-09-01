@@ -574,7 +574,15 @@ export function renderField(f) {
     // The native picker fires `input` continuously while dragging the hue
     // wheel -- committed raw, that is a full re-render per mouse move.
     const pickCommit = typeCommit(f.onChange);
-    picker.addEventListener('input', (e) => pickCommit.call(e.target.value));
+    picker.addEventListener('input', (e) => {
+      // Self-preview: while this picker's dialog is open the inspector skips
+      // its rebuilds (renderTabBody, mailcraft-editor.js) so the dialog's
+      // host node survives -- which also means no rebuild will repaint this
+      // pill. Mutate it directly so swatch and hex track the dialog live.
+      swatch.style.background = e.target.value;
+      hex.value = e.target.value;
+      pickCommit.call(e.target.value);
+    });
     picker.addEventListener('change', () => pickCommit.flush());
     swatch.appendChild(picker);
     const hex = el('input', { width: '82px', boxSizing: 'border-box', background: 'transparent', border: '0', outline: 'none', color: 'var(--ed-text)', fontFamily: 'ui-monospace, monospace', fontSize: '11px', padding: '0 9px' }, { placeholder: 'inherit', class: 'mc-stepper-input', 'data-focus-key': `f${f.key}`, dir: 'ltr' });

@@ -336,6 +336,28 @@ await it('the code modal round-trips the document through html', async () => {
   assert.ok(el.getContent().rows.length >= 1, 'applying kept a document');
 });
 
+await it('the code modal copy button puts the source pane on the clipboard, edits included', async () => {
+  const el = await mountEditor();
+  el.importHtml(EMAIL);
+  await settle(3);
+  el.core.openCode();
+  await settle(2);
+  let copied = null;
+  Object.defineProperty(win().navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText: async (s) => { copied = s; }, write: async () => {} },
+  });
+  const btn = q(el, '.mc-code-copy');
+  assert.ok(btn, 'the copy button is in the code toolbar');
+  // Copy takes what the pane shows -- unsaved edits, not the last-applied html.
+  el.core.setCodeSrc(el.core.state.codeSrc + '<!-- edited -->');
+  btn.click();
+  await settle(2);
+  assert.ok(copied && copied.endsWith('<!-- edited -->'), 'copied the live source, edits included');
+  assert.equal(el.core.state.toast, el.core.t('toast.htmlCopied'), 'confirmed with the existing toast');
+  assert.ok(btn.textContent.includes(el.core.t('export.copied')), 'the label flips to Copied for a moment');
+});
+
 await it('the code preview uses the editor scrollbar without changing its source', async () => {
   const el = await mountEditor();
   el.importHtml(EMAIL);
