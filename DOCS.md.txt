@@ -45,9 +45,9 @@ A user drags rows and blocks onto a canvas, edits text in place, styles it in an
 | Runtime dependencies | none |
 | Framework | none — a custom element works in React, Angular, Vue, Svelte and plain HTML |
 | Isolation | Shadow DOM; the editor's CSS and the host's cannot reach each other |
-| Size | ~639 KB minified, ~172 KB gzipped, one file |
+| Size | ~683 KB minified, ~189 KB gzipped, one file |
 | Languages | 31, RTL automatic |
-| Content blocks | 20 — text, heading, image, button, divider, spacer, social, video, countdown, menu, list, table, box, html, css, code, svg, embed, condition, loop |
+| Content blocks | 19 — text, heading, image, button, divider, spacer, social, video, countdown, menu, list, table, box, html, css, code, svg, condition, loop |
 
 ---
 
@@ -538,7 +538,7 @@ template, not to your app.
 
 | method | returns |
 |---|---|
-| `exportHtml()` | send-ready email HTML |
+| `exportHtml(options?)` | send-ready email HTML. `{ markers: false }` omits the `data-mc*` fidelity markers for pristine output — countdown, video, section box, code and raw-CSS blocks, flex/grid rows and “Keep columns” then reload lossily (content always survives) |
 | `importHtml(html)` | number of rows produced |
 | `loadTemplate({ name, html })` | — |
 | `undo()` / `redo()` | — |
@@ -771,14 +771,14 @@ Useful when debugging an integration, or before changing the source.
 
 **Import.** Real-world email HTML — inline and class styles, builder scaffolding, per-side borders, card columns, social strips — becomes native blocks wherever the shape is recognizable. Nested grids and `rowspan`/`colspan` survive as raw-HTML blocks: rendered and exported, not block-editable.
 
-**Export** reads back the rendered DOM, so what the user sees is what ships. Import and export are meant to stay round-trip compatible.
+**Export** reads back the rendered DOM, so what the user sees is what ships. Import and export stay round-trip compatible: re-importing an export restores every inspector setting, and exporting again reproduces the same bytes. A few blocks render into markup that cannot be read back (a countdown bakes its digits, a video is a linked image), so the export stamps a compact `data-mc*` attribute layer that the importer trusts and mail clients ignore — `exportHtml({ markers: false })` omits it for hosts that want pristine HTML, trading a lossy (but content-preserving) reload.
 
 **Build.** `build.js` is a zero-dependency bundler that turns the ESM sources into one plain `<script>`, then minifies through esbuild with a sourcemap alongside. esbuild is a dev dependency only — consumers install nothing transitive, and a clone with no `node_modules` still produces a working bundle.
 
 ```sh
 npm install       # devDependencies only: esbuild (minify), jsdom (DOM tests), c8 (coverage)
 node build.js     # rebuild dist/ after any change under src/
-npm test          # 13 suites — core logic runs DOM-free, the editor/importer suites run on jsdom
+npm test          # 14 suites — core logic runs DOM-free; the editor, importer and round-trip suites run on jsdom
 ```
 
 Deeper notes for coding agents and anyone changing the source live in `AGENTS.md` in the repository.

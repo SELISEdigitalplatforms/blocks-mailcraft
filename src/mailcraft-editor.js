@@ -463,8 +463,9 @@ export class MailCraftEditor extends ElementBase {
    */
   loadTemplate(tpl) { this.core.loadTemplate(tpl); }
 
-  exportHtml() {
-    const html = this.core.buildHtml();
+  /** `options.markers: false` omits the fidelity-marker attributes (`data-mc*`, the inert `mc-keep` class) for hosts that want pristine HTML -- at the price of a lossy reload for the few blocks whose rendered shape cannot be read back (countdown, video, section box, code, raw CSS, flex/grid rows). */
+  exportHtml(options) {
+    const html = this.core.buildHtml(options);
     this.dispatchEvent(new CustomEvent('export', { detail: html }));
     return html;
   }

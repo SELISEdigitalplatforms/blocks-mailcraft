@@ -136,9 +136,38 @@ export function decorateLogicTags(html) {
   return s;
 }
 
-export function buildHtml(state, root, boxCss) {
+export function buildHtml(state, root, boxCss, opts) {
   const d = state.doc; const t = d.theme;
   const logic = logicPlan(d);
+  /*
+   * Fidelity markers. A handful of blocks render into markup that cannot be
+   * read back into the block it came from: a countdown bakes its digits, a
+   * video is just a linked image, a section box and a code sample are styled
+   * divs like any other, a raw-CSS block is a bare <style>, and a flex/grid
+   * row is a div no table walker can re-shape. For exactly those, the export
+   * stamps a compact attribute layer -- `data-mc` (the type), `data-mcp`
+   * (the props the DOM itself does not carry), `data-mcr` (a CSS-layout
+   * row's settings) and the inert `mc-keep` class -- which the importer
+   * trusts when present and ignores otherwise. Mail clients ignore unknown
+   * attributes wholesale, and everything else round-trips from its rendered
+   * shape alone, so the layer stays this small. Attribute names deliberately
+   * sit outside `grab()`'s `data-mc-[a-z-]+` strip (they live on exporter
+   * scaffolding, but belt and braces). A host that wants pristine HTML can
+   * pass `exportHtml({ markers: false })` and accept the lossy reload.
+   */
+  const markers = !(opts && opts.markers === false);
+  const attrEsc = (v) => String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const MARKED = { countdown: 1, video: 1, box: 1, codeblock: 1 };
+  const marker = (b) => {
+    if (!markers || !MARKED[b.type]) return '';
+    const payload = { ...b.props };
+    // Content the rendered DOM already carries is not duplicated into the
+    // payload: a box's html IS the grabbed markup, a code sample's text IS
+    // the <pre>'s own.
+    if (b.type === 'box') delete payload.html;
+    if (b.type === 'codeblock') delete payload.code;
+    return ' data-mc="' + b.type + '" data-mcp="' + attrEsc(JSON.stringify(payload)) + '"';
+  };
   const grab = (id) => {
     const el = root.querySelector('[data-mc-content="' + id + '"]');
     if (!el) return '';
@@ -174,7 +203,11 @@ export function buildHtml(state, root, boxCss) {
    */
   const mobilePlan = (rp, cols) => {
     const mode = rp.mobileCols === undefined ? 1 : rp.mobileCols;
-    if (cols < 2 || mode === 'keep') return { row: '', cell: '' };
+    if (cols < 2) return { row: '', cell: '' };
+    // `keep` exports NO functional class, which made it indistinguishable
+    // from foreign HTML (where stacking is the safer default) -- so it ships
+    // as the inert `mc-keep`, a marker with no stylesheet rule behind it.
+    if (mode === 'keep') return { row: markers ? 'mc-keep' : '', cell: '' };
     const rowCls = [];
     // Two-up and reverse both need the row to become a flex container, which
     // is safe precisely because it only ever runs inside the media query: a
@@ -208,11 +241,15 @@ export function buildHtml(state, root, boxCss) {
       return blocksOf.map((b) => logic.emit.get(b.id) || '').filter(Boolean).map((s) => '      ' + s).join('\n');
     }
     const colInner = (c) => c.blocks.map((b) => {
-      if (b.type === 'css') return '<style>' + (b.props.code || '') + '</style>';
+      if (b.type === 'css') return '<style' + (markers ? ' data-mc="css"' + (b.props.note ? ' data-mcn="' + attrEsc(b.props.note) + '"' : '') : '') + '>' + (b.props.code || '') + '</style>';
       if (b.type === 'html') return b.props.code || '';
-      if (b.type === 'svg') return '<div style="text-align:' + b.props.align + ';padding:' + b.props.py + 'px 0">' + (b.props.code || '') + '</div>';
+      // The same width-carrying span the canvas draws (block-body.js), so the
+      // Width slider reaches the sent mail and the importer can read it back
+      // -- exported bare, the drawing shipped at its intrinsic size and the
+      // prop reset to 100 on every reload.
+      if (b.type === 'svg') return '<div style="text-align:' + b.props.align + ';padding:' + b.props.py + 'px 0"><span style="display:inline-block;width:' + (b.props.width || 100) + '%">' + (b.props.code || '') + '</span></div>';
       if (b.type === 'condition' || b.type === 'loop') return logic.emit.get(b.id) || '';
-      return '<div' + visClass(b.props) + ' style="' + boxCss(b.props) + '">' + grab(b.id) + '</div>';
+      return '<div' + marker(b) + visClass(b.props) + ' style="' + boxCss(b.props) + '">' + grab(b.id) + '</div>';
     }).filter(Boolean).join('\n            ') || '&nbsp;';
     const cells = r.cols.map((c) => {
       // Column-level styling (bg/radius/inner padding) renders as a wrapper
@@ -228,9 +265,12 @@ export function buildHtml(state, root, boxCss) {
     // for every wide client.
     const wrapCls = [plan.cell ? 'mc-stack' : '', plan.row].filter(Boolean).join(' ');
     const stackWrap = wrapCls ? ' class="' + wrapCls + '"' : '';
+    const mcr = markers && rp.layout && rp.layout !== 'columns'
+      ? ' data-mcr="' + attrEsc(JSON.stringify({ layout: rp.layout, flexDir: rp.flexDir || 'row', justify: rp.justify || 'flex-start', alignItems: rp.alignItems || 'stretch', wrap: rp.wrap !== false, gridCols: rp.gridCols || 2, gap: rp.gap || 0, spans: r.cols.map((c) => c.span) })) + '"'
+      : '';
     const cssBody = rp.layout === 'grid'
-      ? '<div' + stackWrap + ' style="display:grid;grid-template-columns:repeat(' + (rp.gridCols || 2) + ',minmax(0,1fr));gap:' + rp.gap + 'px">\n            ' + r.cols.map((c) => '<div>' + colInner(c) + '</div>').join('\n            ') + '\n          </div>'
-      : '<div' + stackWrap + ' style="display:flex;flex-direction:' + (rp.flexDir || 'row') + ';justify-content:' + (rp.justify || 'flex-start') + ';align-items:' + (rp.alignItems || 'stretch') + ';flex-wrap:' + (rp.wrap ? 'wrap' : 'nowrap') + ';gap:' + rp.gap + 'px">\n            ' + r.cols.map((c) => '<div style="flex:' + c.span + ' 1 auto;min-width:0">' + colInner(c) + '</div>').join('\n            ') + '\n          </div>';
+      ? '<div' + mcr + stackWrap + ' style="display:grid;grid-template-columns:repeat(' + (rp.gridCols || 2) + ',minmax(0,1fr));gap:' + rp.gap + 'px">\n            ' + r.cols.map((c) => '<div>' + colInner(c) + '</div>').join('\n            ') + '\n          </div>'
+      : '<div' + mcr + stackWrap + ' style="display:flex;flex-direction:' + (rp.flexDir || 'row') + ';justify-content:' + (rp.justify || 'flex-start') + ';align-items:' + (rp.alignItems || 'stretch') + ';flex-wrap:' + (rp.wrap ? 'wrap' : 'nowrap') + ';gap:' + rp.gap + 'px">\n            ' + r.cols.map((c) => '<div style="flex:' + c.span + ' 1 auto;min-width:0">' + colInner(c) + '</div>').join('\n            ') + '\n          </div>';
     const body = rp.layout && rp.layout !== 'columns'
       ? cssBody
       // The `<tr>` is what becomes the flex container for two-up and reverse;
@@ -244,8 +284,21 @@ export function buildHtml(state, root, boxCss) {
       : 'background:' + (rp.bg || t.contentBg || 'transparent') + ';';
     const tdBorder = rowBorderCss(rp)
       + (rp.radius ? 'border-radius:' + rp.radius + 'px;' : '')
-      + (rp.shadow ? 'box-shadow:' + rp.shadow + ';' : '')
-      + ((rp.mt || rp.mr || rp.mb || rp.ml || rp.my) ? 'margin:' + rowMargin(rp) + ';' : '');
+      + (rp.shadow ? 'box-shadow:' + rp.shadow + ';' : '');
+    // Outside margins and Max width need an element mail clients actually
+    // honour them on: margins on a <td> are ignored by every major client
+    // (the old shape wrote them there -- inert in sent mail AND never read
+    // back), and max-width was canvas-only. Both now ride a wrapper div
+    // INSIDE the cell, carrying the row's paint and padding with them so
+    // the margin sits outside the painted box, exactly as the canvas draws
+    // it. Rows using neither keep the old markup byte for byte.
+    const boxed = rp.mt || rp.mr || rp.mb || rp.ml || rp.my || (rp.maxW && rp.maxW < 100);
+    if (boxed) {
+      const cap = rp.maxW && rp.maxW < 100 ? 'max-width:' + rp.maxW + '%;' : '';
+      // centerEmpty only when capped: an uncapped box spans the cell anyway,
+      // and `auto` there would only read back as a lost slider value.
+      return '      <tr>\n        <td style="padding:0;">\n        <div style="' + cap + 'margin:' + rowMargin(rp, !!cap) + ';padding:' + rowPad(rp) + ';' + tdBg + tdBorder + '">\n          ' + body + '\n        </div>\n        </td>\n      </tr>';
+    }
     return '      <tr>\n        <td style="padding:' + rowPad(rp) + ';' + tdBg + tdBorder + '">\n          ' + body + '\n        </td>\n      </tr>';
   }).join('\n') + (logic.tail ? '\n      ' + logic.tail : '');
   // The page section -- the full-width area the content column sits on. Its
@@ -353,6 +406,26 @@ export function buildHtml(state, root, boxCss) {
   // `text-size-adjust` at 100%, never `none`: both stop a mobile client
   // inflating the type, but `none` also blocks legitimate scaling and leaves
   // text unreadably small on some Android clients.
+  /*
+   * theme.link, made real: mail clients have no stylesheet to inherit a link
+   * color from (Gmail strips <style>; the sheet rule that paints the canvas
+   * never ships), so the value must ride every anchor inline. Stamped only
+   * where no inline color already stands -- a button label, a menu item, or
+   * a link the user recolored by hand keeps its own -- and skipped entirely
+   * when the theme has no link color. The canvas strips restated stamps at
+   * render time (overrideLinkColor), which is what keeps a reloaded document
+   * inheriting: export -> import -> export re-stamps the same bytes.
+   */
+  const stampLinks = (html) => {
+    if (!t.link) return html;
+    return html.replace(/<a\b([^>]*)>/g, (m0, attrs) => {
+      if (/(?:[;"\s])color\s*:/.test(attrs)) return m0;
+      if (/style="/.test(attrs)) {
+        return '<a' + attrs.replace(/style="([^"]*)"/, (s0, css) => 'style="' + css + (!css.trim() || css.trim().endsWith(';') ? '' : ';') + 'color:' + t.link + ';"') + '>';
+      }
+      return '<a' + attrs + ' style="color:' + t.link + ';">';
+    });
+  };
   const bodyStyle = 'margin:0;padding:0;background:' + pageBg + ';font-family:' + t.font.replace(/"/g, "'") + ';color:' + t.text + ';-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;text-size-adjust:100%;';
-  return msoHarden('<!doctype html>\n<html lang="en" xmlns:o="urn:schemas-microsoft-com:office:office">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<meta name="color-scheme" content="light">\n<meta name="supported-color-schemes" content="light">\n<title>' + 'Email' + '</title>' + msoHead + stackCss + '\n</head>\n<body style="' + bodyStyle + '">\n<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:' + pageBg + ';">\n  <tr><td align="center" style="padding:' + pagePad + ';">\n    ' + ghostOpen + '\n    ' + shell + '\n    ' + ghostClose + '\n  </td></tr>\n</table>\n</body>\n</html>');
+  return msoHarden(stampLinks('<!doctype html>\n<html lang="en" xmlns:o="urn:schemas-microsoft-com:office:office">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<meta name="color-scheme" content="light">\n<meta name="supported-color-schemes" content="light">\n<title>' + 'Email' + '</title>' + msoHead + stackCss + '\n</head>\n<body style="' + bodyStyle + '">\n<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:' + pageBg + ';">\n  <tr><td align="center" style="padding:' + pagePad + ';">\n    ' + ghostOpen + '\n    ' + shell + '\n    ' + ghostClose + '\n  </td></tr>\n</table>\n</body>\n</html>'));
 }

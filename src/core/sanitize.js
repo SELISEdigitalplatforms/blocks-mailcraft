@@ -74,7 +74,7 @@ const IMPORT_STYLES = [
 ];
 
 /** `dropProps` (optional): style properties to leave out of the kept whitelist -- the importer passes `['font-family']` when a run's family has been claimed as the block-level font, so the same declaration doesn't ship twice (and the renderer's overrideRichFont then has nothing to strip at render time, which keeps export -> import -> export byte-stable). */
-export const cleanImportHtml = (html, dropProps) => {
+export const cleanImportHtml = (html, dropProps, keepProps) => {
   const doc = new DOMParser().parseFromString(String(html || ''), 'text/html');
   doc.querySelectorAll('style,script,meta,link,title,head').forEach((n) => n.remove());
   const walk = (node) => {
@@ -89,6 +89,14 @@ export const cleanImportHtml = (html, dropProps) => {
       const kept = [];
       IMPORT_STYLES.forEach((p) => {
         if (dropProps && dropProps.indexOf(p) > -1) return;
+        const v = el.style.getPropertyValue(p);
+        if (v) kept.push(p + ':' + v);
+      });
+      // `keepProps`: extra properties a specific caller vouches for beyond the
+      // shared whitelist -- the section-box reader passes the display/margin
+      // pair its own template writes (`<strong style="display:block;...">`),
+      // which the general list rightly refuses from arbitrary paste.
+      (keepProps || []).forEach((p) => {
         const v = el.style.getPropertyValue(p);
         if (v) kept.push(p + ':' + v);
       });

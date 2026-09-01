@@ -98,6 +98,13 @@ export const STYLE = `
 #mc ::selection { background: var(--ed-select); }
 #mc a { color: var(--ed-accent); }
 #mc a:hover { color: var(--ed-accent); opacity: 0.72; }
+/* Content links are the document's, not the chrome's: inside the sheet the
+   accent rule above painted every anchor in the HOST's brand color, which is
+   why the theme's own Link color setting never did anything visible. The
+   variable is set per render on the sheet root (render/canvas.js); anchors
+   with their own inline color keep it, exactly as in the sent mail. */
+#mc [data-mc-sheet] a { color: var(--mc-link, var(--ed-accent)); }
+#mc [data-mc-sheet] a:hover { color: var(--mc-link, var(--ed-accent)); opacity: 1; }
 @keyframes mcIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes mcFade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes mcPulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }

@@ -272,8 +272,15 @@ export class MailCraftEditor extends HTMLElement {
   /** Merged over `storageProvider.limits` per key, this side winning. */
   storageLimits: StorageLimits | null;
 
-  /** Send-ready email HTML — valid input to the importer, so saving the export is saving the work. */
-  exportHtml(): string;
+  /**
+   * Send-ready email HTML — valid input to the importer, so saving the export
+   * is saving the work. `{ markers: false }` omits the fidelity-marker
+   * attributes (`data-mc*`, the inert `mc-keep` class) for hosts that want
+   * pristine HTML, at the price of a lossy reload for the few blocks whose
+   * rendered shape cannot be read back (countdown, video, section box, code,
+   * raw CSS, flex/grid rows).
+   */
+  exportHtml(options?: { markers?: boolean }): string;
 
   /** Parses email HTML back onto the canvas. Returns the number of rows produced. */
   importHtml(html: string): number;
@@ -365,7 +372,7 @@ export interface EditorHandle {
   element: MailCraftEditor;
   /** Removes the editor and detaches the listeners this call attached. */
   destroy(): void;
-  exportHtml(): string;
+  exportHtml(options?: { markers?: boolean }): string;
   importHtml(html: string): number;
   loadTemplate(tpl: Template): void;
   undo(): void;

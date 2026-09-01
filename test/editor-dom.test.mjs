@@ -361,6 +361,38 @@ await it('block fonts and inherit-adjacent styling survive save -> reload', asyn
   assert.equal(hero.props.bg || '', '', 'a row that inherited its background still inherits it');
 });
 
+await it('an imported font stack stays selectable in the Font controls', async () => {
+  // The Font select offers ten email-safe stacks. An imported email brings its
+  // own, which matches none of them -- and a <select> whose value is not among
+  // its options shows nothing selected, so the panel read "Inherit — theme
+  // font" about a heading that was really set in Georgia, and the only way to
+  // find out what font it was was to overwrite it.
+  const el = await mountEditor();
+  el.importHtml('<!doctype html><html><body style="font-family:\'DM Sans\', Arial, sans-serif">'
+    + '<table width="600"><tr><td><h1 style="font-family:Georgia, serif">Fancy</h1><p>Body copy</p></td></tr></table></body></html>');
+  await settle(2);
+  const h = allBlocks(el).find((b) => b.type === 'heading');
+  assert.equal(h.props.fontFamily, 'Georgia, serif', 'the import kept the block font');
+  el.core.select('block', h.id);
+  await settle(2);
+  const font = el.core.fields().find((f) => f.label === 'Font');
+  assert.equal(font.value, 'Georgia, serif');
+  const opt = font.options.find((o) => o.value === 'Georgia, serif');
+  assert.ok(opt, 'the block font is an option of its own: ' + JSON.stringify(font.options.map((o) => o.label)));
+  assert.match(opt.label, /^Georgia/, 'labelled by its own first family');
+  // The theme's Default font is imported the same way and needs the same seat.
+  const themeFont = el.core.themeFields().find((f) => f.label === 'Default font');
+  assert.match(String(themeFont.value), /DM Sans/, 'the document font came from the body');
+  assert.ok(themeFont.options.some((o) => o.value === themeFont.value), 'and it is selectable');
+  // A stack already on the list adds nothing -- no duplicate seat.
+  const text = allBlocks(el).find((b) => b.type === 'text');
+  el.core.setProp(text.id, 'fontFamily', 'Tahoma, Geneva, sans-serif');
+  el.core.select('block', text.id);
+  await settle(2);
+  const known = el.core.fields().find((f) => f.label === 'Font');
+  assert.equal(known.options.filter((o) => /Tahoma/.test(o.value)).length, 1, 'the shipped Tahoma option is the only one');
+});
+
 await it('the code modal round-trips the document through html', async () => {
   const el = await mountEditor();
   el.importHtml(EMAIL);

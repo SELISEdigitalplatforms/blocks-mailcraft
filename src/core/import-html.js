@@ -238,10 +238,25 @@ function lineHeightRatio(raw, fontPx) {
   let ratio;
   if (raw.endsWith('%')) ratio = PX(raw) / 100;
   else if (raw.endsWith('em')) ratio = PX(raw); // already a multiplier of the font size, by definition
-  else if (raw.endsWith('pt')) ratio = (PX(raw) * 4 / 3) / size;
-  else if (raw.endsWith('px')) ratio = PX(raw) / size;
+  else if (raw.endsWith('pt')) ratio = snapRatio(PX(raw) * 4 / 3, size);
+  else if (raw.endsWith('px')) ratio = snapRatio(PX(raw), size);
   else ratio = parseFloat(raw);
   return Number.isFinite(ratio) && ratio > 0 && ratio <= 4 ? ratio : null;
+}
+
+/** The exporter ships line-height as `round(ratio * size)` px (msoHarden needs a length Outlook will honour), so dividing back rarely lands on the ratio the slider actually held -- 1.6 at 16px ships as 26px and returned as 1.625, drifting further every save. Any ratio inside the half-pixel window reproduces the same px on the next export, so the round trip stays converged; the shortest-decimal one in that window is the value the slider can actually hold, i.e. the one the user chose. */
+function snapRatio(px, size) {
+  if (!size || !px) return px / (size || 16);
+  const r = px / size;
+  // Coarsest grid first -- tenths, then the sliders' own 0.05 step, then
+  // hundredths -- because several grid values can sit inside the same
+  // half-pixel window (1.35 and 1.33 both ship as 36px at 27px type) and the
+  // coarser one is the value a slider actually lands on.
+  for (const step of [0.1, 0.05, 0.01]) {
+    const cand = Math.round(r / step) * step;
+    if (Math.abs(cand * size - px) < 0.5) return Math.round(cand * 100) / 100;
+  }
+  return r;
 }
 
 function escapeText(s) {
@@ -272,18 +287,25 @@ function classifyImage(el) {
   // <img style="width:100%" width="88">`), and trusting the percent first is
   // exactly what blew an 88px logo up to the full content width.
   const isPct = (v) => String(v || '').endsWith('%');
+  // A linked image carries its % width on the anchor, not the img: the
+  // renderer sizes the <a> and lets the img fill it (block-body.js explains
+  // why), so reading only the img saw `width:100%` and every linked image
+  // reloaded at full width.
+  const a = img.parentElement && img.parentElement.tagName === 'A' ? img.parentElement : null;
   const pxCandidates = [
     img.style.width, img.getAttribute('width'), img.style.maxWidth,
+    a && a.style ? a.style.width : '', a && a.style ? a.style.maxWidth : '',
     el !== img && el.style ? el.style.width : '', el !== img && el.style ? el.style.maxWidth : '',
   ];
   const pxHint = pxCandidates.find((v) => v && !isPct(v) && PX(v));
+  const pctHint = [a && a.style ? a.style.width : '', img.style.width].find((v) => isPct(v) && PX(v));
   let width = 100;
   if (pxHint) {
     // Convert to % of the nearest fixed-width ancestor.
     const colPx = ancestorPxWidth(img) || 600;
     width = Math.max(2, Math.min(100, Math.round((PX(pxHint) / colPx) * 100)));
-  } else if (isPct(img.style.width) && PX(img.style.width)) {
-    width = PX(img.style.width);
+  } else if (pctHint) {
+    width = PX(pctHint);
   }
   const over = {
     src: img.getAttribute('src') || '',
@@ -351,8 +373,11 @@ function classifyButton(el) {
   const over = {
     label: (a.textContent || '').trim() || 'Button',
     href: a.getAttribute('href') || '#',
-    bg: st.backgroundColor || st.background || (pill.getAttribute && pill.getAttribute('bgcolor')) || '',
-    color: a.style.color || st.color || '#ffffff',
+    // hexOf throughout: CSSOM serializes every hex the renderer wrote back as
+    // `rgb(...)`, and the raw string both fails the inspector's native picker
+    // and breaks the theme-equality folds' string comparisons.
+    bg: hexOf(st.backgroundColor || st.background || (pill.getAttribute && pill.getAttribute('bgcolor')) || ''),
+    color: hexOf(a.style.color || st.color || '#ffffff'),
     radius: radiusOf(st),
     py: (pad && pad.py) || 13,
     px: (pad && pad.px) || 26,
@@ -391,9 +416,15 @@ const SOCIAL_HOSTS = /facebook|twitter|x\.com|instagram|linkedin|youtube|tiktok|
 /** A run of small image-links, mostly pointing at social networks (every footer's icon strip), becomes a native social block -- MailCraft draws its own icon art from the network name (alt text, or the link's hostname). Imported as loose images they'd neither line up nor be editable as a set. */
 function classifySocial(el) {
   if (!/^(DIV|TD|TABLE)$/.test(el.tagName)) return null;
-  if ((el.textContent || '').trim()) return null;
   const anchors = Array.from(el.querySelectorAll('a'));
   if (anchors.length < 2) return null;
+  // Text is disqualifying only when it is *prose around* the icons. A strip
+  // with "Show network names" on carries each network's name in a span inside
+  // its anchor -- all of the wrapper's text -- and rejecting that shape sent
+  // the block to classifyMenu, which reloaded it as a menu of links.
+  const squash = (s) => String(s || '').replace(/\s+/g, '');
+  const ownText = squash(el.textContent);
+  if (ownText && ownText !== squash(anchors.map((a) => a.textContent).join(''))) return null;
   // `svg` alongside `img`: MailCraft's own social block renders inline-SVG
   // icons, so accepting both is what lets an exported strip round-trip back
   // into a social block instead of dissolving.
@@ -423,15 +454,37 @@ function classifySocial(el) {
   // closest match to how such strips actually look. The block *default*
   // (outlined boxes at 1.9x the icon size) both looked wrong and wrapped in
   // narrow footer columns.
-  const aBg = a0.style && (a0.style.backgroundColor || a0.style.background);
+  // `background:transparent` is what the renderer writes on every NON-badge
+  // anchor -- it is the absence of a fill, not a fill. Reading it as painted
+  // flipped every Outline/Bare strip into filled Square badges on reload.
+  const paintOf = (a) => {
+    const v = (a.style && (a.style.backgroundColor || a.style.background)) || '';
+    return v === 'transparent' || /^rgba\(0,\s*0,\s*0,\s*0\)/.test(v) ? '' : v;
+  };
+  const aBg = paintOf(a0);
   const aBorder = a0.style ? PX(a0.style.borderWidth) || PX(a0.style.borderTopWidth) : 0;
   over.shape = aBg ? (String(a0.style.borderRadius || '').indexOf('50%') > -1 ? 'circle' : 'square') : (aBorder ? 'outline' : 'bare');
-  const aColor = a0.style && a0.style.color;
-  if (aColor) over.color = aColor; else over.palette = 'brand';
+  if (ownText) over.showLabel = true;
+  const label0 = a0.querySelector('span');
+  if (label0 && label0.style.fontFamily) over.fontFamily = label0.style.fontFamily;
+  // The block's one color: a badge's is its FILL (the anchor's text color is
+  // the auto-contrast ink painted over it -- reading that turned a blue badge
+  // strip white); outline/bare's is the icon color. Anchors that disagree
+  // with each other are the brand palette -- the custom palette paints every
+  // anchor alike, so per-network colors can only mean per-network brands.
+  const chromaOf = (a) => hexOf(aBg ? paintOf(a) : (a.style && a.style.color) || '');
+  const chroma = anchors.map(chromaOf).filter(Boolean);
+  if (chroma.length && chroma.some((c) => c !== chroma[0])) over.palette = 'brand';
+  else if (chroma[0]) over.color = chroma[0];
+  else over.palette = 'brand';
   // Icon spacing: inter-cell padding on image strips, anchor margins on
-  // exported ones.
+  // exported ones. A cell only describes ICON spacing when it holds exactly
+  // one icon (the one-td-per-icon strip); a single cell around the whole
+  // strip is layout -- its padding is the row's gutter, and reading it here
+  // overwrote the block's own 18px with the row's 20 on every reload.
   const cell = a0.closest ? a0.closest('td') : null;
-  const cellGap = cell && cell !== el && el.contains(cell) ? PX(cell.style.paddingRight) + PX(cell.style.paddingLeft) : 0;
+  const cellGap = cell && cell !== el && el.contains(cell) && cell.querySelectorAll('a').length === 1
+    ? PX(cell.style.paddingRight) + PX(cell.style.paddingLeft) : 0;
   const marginGap = a0.style ? PX(a0.style.marginRight) + PX(a0.style.marginLeft) : 0;
   const gap = cellGap || marginGap;
   if (gap) over.gap = gap;
@@ -441,7 +494,9 @@ function classifySocial(el) {
 /** A run of two or more sibling links with nothing else in the container (Beefree/MJML nav bars) is a menu block, not a text run -- as text, each link imports mid-paragraph with the wrapper's junk around it. */
 function classifyMenu(el) {
   if (el.tagName !== 'DIV' && el.tagName !== 'TD') return null;
-  if (el.querySelector('img,table,div,p,input,h1,h2,h3,h4,h5,h6')) return null;
+  // `svg` in the blocker list: a labeled social strip is anchors of svg+span,
+  // and without it this classifier claimed the strip as a menu of links.
+  if (el.querySelector('img,svg,table,div,p,input,h1,h2,h3,h4,h5,h6')) return null;
   const anchors = Array.from(el.children).filter((c) => c.tagName === 'A');
   if (anchors.length < 2) return null;
   const linkText = anchors.map((a) => (a.textContent || '')).join('').replace(/\s+/g, '');
@@ -453,7 +508,7 @@ function classifyMenu(el) {
   const size = fontPx(inheritedStyle(anchors[0], 'fontSize'));
   if (size) over.size = size;
   const color = inheritedStyle(anchors[0], 'color');
-  if (color) over.color = color;
+  if (color) over.color = hexOf(color);
   const family = inheritedStyle(anchors[0], 'fontFamily');
   if (family) over.fontFamily = family;
   // Item spacing ships as symmetric horizontal margins on each anchor
@@ -469,7 +524,7 @@ function classifyDivider(el) {
     return blk('divider', {
       thickness: PX(el.style.height) || PX(el.style.borderTopWidth) || 1,
       lineStyle: borderStyleOf(el.style),
-      color: el.style.backgroundColor || el.style.borderTopColor || el.style.borderColor || '#d9dade',
+      color: hexOf(el.style.backgroundColor || el.style.borderTopColor || el.style.borderColor) || '#d9dade',
       width: sw.endsWith('%') ? PX(sw) : 100,
     });
   }
@@ -480,7 +535,7 @@ function classifyDivider(el) {
   const bg = bar.style.backgroundColor || bar.style.background || bar.style.borderTopColor;
   if (!(h > 0 && h <= 10 && bg)) return null;
   const sw = bar.style.width || '';
-  const over = { thickness: h, lineStyle: borderStyleOf(bar.style), color: bg, width: sw.endsWith('%') ? PX(sw) : 100 };
+  const over = { thickness: h, lineStyle: borderStyleOf(bar.style), color: hexOf(bg), width: sw.endsWith('%') ? PX(sw) : 100 };
   // The wrapper's vertical padding is the block's own spacing (the exporter
   // writes `padding: py 0` around the rule); a declared zero counts too, so
   // a tightened divider does not spring back to the 14px default on reload.
@@ -518,6 +573,16 @@ function classifyHeading(el) {
   const family = st.fontFamily || inheritedStyle(el.parentElement, 'fontFamily');
   if (fontKey(family) === CONDENSED_KEY) over.font = 'condensed';
   else if (family) over.fontFamily = family;
+  // Line spacing and the block's own padding, read the way size/color are --
+  // both have inspector sliders, and both silently reset to the defaults
+  // (1.12, 8/0) on every save before this.
+  const lh = lineHeightRatio(st.lineHeight || inheritedStyle(el.parentElement, 'lineHeight'), size);
+  if (lh) over.lh = lh;
+  const pd = paddingOf(st);
+  if (pd) { over.py = pd.py; over.px = pd.px; }
+  // A declared all-zero padding is a choice (paddingOf returns null for it);
+  // absence is what falls to the 8px default.
+  else if (st.paddingTop !== '') { over.py = 0; over.px = 0; }
   return blk('heading', over);
 }
 
@@ -606,7 +671,64 @@ function classifyTable(el) {
   return blk('table', over);
 }
 
-const CLASSIFIERS = [classifyImage, classifyButton, classifySocial, classifyMenu, classifyDivider, classifySpacer, classifyHeading, classifyList, classifyTable];
+/** The svg block's export shape (core/export.js writes it directly, not via grab): a div whose only element child is an inline <svg> -- optionally through the width-carrying span the canvas draws -- and whose text is nothing but the svg's own. Read back as the block it was, code verbatim. Previously the sanitizer's whitelist had no SVG tags, so the run flushed empty and the block -- the whole row, when it stood alone -- silently vanished on every save. A bare <svg> at content level gets the same treatment. */
+function classifySvg(el) {
+  const isSvg = (e) => !!e && String(e.tagName).toLowerCase() === 'svg';
+  const over = {};
+  let holder = el;
+  if (el.tagName === 'DIV' && el.children.length === 1) {
+    if (el.style.textAlign) over.align = el.style.textAlign;
+    if (el.style.paddingTop !== '') over.py = PX(el.style.paddingTop);
+    holder = el.firstElementChild;
+    if (holder.tagName === 'SPAN' && holder.children.length === 1 && isSvg(holder.firstElementChild)) {
+      const w = holder.style.width || '';
+      if (w.endsWith('%') && PX(w)) over.width = PX(w);
+      holder = holder.firstElementChild;
+    }
+  }
+  if (!isSvg(holder)) return null;
+  // Prose around the drawing means a text run with an svg glyph in it, not
+  // an svg block -- only the svg's own text (<text> labels etc.) may appear.
+  if ((el.textContent || '').trim() !== (holder.textContent || '').trim()) return null;
+  over.code = holder.outerHTML;
+  return blk('svg', over);
+}
+
+/**
+ * Fidelity markers (core/export.js): the few blocks whose rendered shape
+ * cannot be read back -- a countdown bakes its digits, a video is a linked
+ * image, a section box and a code sample are styled divs like any other, a
+ * raw-CSS block is a bare <style> -- ship `data-mc` (type) and `data-mcp`
+ * (the props the DOM itself does not carry). Trusted when present, with the
+ * content halves still read from the DOM and sanitized exactly like any
+ * import: a payload is data about a block, never markup to inject.
+ */
+const MARKER_TYPES = { countdown: 1, video: 1, box: 1, codeblock: 1 };
+function markerBlock(el) {
+  if (!el.getAttribute) return null;
+  const type = el.getAttribute('data-mc') || '';
+  if (type === 'css' && el.tagName === 'STYLE') {
+    const over = { code: el.textContent || '' };
+    const note = el.getAttribute('data-mcn');
+    if (note) over.note = note;
+    return blk('css', over);
+  }
+  if (!MARKER_TYPES[type]) return null;
+  let props = {};
+  try { props = JSON.parse(el.getAttribute('data-mcp') || '{}') || {}; } catch { props = {}; }
+  delete props.html; delete props.code; // content only ever comes from the DOM, sanitized
+  const inner = el.firstElementChild;
+  if (type === 'box') {
+    // The box's own display/margin pair is vouched for: its template writes
+    // `<strong style="display:block;margin-bottom:6px">` and the shared
+    // whitelist rightly refuses those from arbitrary paste.
+    props.html = cleanImportHtml(inner ? inner.innerHTML : '', null, ['display', 'margin', 'margin-top', 'margin-bottom']);
+  }
+  if (type === 'codeblock') props.code = (inner ? inner.textContent : el.textContent) || '';
+  return blk(type, props);
+}
+
+const CLASSIFIERS = [classifyImage, classifyButton, classifySocial, classifyMenu, classifyDivider, classifySpacer, classifySvg, classifyHeading, classifyList, classifyTable];
 
 function classifyNode(el) {
   for (const fn of CLASSIFIERS) {
@@ -701,6 +823,17 @@ function blocksFromNodes(nodes) {
   // below: the first element alone cannot say whether a *later* piece of the
   // run declares its own font.
   let bufEls = [];
+  // The run's device visibility: the class sits on the box wrapper the
+  // exporter puts around a text block (never inside the sanitized html, which
+  // strips classes), so only this walk can carry it. `undefined` = not seen
+  // yet; '' = pieces disagreed, and a mixed run claims nothing rather than
+  // hide half its content along with the other half.
+  let bufVis;
+  const visUp = (start) => {
+    let e = start;
+    for (let i = 0; e && i < 4; i += 1) { const v = visibilityOf(e); if (v) return v; e = e.parentElement; }
+    return '';
+  };
   // The parent of a leading bare text node. A run with no element of its own
   // (`<td style="font-size:30px;...">{{Code}}</td>`) still has real
   // typography -- it lives on the ancestors, and with no bufFirstEl the
@@ -743,6 +876,7 @@ function blocksFromNodes(nodes) {
         // (it lands on the <p>), so a padded block came back at the default
         // 10px/0 on every save. First padding on the wrapper chain wins.
         let runPad = paddingOf(baseEl.style);
+        let padDeclared = !!baseEl.style && baseEl.style.paddingTop !== '';
         // Then descend through transparent single-child wrappers: builders
         // nest a `font-family:sans-serif` shim div around the div that
         // carries the real typography, and `inheritedStyle` below walks *up*
@@ -752,8 +886,11 @@ function blocksFromNodes(nodes) {
           baseEl.children.length === 1
           && !INLINE_TAGS.test(baseEl.firstElementChild.tagName)
           && (baseEl.textContent || '') === (baseEl.firstElementChild.textContent || '')
-        ) { baseEl = baseEl.firstElementChild; if (!runPad) runPad = paddingOf(baseEl.style); }
+        ) { baseEl = baseEl.firstElementChild; if (!runPad) runPad = paddingOf(baseEl.style); padDeclared = padDeclared || baseEl.style.paddingTop !== ''; }
         if (runPad) { over.py = runPad.py; over.px = runPad.px; }
+        // A declared all-zero padding is a choice (paddingOf returns null for
+        // it); absence is what falls to the 10px default.
+        else if (padDeclared) { over.py = 0; over.px = 0; }
         const size = fontPx(inheritedStyle(baseEl, 'fontSize')); if (size) over.size = size;
         const color = inheritedStyle(baseEl, 'color'); if (color) over.color = hexOf(color);
         over.align = textAlignOf(baseEl);
@@ -778,9 +915,13 @@ function blocksFromNodes(nodes) {
           over.html = cleanImportHtml(raw, ['font-family']);
         }
       }
+      // Same walk classifyNode does for recognized blocks; text runs never
+      // went through it, so a mobile-only paragraph reloaded visible
+      // everywhere.
+      if (bufVis) over.vis = bufVis;
       out.push(blk('text', over));
     }
-    buf = []; bufFirstEl = null; bufTextEl = null; bufEls = [];
+    buf = []; bufFirstEl = null; bufTextEl = null; bufEls = []; bufVis = undefined;
   };
   nodes.forEach((n) => {
     if (n.nodeType === 3) {
@@ -788,12 +929,22 @@ function blocksFromNodes(nodes) {
       if (markers) { flush(); markers.forEach((mb) => out.push(mb)); return; }
       if (n.textContent && n.textContent.trim()) {
         if (!bufFirstEl && !bufTextEl) bufTextEl = n.parentElement;
+        const tv = visUp(n.parentElement);
+        bufVis = bufVis === undefined || bufVis === tv ? tv : '';
         buf.push(escapeText(n.textContent));
       }
       return;
     }
     if (n.nodeType !== 1) return;
     if (isHidden(n)) return;
+    const marked = markerBlock(n);
+    if (marked) {
+      flush();
+      const mv = visUp(n);
+      if (mv) marked.props.vis = mv;
+      out.push(marked);
+      return;
+    }
     const target = unwrapBoxDiv(n);
     const b = classifyNode(target);
     if (b) { flush(); out.push(b); return; }
@@ -823,11 +974,20 @@ function blocksFromNodes(nodes) {
     // run: the exporter writes every text block as exactly such a padded div,
     // and buffering two of them together merged neighbouring blocks into one
     // -- the second lost its padding, size, everything -- on every save.
-    if (n.nodeType === 1 && !INLINE_TAGS.test(target.tagName) && hasOwnRunPad(target) && buf.length) flush();
+    // A box-div unwrap (target !== n) marks a block boundary just as surely
+    // as padding does: the exporter writes exactly one such wrapper per
+    // block, and without this two zero-padded text blocks buffered into one
+    // -- the second lost its size, weight, everything -- on every save.
+    const boundary = n.nodeType === 1 && !INLINE_TAGS.test(target.tagName) && (hasOwnRunPad(target) || target !== n);
+    if (boundary && buf.length) flush();
     if (!bufFirstEl) bufFirstEl = target;
     bufEls.push(target);
+    // Read off `n`, not `target`: the visibility class rides the wrapper
+    // unwrapBoxDiv deliberately sees through.
+    const ev = visUp(n);
+    bufVis = bufVis === undefined || bufVis === ev ? ev : '';
     buf.push(n.outerHTML);
-    if (n.nodeType === 1 && !INLINE_TAGS.test(target.tagName) && hasOwnRunPad(target)) flush();
+    if (boundary) flush();
   });
   flush();
   return out;
@@ -1002,7 +1162,10 @@ function unwrapNestedLayout(td) {
   if (classifyButton(td) || classifySocial(only)) return null;
   const trs = only.querySelectorAll(':scope > tbody > tr, :scope > tr');
   if (trs.length !== 1) return null;
-  if (only.querySelector('th')) return null;
+  // Header cells veto the unwrap only on the candidate's OWN row: a th
+  // anywhere deeper is some block's content (a data table in a column), and
+  // vetoing on it left the gap cell around that block unread.
+  if (only.querySelector(':scope > tbody > tr > th, :scope > tr > th')) return null;
   const cells = Array.from(trs[0].children).filter((c) => c.tagName === 'TD' || c.tagName === 'TH');
   return cells.length ? cells : null;
 }
@@ -1083,14 +1246,20 @@ function looksLikeContainer(el) {
   return Array.from(el.children).some((c) => c.tagName === 'TABLE' || c.tagName === 'DIV' || c.tagName === 'CENTER');
 }
 
+/** A row holding nothing but condition/loop markers. The exporter emits only the tags at its position (no <tr> scaffolding), so wrapper styling must never stick to one -- a page background stamped onto a marker row painted a colored band in the canvas that no sent mail would ever show. */
+function isMarkerRow(r) {
+  const blocks = r.cols.reduce((a, c) => a.concat(c.blocks), []);
+  return blocks.length > 0 && blocks.every((b) => b.type === 'condition' || b.type === 'loop');
+}
+
 function applyBg(rows, bg) {
-  if (bg) rows.forEach((r) => { if (!r.props.bg) r.props.bg = bg; });
+  if (bg) rows.forEach((r) => { if (!r.props.bg && !isMarkerRow(r)) r.props.bg = bg; });
   return rows;
 }
 
 /** Rows built from a genuine content table (`rowsFromContentTable`) already carry real, per-line padding read off their own `<td>`; rows built from a plain buffered run of content (`collectRows`'s `flushBuf`) start at a neutral zero, since there's no source padding to point to at that level. Once one of those zeroed rows bubbles up through a passthrough table or container div that DOES carry padding (the common shape for a single-line MJML/ESP section), that's the closest real signal available, and gets applied -- but only to rows still at zero, so it never overwrites a more specific value a deeper table already set. */
 function applyPad(rows, pad) {
-  if (pad) rows.forEach((r) => { if (!r.props.py && !r.props.px && r.props.pt === undefined) setRowPad(r, pad); });
+  if (pad) rows.forEach((r) => { if (!r.props.py && !r.props.px && r.props.pt === undefined && !isMarkerRow(r)) setRowPad(r, pad); });
   return rows;
 }
 
@@ -1187,17 +1356,49 @@ function rowsFromContentTable(table) {
     }
     const outerCells = Array.from(tr.children).filter((c) => c.tagName === 'TD' || c.tagName === 'TH');
     if (!outerCells.length) return null;
-    const bgSource = outerCells[0];
+    let bgSource = outerCells[0];
+    // The margin / Max-width wrapper (core/export.js `boxed`): margins on a
+    // <td> are inert in mail clients, so a row using either ships them on a
+    // div inside the cell -- which also carries the row's paint and padding.
+    // When it is there, IT is the row: everything below reads styles off
+    // `bgSource`, so re-pointing here is the whole unhoist. Detected by a
+    // real margin component or a %-cap, never by `margin:0` alone -- that is
+    // the exporter's see-through box div around a block.
+    let rowCap = 0;
+    {
+      const lone = onlyChild(bgSource, 'DIV');
+      const mw = (lone && lone.style.maxWidth) || '';
+      const capped = String(mw).endsWith('%') && PX(mw) > 0 && PX(mw) < 100;
+      if (lone && (capped || PX(lone.style.marginTop) || PX(lone.style.marginBottom) || PX(lone.style.marginLeft) || PX(lone.style.marginRight))) {
+        if (capped) rowCap = PX(mw);
+        bgSource = lone;
+      }
+    }
     let cells = outerCells;
-    if (outerCells.length === 1) {
+    // A flex/grid row: no table walker can re-shape one (its columns are
+    // divs), so the exporter stamps the row's settings on the wrapper as
+    // `data-mcr` and the columns are its child divs. Without the marker the
+    // old collapse-to-one-column behaviour stands (foreign HTML, or a host
+    // exporting with markers off).
+    let layoutCfg = null;
+    let layoutDiv = onlyChild(bgSource, 'DIV');
+    if (layoutDiv && !(layoutDiv.getAttribute && layoutDiv.getAttribute('data-mcr'))) layoutDiv = null;
+    if (layoutDiv) {
+      try { layoutCfg = JSON.parse(layoutDiv.getAttribute('data-mcr')) || null; } catch { layoutCfg = null; }
+      const colDivs = Array.from(layoutDiv.children).filter((k) => k.tagName === 'DIV');
+      if (layoutCfg && colDivs.length) cells = colDivs;
+      else { layoutCfg = null; layoutDiv = null; }
+    }
+    if (!layoutCfg && outerCells.length === 1) {
       // The table shape first, since it is unambiguous; the CSS-layout shape
       // only when there is no table row to read.
-      const nested = unwrapNestedLayout(outerCells[0]);
+      const nested = unwrapNestedLayout(bgSource);
       if (nested) cells = nested;
       else {
-        const inline = inlineColumnGroup(outerCells[0].childNodes);
+        const inline = inlineColumnGroup(bgSource.childNodes);
         if (inline) cells = inline;
       }
+      if (cells === outerCells && bgSource !== outerCells[0]) cells = [bgSource];
     }
     // Spacer columns: a content-free `<td>` (often `class="column gap"`,
     // holding only an empty fixed-width table) between real columns exists
@@ -1226,16 +1427,74 @@ function rowsFromContentTable(table) {
     // column gap) describe a gap, not row padding. Recognizing it keeps
     // gap -> export -> import a fixed point instead of drifting into padding.
     let gutter = false;
-    if (!gapPx && cells.length > 1) {
+    // Single-column rows carry the same gutter (the exporter writes
+    // `padding:0 gap/2` on every cell, one column or four) -- but only a cell
+    // an unwrap produced qualifies: a flat foreign `<td style="padding:0 24px">`
+    // has always read as row padding, and visually the two are the same, so
+    // that behaviour must not shift under existing imports.
+    if (!gapPx && (cells.length > 1 || cells[0] !== bgSource)) {
       const pads = cells.map((c) => paddingOf(c.style));
       const p0 = pads[0];
       gutter = !!(p0 && !p0.t && !p0.b && p0.l > 0 && p0.l === p0.r && p0.l <= 60
         && pads.every((pp) => pp && !pp.t && !pp.b && pp.l === p0.l && pp.r === p0.r));
       if (gutter) gapPx = p0.l * 2;
     }
+    // The unwrap can be refused on purpose (a social strip's layout table
+    // must stay one block -- see unwrapNestedLayout), which also hides the
+    // gap cell inside it. Peek at that one cell for the same pure-horizontal
+    // signature; the strip itself is still classified by the cell walk below.
+    // Never past a bulletproof button, whose padded cell is the pill, not a
+    // gutter.
+    if (!gapPx && cells.length === 1 && cells[0] === bgSource && !classifyButton(bgSource)) {
+      const only = onlyChild(bgSource, 'TABLE');
+      const innerTds = only ? Array.from(only.querySelectorAll(':scope > tbody > tr > td, :scope > tr > td')) : [];
+      if (innerTds.length === 1) {
+        const pd = paddingOf(innerTds[0].style);
+        if (pd && !pd.t && !pd.b && pd.l > 0 && pd.l === pd.r && pd.l <= 60) gapPx = pd.l * 2;
+      }
+    }
     const spans = cells.length === 1 ? [100] : spansFromCells(cells, tableWidthPx);
     const row = mkRow(spans);
     row.props.py = 0; row.props.px = 0; row.props.gap = gapPx;
+    // Vertical alignment ships as the attribute on every cell; it only means
+    // something the cells agree on (a foreign row aligning each column its
+    // own way has no single row value to take).
+    const va = cells[0].getAttribute && cells[0].getAttribute('valign');
+    if ((va === 'middle' || va === 'bottom') && cells.every((c) => c.getAttribute('valign') === va)) row.props.valign = va;
+    // Mobile behaviour, from the classes the exporter's media query targets
+    // (they survive css-cascade untouched -- @media rules are never folded).
+    // Only ever set on a real multi-column row, and only from an explicit
+    // class: `keep` exports NO class and so cannot be told apart from foreign
+    // HTML, where stacking (the default) is the safer read.
+    if (cells.length > 1) {
+      const trCls = (cells[0].parentElement && cells[0].parentElement.getAttribute('class')) || '';
+      if (/\bmc-2up\b/.test(trCls)) row.props.mobileCols = 2;
+      if (/\bmc-rev\b/.test(trCls)) row.props.mobileOrder = 'reverse';
+      // `keep` is inert-class-marked (mc-keep, no stylesheet rule): with no
+      // explicit class it cannot be told apart from foreign HTML, where
+      // stacking -- the default -- is the safer read.
+      if (/\bmc-keep\b/.test(trCls)) row.props.mobileCols = 'keep';
+    }
+    if (layoutCfg) {
+      Object.assign(row.props, {
+        layout: layoutCfg.layout === 'grid' ? 'grid' : 'flex',
+        flexDir: layoutCfg.flexDir || 'row', justify: layoutCfg.justify || 'flex-start',
+        alignItems: layoutCfg.alignItems || 'stretch', wrap: layoutCfg.wrap !== false,
+        gridCols: layoutCfg.gridCols || 2, gap: layoutCfg.gap || 0,
+      });
+      if (Array.isArray(layoutCfg.spans) && layoutCfg.spans.length === row.cols.length) {
+        layoutCfg.spans.forEach((sp, i) => { if (Number(sp) > 0) row.cols[i].span = Number(sp); });
+      }
+    }
+    // The row's outside margins, straight off the style the exporter writes.
+    // Mail clients ignore margins on a <td> (a known export gap), but the
+    // values are the user's -- dropping them zeroed the four sliders on
+    // every reload.
+    if (bgSource.style) {
+      const mg = { mt: PX(bgSource.style.marginTop), mr: PX(bgSource.style.marginRight), mb: PX(bgSource.style.marginBottom), ml: PX(bgSource.style.marginLeft) };
+      if (mg.mt || mg.mr || mg.mb || mg.ml) Object.assign(row.props, mg);
+    }
+    if (rowCap) row.props.maxW = rowCap;
     // Background and frame can live on the first cell OR on the table itself
     // (builders style `table.row-content`, not its tds) -- read the cell
     // first, the table as fallback. Cell-derived values only count when every
@@ -1314,7 +1573,7 @@ function rowsFromContentTable(table) {
       // its children, or the whole card collapses into one opaque text blob.
       let contentEl = cell;
       const lone = onlyChild(cell, 'DIV');
-      if (lone && (bgOf(lone) || radiusOf(lone.style)) && !classifyNode(lone)) {
+      if (lone && (bgOf(lone) || radiusOf(lone.style) || borderSidesOf(lone.style).width) && !classifyNode(lone)) {
         const col = row.cols[i];
         if (col) {
           const cbg = bgOf(lone); if (cbg && !col.bg) col.bg = cbg;
@@ -1406,7 +1665,17 @@ function collectRows(nodes) {
   };
   nodes.forEach((n) => {
     if (n.nodeType === 8) return; // HTML comments (Outlook/MSO conditionals) -- inert
-    if (n.nodeType === 1 && /^(SCRIPT|STYLE)$/.test(n.tagName)) return;
+    if (n.nodeType === 1 && /^(SCRIPT|STYLE)$/.test(n.tagName)) {
+      const mb = markerBlock(n);
+      if (mb) {
+        flushBuf();
+        const row = mkRow([100]);
+        row.props.py = 0; row.props.px = 0; row.props.gap = 0;
+        row.cols[0].blocks = [mb];
+        rows.push(row);
+      }
+      return;
+    }
     if (n.nodeType === 1 && isHidden(n)) return;
     // A lone column: its blocks belong to one row, not one row each.
     if (n.nodeType === 1 && isColumnContainer(n) && !classifyNode(unwrapBoxDiv(n))) {
@@ -1420,7 +1689,15 @@ function collectRows(nodes) {
         return;
       }
     }
-    if (n.nodeType === 1 && (n.tagName === 'DIV' || n.tagName === 'CENTER') && looksLikeContainer(n) && !classifyNode(unwrapBoxDiv(n))) {
+    // Container-ness is judged on the UNWRAPPED element where the unwrap
+    // stays a div/center: a margin-only box div around one padded text div is
+    // the exporter's block wrapper, and walking it as a section split every
+    // block of a single-row document into its own row. An unwrap that lands
+    // on something else (a table -- Beefree's divider ships as
+    // div > 20%-table) keeps the old judgement of the wrapper itself.
+    const seen = n.nodeType === 1 && (n.tagName === 'DIV' || n.tagName === 'CENTER') ? unwrapBoxDiv(n) : null;
+    const containerish = seen && (seen.tagName === 'DIV' || seen.tagName === 'CENTER' ? looksLikeContainer(seen) : looksLikeContainer(n));
+    if (seen && containerish && !classifyNode(seen)) {
       flushBuf();
       const inner = mergeBandRows(collectRows(Array.from(n.childNodes)), n);
       rows.push(...applyBgImage(applyFrame(applyPad(applyBg(inner, bgOf(n)), padOf(n)), n), n));
@@ -1665,8 +1942,16 @@ function themeFromParsedDoc(doc) {
   body.querySelectorAll('a[style*="color"]').forEach((a) => {
     const c = a.style.color;
     // Only text links vote -- icon links (social strips) carry an icon
-    // color, not the document's link color.
+    // color, not the document's link color. An anchor holding an icon still
+    // has text when its network name is shown beside the glyph, so the icon
+    // check is structural, not textual. Menu items are navigation chrome in
+    // the block's own color (every exported item carries the uppercase +
+    // letter-spacing signature) -- counting them let a three-item menu
+    // outvote the document's actual links and rewrite theme.link on every
+    // reload.
     if (!c || c === 'inherit' || !(a.textContent || '').trim() || isPill(a)) return;
+    if (a.querySelector('svg,img')) return;
+    if (a.style.textTransform === 'uppercase' && a.style.letterSpacing) return;
     linkCounts[c] = (linkCounts[c] || 0) + 1;
   });
   const link = Object.keys(linkCounts).sort((a, b) => linkCounts[b] - linkCounts[a])[0];
@@ -1711,16 +1996,39 @@ function foldLogicWrappers(src) {
  * value that merely restates what the imported theme already says folds back
  * to "inherit"; anything genuinely different is a real override and stays.
  */
+/** Strips an anchor's inline color where it merely restates the document link color, so the stored html inherits again -- the exporter stamps `theme.link` on every colorless anchor (mail needs the value inline), and left in the reloaded html that stamp froze links at whatever the theme said on the day of the save; a later Link color edit never reached them. A genuinely different inline color is the user's and stays. */
+function foldLinkColor(html, linkKey, ckey) {
+  const src = String(html || '');
+  if (!linkKey || src.indexOf('<a') < 0 || src.indexOf('color') < 0) return html;
+  const doc = new DOMParser().parseFromString('<div id="mc-fold">' + src + '</div>', 'text/html');
+  const root = doc.getElementById('mc-fold');
+  if (!root) return html;
+  let hit = false;
+  root.querySelectorAll('a[style]').forEach((a) => {
+    if (a.style.color && ckey(a.style.color) === linkKey) {
+      a.style.removeProperty('color');
+      if (!(a.getAttribute('style') || '').trim()) a.removeAttribute('style');
+      hit = true;
+    }
+  });
+  return hit ? root.innerHTML : html;
+}
+
 function foldThemeInherits(rows, theme) {
   const tFont = fontKey(theme.font);
-  const tText = String(theme.text || '').toLowerCase();
-  const cBg = String(theme.contentBg || '').toLowerCase();
+  // Colors compare through hexOf on BOTH sides: CSSOM hands the walkers
+  // `rgb(...)` for every hex the exporter wrote, so a bare string comparison
+  // saw `#172033` != `rgb(23, 32, 51)` and the fold silently never fired.
+  const ckey = (v) => String(hexOf(v) || '').toLowerCase();
+  const tText = ckey(theme.text);
+  const cBg = ckey(theme.contentBg);
+  const tLink = ckey(theme.link);
   // Only the types whose renderer falls back `p.color || t.text` -- an empty
   // color means "theme ink" for exactly these; other blocks' colors are
   // structural (a button label, a divider line) and must stay explicit.
   const inheritsInk = { text: 1, heading: 1, list: 1 };
   rows.forEach((row) => {
-    const bg = String(row.props.bg || '').toLowerCase();
+    const bg = ckey(row.props.bg);
     if (bg && bg === cBg) row.props.bg = '';
     row.cols.forEach((col) => {
       // A see-through column wrapper is the exporter's own scaffolding
@@ -1729,7 +2037,11 @@ function foldThemeInherits(rows, theme) {
       if (String(col.bg || '').toLowerCase() === 'transparent') col.bg = '';
       col.blocks.forEach((b) => {
         if (tFont && b.props.fontFamily && fontKey(b.props.fontFamily) === tFont) b.props.fontFamily = '';
-        if (tText && inheritsInk[b.type] && String(b.props.color || '').toLowerCase() === tText) b.props.color = '';
+        if (tText && inheritsInk[b.type] && ckey(b.props.color) === tText) b.props.color = '';
+        if (tLink && theme.link && typeof b.props.html === 'string') b.props.html = foldLinkColor(b.props.html, tLink, ckey);
+        if (tLink && theme.link && b.type === 'list' && b.props.items) {
+          b.props.items = String(b.props.items).split('\n').map((l) => foldLinkColor(l, tLink, ckey)).join('\n');
+        }
       });
     });
   });

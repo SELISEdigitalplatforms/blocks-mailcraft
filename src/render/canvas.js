@@ -196,6 +196,9 @@ export function renderDoc(core, live) {
     overflow: !live && radius ? 'hidden' : '',
     transition: 'width 0.28s cubic-bezier(0.22,0.61,0.36,1), background 0.2s, border-radius 0.2s',
   }, { 'data-mc-sheet': '1', dir: 'ltr' });
+  // A custom property cannot ride Object.assign(style, ...) -- '--mc-link'
+  // is not a CSSOM member -- so it is set the one way that works.
+  root.style.setProperty('--mc-link', theme.link || '');
 
   /*
    * The page: the full-width section the email sits on, painted from the

@@ -562,7 +562,10 @@ await it('a block-level font family is read back (heading, button, menu, list, t
   assert.equal(h.props.fontFamily, 'Georgia, serif');
   const btn = firstOf(themed('<tr><td><a href="#" style="display:inline-block;background:#0065b3;color:#fff;padding:12px 24px;font-family:Tahoma, Geneva, sans-serif">Go</a></td></tr>'), 'button');
   assert.match(btn.props.fontFamily || '', /Tahoma/);
-  const menu = firstOf(themed('<tr><td><a href="/a" style="font-family:Verdana, sans-serif;margin:0 10px">One</a><a href="/b" style="margin:0 10px">Two</a></td></tr>'), 'menu');
+  // The menu ships as the wrapper div the renderer draws (a bare cell of
+  // anchors is a text run, by the same rule that keeps a layout table a
+  // layout table -- see the row-level note in collectRows).
+  const menu = firstOf(themed('<tr><td><div style="text-align:center;padding:10px 0"><a href="/a" style="display:inline-block;font-family:Verdana, sans-serif;margin:0 10px">One</a><a href="/b" style="display:inline-block;margin:0 10px">Two</a></div></td></tr>'), 'menu');
   assert.match(menu.props.fontFamily || '', /Verdana/);
   assert.equal(menu.props.gap, 20, 'anchor margins fold back into the gap');
   const list = firstOf(themed('<tr><td><ul style="font-family:Georgia, serif;font-size:17px;color:#ff0000;line-height:1.9;padding:3px 0 3px 22px"><li style="margin-bottom:9px">a</li><li style="margin-bottom:9px">b</li></ul></td></tr>'), 'list');
@@ -572,7 +575,7 @@ await it('a block-level font family is read back (heading, button, menu, list, t
   assert.equal(list.props.lh, 1.9);
   assert.equal(list.props.py, 3);
   assert.equal(list.props.gap, 9);
-  const tbl = firstOf(themed('<tr><td><table style="width:100%;font-family:Georgia, serif;font-size:13px"><tr style="background:#ffeecc"><th style="padding:7px 8px;text-align:center">A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr><tr><td>3</td><td>4</td></tr></table></td></tr>'), 'table');
+  const tbl = firstOf(themed('<tr><td><div><table style="width:100%;font-family:Georgia, serif;font-size:13px"><tr style="background:#ffeecc"><th style="padding:7px 8px;text-align:center">A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr><tr><td>3</td><td>4</td></tr></table></div></td></tr>'), 'table');
   assert.equal(tbl.props.fontFamily, 'Georgia, serif');
   assert.equal(tbl.props.size, 13);
   assert.equal(tbl.props.headBg, '#ffeecc');

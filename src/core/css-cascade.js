@@ -58,7 +58,10 @@ function specificity(sel) {
 }
 
 export function inlineStylesheets(doc) {
-  const sheets = Array.from(doc.querySelectorAll('style'));
+  // A style tag carrying the css-block marker IS a block (import-html reads
+  // it back as one); folding its rules inline here stamped them onto every
+  // matched element AND kept the block, doubling the styles on each save.
+  const sheets = Array.from(doc.querySelectorAll('style')).filter((s) => !(s.getAttribute && s.getAttribute('data-mc')));
   if (!sheets.length) return;
   const css = stripAtRules(stripComments(sheets.map((s) => s.textContent || '').join('\n')));
 

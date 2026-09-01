@@ -82,7 +82,7 @@ await it('a fresh editor opens on one empty row with the full default theme', as
 });
 
 await it('every block type the palette offers can be made and carries its defaults', async () => {
-  const types = ['text', 'image', 'button', 'divider', 'spacer', 'social', 'video', 'html', 'countdown', 'menu', 'heading', 'list', 'table', 'embed', 'css', 'codeblock', 'box', 'svg'];
+  const types = ['text', 'image', 'button', 'divider', 'spacer', 'social', 'video', 'html', 'countdown', 'menu', 'heading', 'list', 'table', 'css', 'codeblock', 'box', 'svg'];
   for (const type of types) {
     const b = mk(type);
     assert.equal(b.type, type);

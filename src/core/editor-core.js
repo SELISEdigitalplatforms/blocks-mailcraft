@@ -1224,7 +1224,7 @@ export class EditorCore {
 
   // ---- export / code view --------------------------------------------------
 
-  buildHtml() { return buildHtmlFn(this.state, this.exportRoot, boxCss); }
+  buildHtml(opts) { return buildHtmlFn(this.state, this.exportRoot, boxCss, opts); }
 
   openExport = () => {
     this.setState({ exportOpen: true, exportCode: this.buildHtml(), copied: false, libraryOpen: false, aiOpen: false, codeOpen: false });
@@ -1373,9 +1373,9 @@ export class EditorCore {
           /<a(?:\s|>)/i.test(String(b.props.html || ''))
             ? [{ kind: 'richLinks', label: 'Links', html: b.props.html || '', onChange: (v) => this.setProp(b.id, 'html', v) }]
             : [],
-          [B.area('Text', 'html'), B.sel('Font', 'fontFamily', this.fontOptions(true)), B.range('Text size', 'size', ...SIZE_SPAN.text, 1, 'px'), B.range('Line spacing', 'lh', 0.8, 3, 0.05, ''), B.seg('Align', 'align', ALIGN), B.sel('Text weight', 'weight', [{ value: '400', label: 'Regular' }, { value: '500', label: 'Medium' }, { value: '700', label: 'Bold' }]), B.color('Text color', 'color')], padF));
+          [B.area('Text', 'html'), B.sel('Font', 'fontFamily', this.fontOptions(true, b.props.fontFamily)), B.range('Text size', 'size', ...SIZE_SPAN.text, 1, 'px'), B.range('Line spacing', 'lh', 0.8, 3, 0.05, ''), B.seg('Align', 'align', ALIGN), B.sel('Text weight', 'weight', [{ value: '400', label: 'Regular' }, { value: '500', label: 'Medium' }, { value: '700', label: 'Bold' }]), B.color('Text color', 'color')], padF));
         case 'image': return decorate(base.concat([B.btn('Choose from library', () => this.openLibrary({ id: b.id, key: 'src' })), B.text('Alt text', 'alt', 'Describe the image'), B.text('Link URL', 'href', 'https://'), B.range('Width', 'width', 5, 100, 1, '%'), B.seg('Align', 'align', ALIGN), B.range('Rounded corners', 'radius', 0, 200, 1, 'px')], padF));
-        case 'button': return decorate(base.concat([B.text('Label', 'label'), B.text('Link URL', 'href', 'https://'), B.color('Button color', 'bg'), B.color('Text color', 'color'), B.sel('Font', 'fontFamily', this.fontOptions(true)), B.range('Text size', 'size', 8, 48, 1, 'px'), B.range('Rounded corners', 'radius', 0, 60, 1, 'px'), B.range('Outline thickness', 'borderW', 0, 6, 1, 'px')].concat(b.props.borderW ? [B.sel('Outline style', 'borderStyle', BORDER_STYLES), B.color('Outline color', 'borderColor')] : []).concat([B.range('Button height', 'py', 0, 60, 1, 'px'), B.range('Button width', 'px', 0, 120, 2, 'px'), B.seg('Align', 'align', ALIGN), B.tog('Full width', 'full')])));
+        case 'button': return decorate(base.concat([B.text('Label', 'label'), B.text('Link URL', 'href', 'https://'), B.color('Button color', 'bg'), B.color('Text color', 'color'), B.sel('Font', 'fontFamily', this.fontOptions(true, b.props.fontFamily)), B.range('Text size', 'size', 8, 48, 1, 'px'), B.range('Rounded corners', 'radius', 0, 60, 1, 'px'), B.range('Outline thickness', 'borderW', 0, 6, 1, 'px')].concat(b.props.borderW ? [B.sel('Outline style', 'borderStyle', BORDER_STYLES), B.color('Outline color', 'borderColor')] : []).concat([B.range('Button height', 'py', 0, 60, 1, 'px'), B.range('Button width', 'px', 0, 120, 2, 'px'), B.seg('Align', 'align', ALIGN), B.tog('Full width', 'full')])));
         case 'divider': return decorate(base.concat([B.range('Thickness', 'thickness', 1, 20, 1, 'px'), B.sel('Line style', 'lineStyle', BORDER_STYLES), B.range('Width', 'width', 5, 100, 5, '%'), B.color('Color', 'color'), B.range('Space above & below', 'py', 0, 160, 2, 'px')]));
         case 'spacer': return decorate(base.concat([B.range('Height', 'height', 0, 400, 2, 'px')]));
         // Dynamic-content markers: the expression lives on the start marker;
@@ -1400,15 +1400,15 @@ export class EditorCore {
           B.seg('Icon palette', 'palette', [{ value: 'custom', label: 'Custom' }, { value: 'brand', label: 'Brand' }]),
           B.seg('Icon shape', 'shape', [{ value: 'outline', label: 'Outline' }, { value: 'bare', label: 'Bare' }, { value: 'circle', label: 'Circle' }, { value: 'square', label: 'Square' }]),
           B.tog('Show network names', 'showLabel'),
-          B.sel('Font', 'fontFamily', this.fontOptions(true)),
+          B.sel('Font', 'fontFamily', this.fontOptions(true, b.props.fontFamily)),
           B.seg('Align', 'align', ALIGN), B.range('Icon size', 'size', 10, 64, 1, 'px'), B.range('Space between icons', 'gap', 0, 80, 2, 'px'), B.color('Icon color', 'color'),
         ]));
         case 'video': return decorate(base.concat([B.btn('Choose thumbnail', () => this.openLibrary({ id: b.id, key: 'src' })), B.text('Video URL', 'href', 'https://'), B.text('Caption', 'caption'), B.color('Badge color', 'badge')]));
         case 'html': return decorate(base.concat([B.area('Raw HTML', 'code')]));
-        case 'countdown': return decorate(base.concat([B.text('Ends at (YYYY-MM-DDTHH:MM)', 'target'), B.text('Label', 'label'), B.sel('Font', 'fontFamily', this.fontOptions(true)), B.color('Color', 'color')]));
-        case 'menu': return decorate(base.concat([B.area('Items — one per line as Label|URL', 'items'), B.seg('Align', 'align', ALIGN), B.sel('Font', 'fontFamily', this.fontOptions(true)), B.range('Text size', 'size', 8, 32, 1, 'px'), B.range('Space between items', 'gap', 0, 80, 2, 'px'), B.color('Text color', 'color')]));
-        case 'heading': return decorate(base.concat([B.area('Text', 'text'), B.sel('Heading level', 'level', [{ value: 'h1', label: 'H1 — largest' }, { value: 'h2', label: 'H2' }, { value: 'h3', label: 'H3' }, { value: 'h4', label: 'H4 — smallest' }]), B.seg('Font style', 'font', [{ value: 'condensed', label: 'Condensed' }, { value: 'body', label: 'Body' }]), B.sel('Font', 'fontFamily', this.fontOptions(true)), B.range('Text size', 'size', ...SIZE_SPAN.heading, 1, 'px'), B.range('Line spacing', 'lh', 0.8, 2.2, 0.02, ''), B.seg('Align', 'align', ALIGN), B.sel('Text weight', 'weight', [{ value: '400', label: 'Regular' }, { value: '600', label: 'Semibold' }, { value: '700', label: 'Bold' }]), B.color('Text color', 'color')], padF));
-        case 'list': return decorate(base.concat([B.area('Items — one per line', 'items'), B.tog('Numbered', 'ordered'), B.sel('Font', 'fontFamily', this.fontOptions(true)), B.range('Text size', 'size', 8, 48, 1, 'px'), B.range('Line spacing', 'lh', 0.8, 3, 0.05, ''), B.range('Space between items', 'gap', 0, 60, 1, 'px'), B.color('Text color', 'color')], padF));
+        case 'countdown': return decorate(base.concat([B.text('Ends at (YYYY-MM-DDTHH:MM)', 'target'), B.text('Label', 'label'), B.sel('Font', 'fontFamily', this.fontOptions(true, b.props.fontFamily)), B.color('Color', 'color')]));
+        case 'menu': return decorate(base.concat([B.area('Items — one per line as Label|URL', 'items'), B.seg('Align', 'align', ALIGN), B.sel('Font', 'fontFamily', this.fontOptions(true, b.props.fontFamily)), B.range('Text size', 'size', 8, 32, 1, 'px'), B.range('Space between items', 'gap', 0, 80, 2, 'px'), B.color('Text color', 'color')]));
+        case 'heading': return decorate(base.concat([B.area('Text', 'text'), B.sel('Heading level', 'level', [{ value: 'h1', label: 'H1 — largest' }, { value: 'h2', label: 'H2' }, { value: 'h3', label: 'H3' }, { value: 'h4', label: 'H4 — smallest' }]), B.seg('Font style', 'font', [{ value: 'condensed', label: 'Condensed' }, { value: 'body', label: 'Body' }]), B.sel('Font', 'fontFamily', this.fontOptions(true, b.props.fontFamily)), B.range('Text size', 'size', ...SIZE_SPAN.heading, 1, 'px'), B.range('Line spacing', 'lh', 0.8, 2.2, 0.02, ''), B.seg('Align', 'align', ALIGN), B.sel('Text weight', 'weight', [{ value: '400', label: 'Regular' }, { value: '600', label: 'Semibold' }, { value: '700', label: 'Bold' }]), B.color('Text color', 'color')], padF));
+        case 'list': return decorate(base.concat([B.area('Items — one per line', 'items'), B.tog('Numbered', 'ordered'), B.sel('Font', 'fontFamily', this.fontOptions(true, b.props.fontFamily)), B.range('Text size', 'size', 8, 48, 1, 'px'), B.range('Line spacing', 'lh', 0.8, 3, 0.05, ''), B.range('Space between items', 'gap', 0, 60, 1, 'px'), B.color('Text color', 'color')], padF));
         case 'table': return decorate(base.concat([
           // Custom kind (render/fields.js `renderTableGrid`): a real grid of
           // cell inputs with add/remove row+column controls, replacing the
@@ -1416,11 +1416,10 @@ export class EditorCore {
           // `data` string underneath.
           { kind: 'tablegrid', label: 'Cells', value: b.props.data || '', header: !!b.props.header, onChange: (v) => this.setProp(b.id, 'data', v) },
           B.tog('Header row', 'header'), B.tog('Cell borders', 'borders'), ...(b.props.borders ? [B.range('Border thickness', 'borderWidth', 1, 10, 1, 'px'), B.sel('Border style', 'borderStyle', BORDER_STYLES)] : []), B.tog('Zebra stripes', 'striped'),
-          B.sel('Font', 'fontFamily', this.fontOptions(true)),
+          B.sel('Font', 'fontFamily', this.fontOptions(true, b.props.fontFamily)),
           B.range('Space in cells', 'pad', 0, 50, 1, 'px'), B.range('Text size', 'size', 8, 32, 1, 'px'), B.range('Width', 'width', 10, 100, 5, '%'),
           B.color('Header color', 'headBg'), B.color('Line color', 'lineColor'), B.seg('Align', 'align', ALIGN),
         ]));
-        case 'embed': return decorate(base.concat([B.text('Embed URL', 'src', 'https://'), B.range('Height', 'height', 40, 1200, 10, 'px'), B.text('Accessible label', 'label'), B.range('Padding', 'py', 0, 120, 2, 'px')]));
         case 'css': return decorate(base.concat([B.area('CSS', 'code'), B.text('Note to yourself', 'note')]));
         case 'box': return decorate(base.concat([B.area('Content (HTML allowed)', 'html'), B.color('Background color', 'bg'), B.btn('Choose background image', () => this.openLibrary({ id: b.id, key: 'bgImage' })), B.text('Background image URL', 'bgImage', 'https://'), B.range('Space inside', 'pad', 0, 160, 2, 'px'), B.range('Border thickness', 'border', 0, 20, 1, 'px')].concat(b.props.border ? [
           B.sel('Border style', 'borderStyle', BORDER_STYLES), B.color('Border color', 'lineColor'),
@@ -1576,7 +1575,7 @@ export class EditorCore {
    * an empty value meaning "use the theme font" (renderers read
    * `p.fontFamily || theme.font`, so old documents need no migration).
    */
-  fontOptions(inherit) {
+  fontOptions(inherit, current) {
     const stacks = [
       { value: '"Helvetica Neue", Helvetica, Arial, sans-serif', label: 'Helvetica Neue' },
       { value: 'Helvetica, Arial, sans-serif', label: 'Helvetica / Arial' },
@@ -1589,7 +1588,20 @@ export class EditorCore {
       { value: '"Palatino Linotype", Palatino, Georgia, serif', label: 'Palatino' },
       { value: 'ui-monospace, "Courier New", monospace', label: 'Monospace' },
     ];
-    return inherit ? [{ value: '', label: 'Inherit — theme font' }].concat(stacks) : stacks;
+    const opts = inherit ? [{ value: '', label: 'Inherit — theme font' }].concat(stacks) : stacks;
+    // An imported email brings its own stack, and it is almost never one of
+    // the ten above. A <select> whose value matches no option shows nothing
+    // selected -- the control read 'Inherit — theme font' (or the first
+    // stack) about a block that was really set in Georgia, and the only way
+    // to answer "what font is this?" was to overwrite it. Kept as an option
+    // of its own, matched loosely because quoting and spacing differ
+    // between what CSSOM hands back and what the list declares ('DM Sans'
+    // vs "DM Sans").
+    const key = (v) => String(v || '').replace(/["']/g, '').replace(/\s*,\s*/g, ',').replace(/\s+/g, ' ').trim().toLowerCase();
+    if (current && !opts.some((o) => key(o.value) === key(current))) {
+      opts.push({ value: current, label: String(current).split(',')[0].replace(/["']/g, '').trim() + ' — from the email' });
+    }
+    return opts;
   }
 
   themeFields() {
@@ -1621,7 +1633,7 @@ export class EditorCore {
       B.color('Border color', 'borderColor'),
     ] : []).concat([
       B.head('Type & color'),
-      B.sel('Default font', 'font', this.fontOptions(false)),
+      B.sel('Default font', 'font', this.fontOptions(false, this.state.doc.theme.font)),
       B.color('Text color', 'text'),
       B.color('Link color', 'link'),
     ]));

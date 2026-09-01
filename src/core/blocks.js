@@ -18,7 +18,6 @@ BLOCKS.push(
   { type: 'heading', code: 'HED', label: 'Heading', hint: 'Display heading', make: () => ({ text: 'What we kept', level: 'h2', size: 34, lh: 1.12, align: 'left', color: '', weight: '600', font: 'body', py: 8, px: 0 }) },
   { type: 'list', code: 'LST', label: 'List', hint: 'Bulleted or numbered list', make: () => ({ items: 'Import your list\nPick a template\nSend the first one', ordered: false, size: 15, lh: 1.7, color: '', gap: 4, py: 8, px: 0 }) },
   { type: 'table', code: 'TBL', label: 'Table', hint: 'Data table — edit cells inline', make: () => ({ data: 'Plan|Price|Seats\nStarter|$19|3\nTeam|$49|10\nStudio|$99|25', header: true, borders: true, borderWidth: 1, borderStyle: 'solid', striped: true, pad: 10, size: 14, headBg: '#f8fafc', lineColor: '#e2e8f0', align: 'left', width: 100 }) },
-  { type: 'embed', code: 'EMB', label: 'Embed', hint: 'Iframe embed — map, form, player', make: () => ({ src: 'https://example.com/embed', height: 320, label: 'Embedded content', py: 8 }) },
   { type: 'css', code: 'CSS', label: 'Raw CSS', hint: 'Inject a style block', make: () => ({ code: '.mc-note { font: 13px/1.6 "Helvetica Neue", Helvetica, Arial, sans-serif; color: #0065b3; letter-spacing: 0.04em; }', note: 'Styles apply to raw HTML blocks below.' }) },
   { type: 'codeblock', code: 'PRE', label: 'Code', hint: 'Preformatted code sample', make: () => ({ code: 'curl -X POST https://api.example.com/v1/sends \\\n  -H "Authorization: Bearer $KEY" \\\n  -d campaign=mc-4471', bg: '#172033', color: '#e8e9ea', size: 12.5, pad: 14 }) },
 );
@@ -180,7 +179,7 @@ export const PALETTE = [
   { t: 'heading' }, { t: 'text' }, { t: 'list' }, { g: 'quote' }, { t: 'image' }, { g: 'gallery' },
   { t: 'button' }, { t: 'table' }, { g: 'card' }, { g: 'product' }, { g: 'hero' }, { g: 'stats' },
   { t: 'box' }, { t: 'divider' }, { t: 'spacer' }, { t: 'social' }, { t: 'video' },
-  { t: 'embed' }, { t: 'menu' }, { g: 'footer' }, { t: 'html' }, { t: 'css' }, { t: 'svg' },
+  { t: 'menu' }, { g: 'footer' }, { t: 'html' }, { t: 'css' }, { t: 'svg' },
   { t: 'codeblock' }, { t: 'countdown' }, { t: 'condition' }, { t: 'loop' },
 ];
 
@@ -208,6 +207,15 @@ export function migrateDoc(doc) {
     if (r.props.mb === undefined) r.props.mb = legacyMarginY;
     if (r.props.ml === undefined) r.props.ml = 0;
     r.cols.forEach((c) => {
+      // The embed block (an <iframe>) was removed on 2026-09-02: mail clients
+      // strip iframes, so the block only ever rendered in browser contexts.
+      // A saved document keeps its content as the raw html it always exported.
+      c.blocks.forEach((b) => {
+        if (b.type !== 'embed') return;
+        const p = b.props || {};
+        b.type = 'html';
+        b.props = { code: '<div style="padding:' + (p.py || 0) + 'px 0"><iframe src="' + (p.src || '') + '" title="' + (p.label || '') + '" style="width:100%;height:' + (p.height || 320) + 'px;border:1px solid rgba(29,31,32,0.14);background:#fff;display:block"></iframe></div>' };
+      });
       // A block whose type this build no longer knows is dropped rather than
       // rendered as an unrecognized shape; a row emptied that way goes with it.
       c.blocks = c.blocks.filter((b) => DEF(b.type));
@@ -266,15 +274,26 @@ export function normalizeDoc(input) {
       return {
         id: r.id || uid(),
         props: Object.assign({}, rowDefaults, r.props || {}),
-        cols: cols.map((c) => ({
-          id: c.id || uid(),
-          span: Number(c.span) > 0 ? Number(c.span) : evenSpan,
-          blocks: (Array.isArray(c.blocks) ? c.blocks : []).filter((b) => b && typeof b === 'object' && b.type).map((b) => (
-            DEF(b.type)
-              ? { id: b.id || uid(), type: b.type, props: Object.assign(DEF(b.type).make(), b.props || {}) }
-              : { id: b.id || uid(), type: b.type, props: b.props || {} }
-          )),
-        })),
+        cols: cols.map((c) => {
+          const col = {
+            id: c.id || uid(),
+            span: Number(c.span) > 0 ? Number(c.span) : evenSpan,
+            blocks: (Array.isArray(c.blocks) ? c.blocks : []).filter((b) => b && typeof b === 'object' && b.type).map((b) => (
+              DEF(b.type)
+                ? { id: b.id || uid(), type: b.type, props: Object.assign(DEF(b.type).make(), b.props || {}) }
+                : { id: b.id || uid(), type: b.type, props: b.props || {} }
+            )),
+          };
+          // A column's optional styling (the canvas's `styled` wrapper and the
+          // importer's hoist both speak these keys) rides through untouched --
+          // rebuilding the column without them silently stripped a card
+          // column's paint on every loadDoc/loadTemplate, before export ever
+          // saw it.
+          ['bg', 'radius', 'padY', 'padX', 'border', 'borderStyle', 'lineColor'].forEach((k) => {
+            if (c[k] !== undefined && c[k] !== '' && c[k] !== 0) col[k] = c[k];
+          });
+          return col;
+        }),
       };
     }),
   };

@@ -96,7 +96,8 @@ await it('raw html and css blocks pass through untouched', async () => {
   css.props.code = '.x { color: red }';
   const html = render(docOf([raw, css]));
   assert.match(html, /<div class="custom">raw<\/div>/);
-  assert.match(html, /<style>\.x \{ color: red \}<\/style>/);
+  // The identity marker rides the tag so a reload gets the css block back.
+  assert.match(html, /<style data-mc="css"[^>]*>\.x \{ color: red \}<\/style>/);
 });
 
 await it('a row background image is emitted as a css url', async () => {

@@ -71,6 +71,20 @@ function overrideRichFont(root, fontFamily) {
   root.querySelectorAll('[style]').forEach((node) => node.style.removeProperty('font-family'));
 }
 
+/** An anchor merely restating the document link color drops it, so the sheet rule -- and a later Link color edit -- owns it again. The exporter stamps `theme.link` on every colorless anchor (mail clients need the value inline), and an import keeps that stamp in the block's html; left in place it froze the link color at whatever the theme said on the day of the save. A genuinely different inline color is the user's and stays. Compared through the same rgb-vs-hex fold the importer uses, since CSSOM serializes one and pickers speak the other. */
+function overrideLinkColor(root, link) {
+  if (!link) return;
+  const key = (v) => {
+    const m = /^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/.exec(String(v || '').trim());
+    const hex = m ? '#' + [m[1], m[2], m[3]].map((n) => Number(n).toString(16).padStart(2, '0')).join('') : String(v || '');
+    return hex.toLowerCase();
+  };
+  const want = key(link);
+  root.querySelectorAll('a[style]').forEach((a) => {
+    if (a.style.color && key(a.style.color) === want) a.style.removeProperty('color');
+  });
+}
+
 /**
  * Ported from the original `blockBody(b, theme, live)`. `ctx` supplies the
  * editing wiring that in the original lived on `this` (Component instance):
@@ -97,6 +111,7 @@ export function blockBody(b, theme, live, ctx) {
       // and other inline formatting remain intact, while the selected family
       // now applies consistently in the canvas and exported read-back DOM.
       overrideRichFont(content, p.fontFamily);
+      overrideLinkColor(content, t.link);
       if (edit) wireEditable(content, b, 'html', ctx, false);
       if (!live) return content;
       return wrapWithRte(b, ctx, edit && ctx.editingId === b.id, content);
@@ -303,6 +318,7 @@ export function blockBody(b, theme, live, ctx) {
         list.appendChild(li);
       });
       overrideRichFont(list, p.fontFamily);
+      overrideLinkColor(list, t.link);
       return list;
     }
     case 'table': {
@@ -351,11 +367,6 @@ export function blockBody(b, theme, live, ctx) {
       table.appendChild(tbody);
       return table;
     }
-    case 'embed': {
-      const wrap = el('div', { padding: p.py + 'px 0' }, attr);
-      wrap.appendChild(el('iframe', { width: '100%', height: p.height + 'px', border: '1px solid rgba(29,31,32,0.14)', background: '#fff', display: 'block' }, { src: p.src, title: p.label }));
-      return wrap;
-    }
     case 'css': {
       const wrap = el('div', { fontSize: '0', lineHeight: '0' }, attr);
       wrap.appendChild(el('style', {}, { html: live ? ctx.scopeCss(p.code, '[data-mc-sheet]') : p.code }));
@@ -383,6 +394,7 @@ export function blockBody(b, theme, live, ctx) {
         boxShadow: p.shadow ? '0 10px 30px rgba(29,31,32,0.12)' : 'none',
         fontFamily: t.font, color: t.text, fontSize: '15px', lineHeight: '1.6', ...FIT,
       }, { ...attr, ...editableAttrs(edit), html: m(p.html), 'data-focus-key': edit ? 'block:' + b.id : undefined });
+      overrideLinkColor(box, t.link);
       if (edit) wireEditable(box, b, 'html', ctx, false);
       if (!live) return box;
       return wrapWithRte(b, ctx, ctx.editingId === b.id, box);

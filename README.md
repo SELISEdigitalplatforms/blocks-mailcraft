@@ -84,6 +84,9 @@ DATA      HTML in, HTML out. There is no JSON document format in the public API.
           editor.importHtml(html)               apply HTML  (same importer)
           editor.exportHtml() -> string         send-ready email HTML
           Persist by storing exportHtml() and passing it back to loadTemplate().
+          exportHtml({ markers: false }) omits the data-mc* fidelity markers
+          (pristine HTML; countdown/video/box/code/CSS blocks and flex/grid
+          rows then reload lossily).
           Unclassifiable markup survives as a raw-HTML block. Nothing is dropped.
           Condition/Loop blocks export literal {{#if expr}}/{{#each expr}} tags
           (always balanced) for the host's templating engine; never evaluated
