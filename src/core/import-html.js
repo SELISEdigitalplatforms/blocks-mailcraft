@@ -753,7 +753,7 @@ function isStructural(el) {
   return /^(TABLE|FORM|IFRAME|SCRIPT|STYLE|VIDEO|OBJECT|EMBED)$/.test(el.tagName) || !!el.querySelector('table,form,iframe,script,video,object,embed');
 }
 
-/** `core/export.js` wraps every block in a column with `<div style="{boxCss(b.props)}">`, which for every block type shipped today (none define the `bBg/bBorder/bLine/bRadius/bPad` props `boxCss` reads) always resolves to a bare `<div style="margin:0">` -- a see-through spacing wrapper, not real content. Unwraps that one level so the classifiers see the block's own signature div directly; leaves any div that carries other styling (an intentionally-styled container someone pasted in) alone, since that's real content, not framework wrapper. */
+/** `core/export.js` wraps every block in a column with `<div style="{boxCss(b.props)}">`, which resolves to a bare `<div style="margin:0">` for any block whose "Box & border" panel is untouched -- a see-through spacing wrapper, not real content. Unwraps that one level so the classifiers see the block's own signature div directly; leaves any div that carries other styling alone, since that's either a set box (read back by `boxPropsOf`) or an intentionally-styled container someone pasted in -- real content, not framework wrapper. */
 function unwrapBoxDiv(el) {
   if (el.tagName !== 'DIV' || el.children.length !== 1) return el;
   // A device-visibility wrapper is framework too, and the declarations that
@@ -800,6 +800,48 @@ function logicMarkersOf(text) {
   return out;
 }
 
+/**
+ * The container styling of a `<div>` that paints a panel around its content.
+ *
+ * `cleanImportHtml`'s tag whitelist has no DIV (it never could have one --
+ * arbitrary paste brings div soup), so a `<div
+ * style="background-color:#eff6fc;border-radius:8px">` wrapping a run of
+ * text -- the verification-code panel every transactional template has --
+ * was flattened away on import and the box came back unpainted on the very
+ * first save. Read here instead, into the exact props `boxCss`/`boxStyle`
+ * already write for a block's own box, so the shape round-trips and the
+ * color lands under the inspector's "Box & border" controls where it can be
+ * edited.
+ *
+ * A color or a border is what makes a div a panel; a radius alone paints
+ * nothing, so it is picked up alongside but never claimed on its own.
+ * Padding is deliberately not read: it already reaches the block as its
+ * py/px run padding, which keeps the source's asymmetry (`18px 24px`) that
+ * the single-value `bPad` cannot express.
+ */
+function boxPropsOf(el) {
+  if (!el || el.tagName !== 'DIV' || !el.style) return null;
+  const out = {};
+  const bg = bgOf(el);
+  // `background:transparent` is what the exporter writes on every styled
+  // column wrapper, and CSSOM hands the keyword back as `rgba(0, 0, 0, 0)`;
+  // claiming either as a box color paints nothing and only makes the run
+  // look like a panel.
+  if (bg && bg !== 'transparent' && !/^rgba\([^)]*,\s*0\s*\)$/.test(bg)) out.bBg = bg;
+  const frame = borderSidesOf(el.style);
+  if (frame.width) {
+    out.bBorder = frame.width;
+    out.bStyle = borderStyleOf(el.style);
+    out.bLine = borderColorOf(el.style) || '#e2e2e5';
+    out.bTop = frame.sides.top > 0; out.bRight = frame.sides.right > 0;
+    out.bBottom = frame.sides.bottom > 0; out.bLeft = frame.sides.left > 0;
+  }
+  if (!out.bBg && !out.bBorder) return null;
+  const radius = radiusOf(el.style);
+  if (radius) out.bRadius = radius;
+  return out;
+}
+
 /** Whether an element (or the transparent single-child chain under it) carries its own padding -- the shape the exporter writes for a block's py/px, and a builder section's own spacing. Such a wrapper is one block, never part of a text run. */
 function hasOwnRunPad(el) {
   let e = el;
@@ -840,6 +882,10 @@ function blocksFromNodes(nodes) {
   // inheritedStyle reads below were skipped wholesale, so the run imported
   // at the theme default (a 30px/800 verification code became 16px plain).
   let bufTextEl = null;
+  // The container styling of the run's own wrapper (see `boxPropsOf`), kept
+  // out of the html because the sanitizer's whitelist has no DIV to hang it
+  // on.
+  let bufBox = null;
   const flush = () => {
     const raw = buf.join('');
     const html = cleanImportHtml(raw);
@@ -919,9 +965,12 @@ function blocksFromNodes(nodes) {
       // went through it, so a mobile-only paragraph reloaded visible
       // everywhere.
       if (bufVis) over.vis = bufVis;
+      // The wrapper's own box, last: these are block-level props, so nothing
+      // read off the content above can collide with them.
+      if (bufBox) Object.assign(over, bufBox);
       out.push(blk('text', over));
     }
-    buf = []; bufFirstEl = null; bufTextEl = null; bufEls = []; bufVis = undefined;
+    buf = []; bufFirstEl = null; bufTextEl = null; bufEls = []; bufVis = undefined; bufBox = null;
   };
   nodes.forEach((n) => {
     if (n.nodeType === 3) {
@@ -978,8 +1027,17 @@ function blocksFromNodes(nodes) {
     // as padding does: the exporter writes exactly one such wrapper per
     // block, and without this two zero-padded text blocks buffered into one
     // -- the second lost its size, weight, everything -- on every save.
-    const boundary = n.nodeType === 1 && !INLINE_TAGS.test(target.tagName) && (hasOwnRunPad(target) || target !== n);
+    // A painted panel is one block, whatever it holds: its styling describes
+    // the whole run, so it must neither merge with the prose around it (a
+    // bg-only div carries no padding to make it a boundary on its own) nor
+    // split, since only the first block of a split would keep the panel.
+    const box = boxPropsOf(target);
+    const boundary = n.nodeType === 1 && !INLINE_TAGS.test(target.tagName) && (hasOwnRunPad(target) || target !== n || !!box);
     if (boundary && buf.length) flush();
+    // Claimed only when the panel opens the run, which after that flush is
+    // always -- a box nested inside a longer run is content, and its color
+    // must not be promoted to the block around it.
+    if (box && !bufFirstEl) bufBox = box;
     if (!bufFirstEl) bufFirstEl = target;
     bufEls.push(target);
     // Read off `n`, not `target`: the visibility class rides the wrapper

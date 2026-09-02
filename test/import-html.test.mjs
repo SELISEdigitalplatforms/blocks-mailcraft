@@ -509,6 +509,50 @@ await it('a bare text node reads its typography off the cell around it', async (
   assert.equal(b.props.color, '#0065b2');
 });
 
+await it("a styled div keeps its panel: the verification-code box's background survives", async () => {
+  const src = email('<tr><td style="padding:32px">'
+    + '<p style="margin:0 0 16px">Hello,</p>'
+    + '<div style="background-color:#eff6fc;border-radius:8px;padding:18px 24px">'
+    + '<span style="font-size:24px;font-weight:700">{{TwoFactorCode}}</span></div>'
+    + '<p style="margin:0">Expires shortly.</p></td></tr>');
+  const blocks = blocksOf(src);
+  assert.equal(blocks.length, 3, 'the panel is its own block — got ' + typesOf(src).join(','));
+  const panel = blocks[1];
+  assert.match(panel.props.html, /\{\{TwoFactorCode\}\}/);
+  assert.equal(panel.props.bBg, '#eff6fc', 'the div background is the block box color');
+  assert.equal(panel.props.bRadius, 8);
+  assert.equal(panel.props.py, 18, "the div's padding stays the run's own, so its asymmetry survives");
+  assert.equal(panel.props.px, 24);
+  assert.equal(blocks[0].props.bBg, undefined, 'the prose around it claims nothing');
+  assert.equal(blocks[2].props.bBg, undefined);
+});
+
+await it('a panel with no padding still splits the run instead of merging away', async () => {
+  const src = email('<tr><td style="padding:32px"><p style="margin:0">Hello,</p>'
+    + '<div style="background-color:#eff6fc;border:2px dashed #cfe3f5"><span>{{TwoFactorCode}}</span></div></td></tr>');
+  const blocks = blocksOf(src);
+  assert.equal(blocks.length, 2, 'a bg-only div carries no padding to make it a boundary on its own');
+  assert.equal(blocks[1].props.bBg, '#eff6fc');
+  assert.equal(blocks[1].props.bBorder, 2);
+  assert.equal(blocks[1].props.bStyle, 'dashed');
+  assert.equal(blocks[1].props.bLine, '#cfe3f5');
+});
+
+await it('a transparent or unpainted wrapper claims no panel', async () => {
+  const bare = blocksOf(email('<tr><td><div style="margin:0"><p>plain</p></div>'
+    + '<div style="background:transparent;border-radius:6px"><p>also plain</p></div></td></tr>'));
+  bare.forEach((b) => {
+    assert.equal(b.props.bBg, undefined, 'no box color, got ' + b.props.bBg);
+    assert.equal(b.props.bRadius, undefined, 'a radius alone paints nothing');
+  });
+});
+
+await it('a panel nested inside a longer run does not repaint the block around it', async () => {
+  const b = firstOf(email('<tr><td><p style="margin:0">Lead in <span>with '
+    + '<span style="background-color:#fff3cd">a highlight</span></span></p></td></tr>'), 'text');
+  assert.equal(b.props.bBg, undefined, 'an inline highlight is content, not the block box');
+});
+
 await it('bgcolor on the tr itself is read', async () => {
   const r = rowsOf(email('<tr bgcolor="#123456"><td style="padding:10px"><p>on the tr</p></td></tr>'))[0];
   assert.equal(r.props.bg, '#123456');

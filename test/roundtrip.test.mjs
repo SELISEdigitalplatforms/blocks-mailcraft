@@ -69,6 +69,14 @@ function probeDoc(base) {
   rows.push(row(blk('condition', { expr: 'is_probe', end: false }), { py: 4, px: 0, gap: 0 }));
   rows.push(row(blk('text', { html: 'conditional body' })));
   rows.push(row(blk('condition', { expr: '', end: true }), { py: 4, px: 0, gap: 0 }));
+  // The per-block "Box & border" panel: it exports as the block's own
+  // wrapper div -- the verification-code box shape. Given a sibling on
+  // purpose, because a lone styled div in a cell is the *column* wrapper
+  // shape and is read back as column styling instead.
+  rows.push(row([
+    blk('text', { html: 'Panel probe', py: 18, px: 24, bBg: '#eff6fc', bBorder: 2, bStyle: 'dashed', bLine: '#cfe3f5', bRadius: 8 }),
+    blk('text', { html: 'after the panel' }),
+  ]));
   const two = mkRow([40, 60]);
   Object.assign(two.props, { gap: 28, valign: 'middle', mobileCols: 2, mobileOrder: 'reverse' });
   two.cols[0].blocks = [blk('text', { html: 'left col' })];
@@ -108,6 +116,18 @@ await it('text: html, size, lh, color, align, weight, py/px, font, visibility', 
   assert.equal(b.props.px, 9);
   assert.match(b.props.fontFamily, /Tahoma/);
   assert.equal(b.props.vis, 'mobile');
+});
+
+await it("text: the block's own box -- background, border, radius -- and the padding inside it", async () => {
+  const b = blocks.find((x) => /Panel probe/.test(x.props.html || ''));
+  assert.ok(b, 'the panel block survived');
+  assert.match(b.props.bBg, /^#eff6fc$/i, 'the wrapper div carries it; the sanitizer cannot');
+  assert.equal(b.props.bBorder, 2);
+  assert.equal(b.props.bStyle, 'dashed');
+  assert.match(b.props.bLine, /^#cfe3f5$/i);
+  assert.equal(b.props.bRadius, 8);
+  assert.equal(b.props.py, 18, 'run padding stays inside the box, asymmetry intact');
+  assert.equal(b.props.px, 24);
 });
 
 await it('image: src, alt, link, width (on the anchor!), align, radius, py/px', async () => {
