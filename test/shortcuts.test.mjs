@@ -41,6 +41,11 @@ async function editing(el) {
   el.core.setState({ editing: block.id, sel: { type: 'block', id: block.id } });
   await settle(3);
   el.core.editEl = q(el, '[contenteditable="true"]');
+  // `editKey`/`editPlain` travel with `editEl` -- canvas.js `onFocus` sets all
+  // three together, and the live-edit fold (mailcraft-editor.js) needs the key
+  // to know which prop the node is a copy of.
+  el.core.editKey = 'html';
+  el.core.editPlain = false;
   return block;
 }
 

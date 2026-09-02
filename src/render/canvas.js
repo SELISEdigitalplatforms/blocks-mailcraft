@@ -118,6 +118,17 @@ function blockCtx(core, editingBlockId) {
       core.editEl = node;
       core.editKey = key;
       core.editPlain = !!isPlainText;
+      // What the renderer just produced for this node, before the user has
+      // touched it -- including the decorations the render applies to the DOM
+      // and not to props (`overrideRichFont`, `overrideLinkColor` in
+      // block-body.js). `syncLiveEdit` folds the node back into props only
+      // when it differs from this, so a *user* edit is still captured but a
+      // rendering decision is never written into the document. Without it,
+      // picking a block font while editing baked the strip into props.html,
+      // and switching the control back to Inherit could no longer bring the
+      // imported per-paragraph fonts back. Refreshed on every refocus, which
+      // is every rebuild (focus-preserve.js).
+      core.editRendered = isPlainText ? node.textContent : node.innerHTML;
       if (core.state.editing === block.id && core.state.sel && core.state.sel.type === 'block' && core.state.sel.id === block.id) return;
       // Snapshotted only on a genuine new focus (not the guarded no-op above,
       // which also covers every re-render-triggered refocus while typing --

@@ -61,20 +61,24 @@ const RICH_OWNED_STYLE = { color: 'color', lh: 'line-height', weight: 'font-weig
  */
 function syncRichContent(block, key, val) {
   const prop = RICH_HTML_PROP[block.type];
-  if (!prop) return;
+  if (!prop) return false;
   // list items are one fragment per line; the rewrite must not run across the joins.
   const perLine = (src, fn) => (prop === 'items' ? String(src).split('\n').map(fn).join('\n') : fn(String(src)));
   const src = block.props[prop];
-  if (src == null || src === '') return;
+  if (src == null || src === '') return false;
+  let out = src;
   if (key === 'size') {
     const cur = Number(block.props.size);
     const next = Number(val);
     // An unknown base (imports that carried no readable size) can't be scaled
     // against -- the first explicit size just establishes the base.
-    if (cur > 0 && next > 0 && next !== cur) block.props[prop] = perLine(src, (s) => scaleInlineSizes(s, next / cur));
+    if (cur > 0 && next > 0 && next !== cur) out = perLine(src, (s) => scaleInlineSizes(s, next / cur));
   } else if (RICH_OWNED_STYLE[key]) {
-    block.props[prop] = perLine(src, (s) => stripInlineStyle(s, RICH_OWNED_STYLE[key]));
+    out = perLine(src, (s) => stripInlineStyle(s, RICH_OWNED_STYLE[key]));
   }
+  if (out === src) return false;
+  block.props[prop] = out;
+  return true;
 }
 
 const BORDER_STYLES = [
@@ -557,15 +561,19 @@ export class EditorCore {
   };
 
   size(b, delta) {
-    // fold any uncommitted inline formatting into state first, or the re-render
-    // from the size change would rewrite innerHTML from stale props
-    const elNode = this.editEl;
-    if (elNode) {
-      const key = b.type === 'heading' ? 'text' : (b.type === 'html' ? 'code' : 'html');
-      const val = b.type === 'heading' ? elNode.textContent : elNode.innerHTML;
-      if (b.props[key] !== val) this.setProp(b.id, key, val);
-    }
-    const cur = Number(b.props.size) || 16;
+    // Uncommitted inline formatting is folded into props by `setProp` below
+    // (`onFoldLiveEdit`), not here. This used to do its own fold, as a second
+    // commit: that read `editEl.innerHTML` unconditionally, so a second click
+    // landing in the same frame as the first -- before the rebuild had put the
+    // rescaled html into the DOM -- wrote the pre-scale markup straight back
+    // over it, and two quick clicks on a mixed-size block moved nothing. It
+    // also cost an extra undo step per click.
+    // Read the size off the live document, not off the `b` the toolbar closed
+    // over when it was built: two clicks landing before the next rebuild both
+    // saw the same stale base, so the second one re-applied the first one's
+    // value and the pair counted as a single step.
+    const live = this.find(this.state.doc, b.id).block || b;
+    const cur = Number(live.props.size) || 16;
     const [lo, hi] = SIZE_SPAN[b.type] || [10, 64];
     this.setProp(b.id, 'size', Math.max(lo, Math.min(hi, cur + delta)));
   }
@@ -620,15 +628,28 @@ export class EditorCore {
     this._persistTimer = setTimeout(() => this.persist(doc), 400);
   }
 
+  /**
+   * Both directions of history have the same two obligations when a block is
+   * being edited, because the live contenteditable is a second copy of that
+   * block's content: fold it into props *before* the current state is pushed
+   * onto the opposite stack (or the step back carries markup a few keystrokes
+   * behind what was on screen), and mark it stale afterwards (or the render
+   * that follows syncs the pre-undo DOM straight back over the restored doc --
+   * which is what made undo look like it skipped the focused block).
+   */
   undo() {
     const hist = this.state.history.slice(); const prev = hist.pop(); if (!prev) return;
+    if (this.state.editing && this.onFoldLiveEdit) this.onFoldLiveEdit();
     const doc = JSON.parse(prev);
+    if (this.state.editing) this.editStale = this.state.editing;
     this.setState({ doc, history: hist, future: this.state.future.concat(JSON.stringify(this.state.doc)), sel: null }, () => this.persist(doc));
   }
 
   redo() {
     const fut = this.state.future.slice(); const next = fut.pop(); if (!next) return;
+    if (this.state.editing && this.onFoldLiveEdit) this.onFoldLiveEdit();
     const doc = JSON.parse(next);
+    if (this.state.editing) this.editStale = this.state.editing;
     this.setState({ doc, future: fut, history: this.state.history.concat(JSON.stringify(this.state.doc)), sel: null }, () => this.persist(doc));
   }
 
@@ -660,14 +681,28 @@ export class EditorCore {
   selObj() { return this.state.sel ? this.find(this.state.doc, this.state.sel.id) : {}; }
 
   setProp(id, key, val) {
+    // The rewrite below works from the block's *committed* html, so anything
+    // still living only in the focused contenteditable is folded into props
+    // first -- otherwise it would both rewrite stale content and lose the
+    // uncommitted edit the moment the rebuilt node reads props back.
+    if (this.state.editing === id && this.onFoldLiveEdit) this.onFoldLiveEdit();
+    let rewrote = false;
     this.commit((doc) => {
       const f = this.find(doc, id);
       const target = f.block ? f.block.props : (f.row ? f.row.props : null);
       if (!target) return;
       // Before the write: the size rewrite needs the outgoing value as its base.
-      if (f.block) syncRichContent(f.block, key, val);
+      if (f.block) rewrote = syncRichContent(f.block, key, val);
       target[key] = val;
     });
+    // props are now *ahead* of the live contenteditable, which still holds the
+    // pre-rewrite html. Flagged so the render that follows syncs nothing back
+    // over them (`syncLiveEdit`, mailcraft-editor.js): without this, every
+    // Text size / color / spacing change made while the block was focused --
+    // i.e. every change made from the RTE's own +/- pair -- was silently
+    // reverted one frame later, so a mixed-size block ended up with a climbing
+    // `size` prop and untouched inline sizes.
+    if (rewrote) this.editStale = id;
   }
 
   setTheme(key, val) { this.commit((doc) => { doc.theme[key] = val; }); }

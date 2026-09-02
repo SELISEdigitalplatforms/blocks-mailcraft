@@ -137,6 +137,7 @@ export class MailCraftEditor extends ElementBase {
       return tag === 'input' || tag === 'textarea' || (target && target.isContentEditable);
     });
     this.core.onFormatChange = () => this.scheduleRteRefresh();
+    this.core.onFoldLiveEdit = () => this.syncLiveEdit();
     this.core.onCodeSourceChange = () => this.refreshCodeSource();
     this.core.onSavedChange = () => this.refreshSavedLabel();
     this.core.onToast = () => this.refreshToast();
@@ -151,6 +152,7 @@ export class MailCraftEditor extends ElementBase {
   disconnectedCallback() {
     this.unsubscribe?.();
     this.core.onFormatChange = null;
+    this.core.onFoldLiveEdit = null;
     this.core.onCodeSourceChange = null;
     this.core.onSavedChange = null;
     this.core.onToast = null;
@@ -889,6 +891,10 @@ export class MailCraftEditor extends ElementBase {
       this.renderInner();
     } finally {
       this.core.rendering = false;
+      // Every render rebuilds the canvas from props, so by here the live
+      // contenteditable is a copy of them again -- whatever `editStale`
+      // claimed is now true of the DOM as well (see `syncLiveEdit`).
+      this.core.editStale = null;
     }
     if (this.mainEl) {
       if (this.mainEl.scrollTop !== mainTop) this.mainEl.scrollTop = mainTop;
@@ -902,10 +908,26 @@ export class MailCraftEditor extends ElementBase {
 
   syncLiveEdit() {
     const c = this.core;
+    // One-shot right of way for the two cases where props are deliberately
+    // *ahead* of the live contenteditable: a rich-content rewrite
+    // (`syncRichContent`) and an undo/redo, both in editor-core.js. Syncing
+    // the DOM back then is the "props are the truth" rule pointing the wrong
+    // way -- it silently undid every Text size / color / spacing change made
+    // while the block was focused, and every undo of one. Props win this one
+    // render; the rebuild right after puts the new html into the DOM. The flag
+    // The flag is cleared by the rebuild in `render()`, not here: a fold can
+    // run several times (once per `setProp`) before the next frame, and
+    // clearing it on the first of those handed the render back to the DOM
+    // copy -- two quick clicks of the RTE's `+` moved nothing at all.
+    if (c.editStale && c.editStale === c.state.editing) return;
     if (!c.state.editing || !c.editEl || !c.editEl.isConnected || !c.editKey) return;
     const found = c.find(c.state.doc, c.state.editing);
     if (!found.block) return;
     const val = c.editPlain ? c.editEl.textContent : c.editEl.innerHTML;
+    // Unchanged since the render that built it (`editRendered`, canvas.js
+    // `onFocus`) means there is no user edit to fold -- only the render's own
+    // DOM decorations, which must not become part of the document.
+    if (val === c.editRendered) return;
     if (val !== found.block.props[c.editKey]) found.block.props[c.editKey] = val;
   }
 

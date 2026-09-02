@@ -362,6 +362,31 @@ await it('an explicit text-block font overrides imported inline families', async
   assert.doesNotMatch(html, /font-family:\s*Georgia/i);
 });
 
+// The render applies a block font by stripping the descendants' own
+// declarations from the *DOM* only (`overrideRichFont`), so an empty value can
+// still hand the imported typography back. While the block was focused, the
+// live-edit fold copied that stripped DOM into props and made the strip
+// permanent -- picking a font and changing your mind lost the import.
+await it('a render-time font strip is not written into the document', async () => {
+  const { el, block } = await withText();
+  const MIXED_FAMILY = '<p style="font-family:Georgia,serif">Hi there,</p><p style="font-family:Tahoma,sans-serif">Welcome</p>';
+  el.core.setProp(block.id, 'html', MIXED_FAMILY);
+  el.core.select('block', block.id);
+  await settle(2);
+  q(el, '[data-mc-content="' + block.id + '"]').focus();
+  await settle(2);
+  el.core.setProp(block.id, 'fontFamily', 'Verdana, sans-serif');
+  await settle(2);
+  assert.equal(q(el, '[data-mc-content="' + block.id + '"]').querySelector('p').style.fontFamily, '', 'the DOM copy is stripped, as before');
+  el.core.setProp(el.getContent().rows[0].id, 'py', 30); // any unrelated render
+  await settle(2);
+  el.core.setProp(block.id, 'fontFamily', '');           // back to Inherit
+  await settle(2);
+  const back = el.getContent().rows.flatMap((r) => r.cols.flatMap((c) => c.blocks))[0];
+  assert.match(back.props.html, /font-family:\s*Georgia/i, 'the imported families are still in the document');
+  assert.equal(q(el, '[data-mc-content="' + block.id + '"]').querySelector('p').style.fontFamily, 'Georgia, serif', 'and paint again');
+});
+
 // Imported (and AI-drafted) text blocks keep per-element inline typography on
 // purpose, and those declarations beat inheritance from the wrapper -- so the
 // block-level Text size / color / Line spacing / weight controls were dead on
@@ -391,6 +416,84 @@ await it('Text size on a mixed-size block rescales the inline sizes proportional
   const back = el.getContent().rows.flatMap((r) => r.cols.flatMap((c) => c.blocks))[0];
   assert.equal(back.props.size, 15, 'one undo step reverts the size...');
   assert.match(back.props.html, /font-size:\s*26px/, '...and the rescaled html with it');
+});
+
+// The same rewrite, but reached the way a user actually reaches it: the block
+// is focused (the RTE toolbar is up) and the size moves from the toolbar's own
+// +/- pair. Every render folds the live contenteditable back into props first
+// (`syncLiveEdit`) -- which used to copy the pre-rewrite html straight back
+// over the freshly scaled one, so the `size` prop climbed with each click
+// while a mixed-size block's inline sizes never moved at all.
+await it('Text size from the RTE, with the block focused, is not reverted by the live-edit sync', async () => {
+  const { el, block } = await withText();
+  el.core.setProp(block.id, 'size', 15);
+  el.core.setProp(block.id, 'html', MIXED_IMPORT);
+  el.core.select('block', block.id);
+  await settle(2);
+  q(el, '[data-mc-content="' + block.id + '"]').focus();
+  await settle(2);
+  assert.equal(el.core.state.editing, block.id, 'the block is being edited');
+
+  for (let i = 0; i < 3; i++) { q(el, 'button[title="Larger text"]').click(); await settle(2); }
+  const after = el.getContent().rows.flatMap((r) => r.cols.flatMap((c) => c.blocks))[0];
+  assert.equal(after.props.size, 18, 'three clicks, three pixels');
+  const sizes = Array.from(q(el, '[data-mc-content="' + block.id + '"]').querySelectorAll('p')).map((n) => n.style.fontSize);
+  assert.deepEqual(sizes, ['18px', '31.19px', '18px'], '15/26/15 followed the base instead of standing still');
+
+  // The other half of the same guard: uncommitted typing must still win over
+  // props, so the rewrite is fed the live content rather than replacing it.
+  const node = q(el, '[data-mc-content="' + block.id + '"]');
+  node.querySelector('p').textContent = 'Hi {{DisplayName}}, friend';
+  q(el, 'button[title="Larger text"]').click();
+  await settle(2);
+  const typed = el.getContent().rows.flatMap((r) => r.cols.flatMap((c) => c.blocks))[0];
+  assert.match(typed.props.html, /friend/, 'the mid-edit text survived the rewrite');
+  assert.match(typed.props.html, /font-size:\s*19px/, 'and the rewrite still landed');
+});
+
+// Two clicks inside one frame: the second lands before the rebuild has put the
+// rescaled html into the DOM, so it must read its base off the document (not
+// the block the toolbar closed over) and must not hand the render back to the
+// stale DOM copy. Both halves failed -- the pair used to move nothing at all.
+await it('two clicks of the RTE +/- in the same frame both count', async () => {
+  const { el, block } = await withText();
+  el.core.setProp(block.id, 'size', 15);
+  el.core.setProp(block.id, 'html', MIXED_IMPORT);
+  el.core.select('block', block.id);
+  await settle(2);
+  q(el, '[data-mc-content="' + block.id + '"]').focus();
+  await settle(2);
+  q(el, 'button[title="Larger text"]').click();
+  q(el, 'button[title="Larger text"]').click();
+  await settle(2);
+  const after = el.getContent().rows.flatMap((r) => r.cols.flatMap((c) => c.blocks))[0];
+  assert.equal(after.props.size, 17, 'two clicks, two pixels');
+  const sizes = Array.from(q(el, '[data-mc-content="' + block.id + '"]').querySelectorAll('p')).map((n) => n.style.fontSize);
+  assert.deepEqual(sizes, ['17px', '29.46px', '17px'], 'and the inline hierarchy followed');
+  assert.match(el.exportHtml(), /font-size:\s*17px/, 'what the canvas shows is what ships');
+});
+
+// Undo has the same problem from the other side: it restores the document, and
+// the render that follows used to sync the pre-undo contenteditable back over
+// it -- so undoing a change to the block you were editing reverted everything
+// except that block.
+await it('undo reaches the block being edited', async () => {
+  const { el, block } = await withText();
+  el.core.setProp(block.id, 'size', 15);
+  el.core.setProp(block.id, 'html', MIXED_IMPORT);
+  el.core.select('block', block.id);
+  await settle(2);
+  q(el, '[data-mc-content="' + block.id + '"]').focus();
+  await settle(2);
+  q(el, 'button[title="Larger text"]').click();
+  await settle(2);
+  el.core.undo();
+  await settle(2);
+  const back = el.getContent().rows.flatMap((r) => r.cols.flatMap((c) => c.blocks))[0];
+  assert.equal(back.props.size, 15, 'the base is back');
+  assert.match(back.props.html, /font-size:\s*26px/, 'and so is the html the rewrite had scaled');
+  const sizes = Array.from(q(el, '[data-mc-content="' + block.id + '"]').querySelectorAll('p')).map((n) => n.style.fontSize);
+  assert.deepEqual(sizes, ['15px', '26px', '15px'], 'the canvas shows the reverted sizes, not the pre-undo DOM');
 });
 
 await it('an untouched block is never rewritten, and a size change on plain copy leaves the html alone', async () => {
