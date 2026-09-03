@@ -4,6 +4,12 @@ All notable changes to `@seliseblocks/mailcraft` are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.14] — 2026-09-03
+
+### Fixed
+- **The text toolbar's `−`/`+` size buttons resize just the selected text.** They were block-level only: with a run of text selected they still rewrote the block's size, so "make these two words bigger" resized the whole block — while every neighbouring control (bold, color, highlight) is selection-scoped. With a selection inside a text block, `±` now wraps exactly the selected run in its own font size, steps that same run on repeated clicks instead of nesting a wrapper per click, and applies at the innermost level so it wins over any inline size an imported design carries. The change commits, exports and undoes exactly like bold does. A bare caret or a select-all keeps the block-level master scale (which rescales mixed sizes proportionally), and the toolbar's px readout now shows the size at the caret, refreshing as the caret crosses differently-sized runs. Headings stay block-level: their content is stored as plain text, which cannot carry a per-run size.
+- **A left- or right-aligned button no longer collapses its block on the canvas.** Browsers map the table `align` attribute — which classic Outlook needs — to a CSS float, which took the pill out of flow: the block collapsed to its padding and the button painted over the block below. An inline `float:none` cancels the hint everywhere floats work, while Word, which ignores CSS float, still honours the attribute.
+
 ## [0.2.13] — 2026-09-03
 
 ### Added
