@@ -4,6 +4,11 @@ All notable changes to `@seliseblocks/mailcraft` are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.12] — 2026-09-03
+
+### Fixed
+- **Clicking outside closes the floating text toolbar again after any toolbar detour.** The guard that keeps an edit alive while a toolbar control takes focus was a one-way latch: any interaction that never committed — a dismissed Text style or Merge tags dropdown, a cancelled color dialog, the link popover left with Escape or Cancel, even a click on the toolbar's own padding — left it armed forever, and every later blur was swallowed, so the toolbar could not be dismissed no matter where you clicked. The guard is now scoped to its own press, and a completed click outside both the edited block and the toolbar ends the edit explicitly — committing the content exactly as leaving the block does. That explicit close also covers what a blur never could: once focus has moved into a toolbar control, the block has no blur left to fire, so before this there was no event to close the toolbar at all. Text selections that start in the block and end outside it, clicks on the toolbar itself, and scrollbar drags all keep the edit open, as before.
+
 ## [0.2.11] — 2026-09-02
 
 ### Fixed
