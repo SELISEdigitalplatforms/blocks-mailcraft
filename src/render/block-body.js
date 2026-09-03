@@ -158,8 +158,14 @@ export function blockBody(b, theme, live, ctx) {
       // `inline-table` so the wrapper's text-align still positions it; the
       // `align` attribute is the same instruction for Word, which ignores the
       // display value. A full-width button is a plain 100% table instead.
+      // `float:none` is load-bearing: browsers map `align="left|right"` on a
+      // table to a float presentational hint, which takes the pill out of
+      // flow -- the block collapses to its padding on the canvas and the
+      // button paints over the next block. The inline style outranks the
+      // hint everywhere floats work, and Word ignores CSS float, so the
+      // `align` attribute still does its one job there.
       const table = el('table', {
-        display: p.full ? 'table' : 'inline-table', width: p.full ? '100%' : 'auto', borderCollapse: 'separate',
+        display: p.full ? 'table' : 'inline-table', width: p.full ? '100%' : 'auto', borderCollapse: 'separate', cssFloat: 'none',
       }, { role: 'presentation', cellpadding: '0', cellspacing: '0', border: '0', align: p.full ? undefined : p.align });
       const td = el('td', {
         background: p.bg, borderRadius: p.radius + 'px', padding: p.py + 'px ' + p.px + 'px', textAlign: 'center',

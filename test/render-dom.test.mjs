@@ -847,6 +847,18 @@ await it('a button renders as a one-cell table, which Word can pad and paint', a
   assert.ok(a.style.background, 'which keeps its own paint too, so classifyButton still sees a pill');
 });
 
+await it("a left-aligned button's table does not float, so the block keeps its height", async () => {
+  const { node } = await styleOf('button', { align: 'left' });
+  const table = node.querySelector('table');
+  assert.equal(table.getAttribute('align'), 'left', 'Word still gets its alignment attribute');
+  // Browsers map table[align=left|right] to a float presentational hint,
+  // which takes the pill out of flow: the block collapses to a sliver on the
+  // canvas and the button paints over the next block. The inline declaration
+  // outranks the hint; text-align on the wrapper positions the inline-table.
+  assert.equal(table.style.cssFloat, 'none', 'the inline style cancels the float hint');
+  assert.equal(node.style.textAlign, 'left', 'the wrapper aligns the pill where floats are off');
+});
+
 console.log();
 console.log('Mobile preview tells the truth');
 
