@@ -423,11 +423,48 @@ export class EditorCore {
       if (this.onFormatChange) this.onFormatChange();
     };
     document.addEventListener('selectionchange', this.onSelect);
+    /**
+     * Click-outside fallback for closing the RTE toolbar. The blur path
+     * (`blockCtx.onBlur`, canvas.js) only runs if the edited block still holds
+     * focus at the moment of the outside press -- but several toolbar controls
+     * legitimately move focus to themselves (the Text style / Merge Tags
+     * selects, the color inputs, the link popover's href field). Dismiss one
+     * of those without committing and no block blur can ever fire again, so
+     * `state.editing` -- and the toolbar -- stayed open no matter where the
+     * user clicked. A completed click whose composed path contains neither the
+     * edited block nor the toolbar closes the edit explicitly.
+     *
+     * `click`, deliberately not `pointerdown`: by click time the press's
+     * native blur/focus transition has fully settled, so this never rebuilds
+     * the canvas mid-gesture (the dropped-click problem documented in
+     * `blockCtx.onFocus`, canvas.js) and never races focus-preserve into
+     * refocusing -- and thereby reopening -- the block it just closed. It also
+     * ignores scrollbar drags, which emit no click.
+     */
+    this.onOutsideClick = (e) => {
+      if (!this.state.editing || this.rendering) return;
+      // A drag-selection that starts inside the block but ends outside it
+      // fires its click on a common ancestor -- but the block keeps focus
+      // through such a drag, while a genuine outside press blurs it first
+      // (and the blur pipeline has then already handled the close).
+      const active = this.exportRoot && this.exportRoot.activeElement;
+      if (active && active === this.editEl) return;
+      const path = e.composedPath ? e.composedPath() : [];
+      for (const n of path) {
+        if (!n || n.nodeType !== 1) continue;
+        if (n.getAttribute && n.getAttribute('data-mc-content') === this.state.editing) return;
+        if (n.hasAttribute && n.hasAttribute('data-rte-root')) return;
+      }
+      this.closeEditing();
+    };
+    if (this.exportRoot) this.exportRoot.addEventListener('click', this.onOutsideClick);
   }
 
   unmountKeyboard() {
     window.removeEventListener('keydown', this.onKey);
     document.removeEventListener('selectionchange', this.onSelect);
+    if (this.exportRoot && this.onOutsideClick) this.exportRoot.removeEventListener('click', this.onOutsideClick);
+    this.onOutsideClick = null;
   }
 
   unmount() {
@@ -449,6 +486,30 @@ export class EditorCore {
   }
 
   // ---- rich text editing ----------------------------------------------
+
+  /**
+   * Explicitly ends the active rich-text edit: commits the live content the
+   * way `blockCtx.onBlur` (canvas.js) would, then clears `editing`/`linkDraft`.
+   * Used by the click-outside fallback (`mountKeyboard`), which fires exactly
+   * when the block no longer holds focus, so no blur will ever arrive to do
+   * this. Any blur this close itself provokes is deliberately swallowed via
+   * `rteActive`: the commit below is the single commit path -- letting onBlur
+   * also run would compare against the same `editOriginal` and push a second
+   * undo entry for the same change.
+   */
+  closeEditing() {
+    const id = this.state.editing;
+    if (!id) return;
+    const elNode = this.editEl;
+    const val = elNode && elNode.isConnected && this.editKey
+      ? (this.editPlain ? elNode.textContent : elNode.innerHTML)
+      : null;
+    this.rteActive = true;
+    if (elNode && this.exportRoot && this.exportRoot.activeElement === elNode) elNode.blur();
+    this.rteActive = false;
+    if (val !== null && val !== this.editOriginal) this.setProp(id, this.editKey, val);
+    if (this.state.editing === id) this.setState({ editing: null, linkDraft: null });
+  }
 
   exec(cmd, arg) {
     this.rteActive = true;

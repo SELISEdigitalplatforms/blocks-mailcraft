@@ -407,6 +407,70 @@ await it('pasting strips formatting when asked', async () => {
   assert.ok(true, 'both paste modes ran');
 });
 
+await it('a toolbar press releases the blur guard on pointerup', async () => {
+  const el = await mountEditor();
+  el.core.insertBlock('text');
+  await settle(2);
+  const block = blocksOf(el)[0];
+  el.core.setState({ editing: block.id, sel: { type: 'block', id: block.id } });
+  await settle(3);
+  const bar = q(el, '[data-rte-root]');
+  assert.ok(bar, 'the toolbar is up');
+  // The wedge this guards against: a press on the toolbar that never reaches
+  // core.exec() (a dismissed dropdown, a cancelled color dialog, a click on
+  // the toolbar's padding) used to leave rteActive latched true forever,
+  // swallowing every later blur -- the toolbar could not be closed anymore.
+  bar.dispatchEvent(new (win().Event)('pointerdown', { bubbles: true }));
+  assert.equal(el.core.rteActive, true, 'the press arms the guard');
+  win().dispatchEvent(new (win().Event)('pointerup', { bubbles: true }));
+  assert.equal(el.core.rteActive, false, 'and the gesture ending disarms it');
+});
+
+await it('clicking outside closes the toolbar even when the block no longer holds focus', async () => {
+  const el = await mountEditor();
+  el.core.insertBlock('text');
+  await settle(2);
+  const block = blocksOf(el)[0];
+  el.core.setState({ editing: block.id, sel: { type: 'block', id: block.id } });
+  await settle(3);
+  // What onFocus would have recorded, plus an uncommitted edit: focus then
+  // moved into a toolbar control and was dismissed there, so no blur from the
+  // block will ever arrive -- only the click-outside fallback can close this.
+  el.core.setState({ linkDraft: { href: 'https://example.com/x', blank: true, editing: false } });
+  await settle(2);
+  // Grabbed after the linkDraft re-render: a render rebuilds the canvas, so an
+  // earlier node would be disconnected and its content rightly not committed.
+  const editable = q(el, '[contenteditable="true"]');
+  el.core.editEl = editable;
+  el.core.editKey = 'html';
+  el.core.editPlain = false;
+  el.core.editOriginal = blocksOf(el)[0].props.html;
+  editable.innerHTML = 'Edited then abandoned';
+  q(el, '.mc-workspace').dispatchEvent(new (win().Event)('click', { bubbles: true }));
+  await settle(2);
+  assert.equal(el.core.state.editing, null, 'the edit ended');
+  assert.equal(el.core.state.linkDraft, null, 'and the link popover with it');
+  assert.ok(!q(el, '[data-rte-root]'), 'the toolbar is gone');
+  assert.match(JSON.stringify(blocksOf(el)[0].props), /Edited then abandoned/, 'the last content still committed');
+});
+
+await it('a click inside the edited block or its toolbar does not end the edit', async () => {
+  const el = await mountEditor();
+  el.core.insertBlock('text');
+  await settle(2);
+  const block = blocksOf(el)[0];
+  el.core.setState({ editing: block.id, sel: { type: 'block', id: block.id } });
+  await settle(3);
+  const content = q(el, '[data-mc-content="' + block.id + '"]');
+  content.dispatchEvent(new (win().Event)('click', { bubbles: true }));
+  await settle(2);
+  assert.equal(el.core.state.editing, block.id, 'clicking the block keeps editing');
+  const bar = q(el, '[data-rte-root]');
+  bar.dispatchEvent(new (win().Event)('click', { bubbles: true }));
+  await settle(2);
+  assert.equal(el.core.state.editing, block.id, 'clicking the toolbar keeps editing');
+});
+
 console.log();
 console.log('Autosave');
 

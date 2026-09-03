@@ -89,7 +89,27 @@ export function renderRte(core, b) {
     position: 'absolute', top: '-82px', left: '0', zIndex: '30', display: 'grid', gap: '5px',
     background: 'var(--rte-bg)', border: '1px solid var(--rte-border)', borderRadius: '8px', padding: '7px 8px', boxShadow: 'var(--rte-shadow)',
   }, { class: 'mc-rte', 'data-mc-rte': '1', 'data-rte-root': '1' });
-  root.addEventListener('pointerdown', () => { core.rteActive = true; }, true);
+  // `rteActive` guards `blockCtx.onBlur` (canvas.js): the blur the edited
+  // block fires when a toolbar control takes focus (a select opening, a color
+  // input, the link field) must not end the edit. It used to be a one-way
+  // latch here -- only `core.exec()` ever reset it -- so any toolbar
+  // interaction that never reached exec (a dismissed dropdown, a cancelled
+  // color dialog, a click on the toolbar's padding) left it stuck true, and
+  // every later genuine blur was swallowed: the toolbar could no longer be
+  // closed by clicking outside. The swallow is only needed for the blur fired
+  // during this press's own mousedown, so release on the gesture's pointerup
+  // (blur always precedes it); controls that need the guard past the gesture
+  // re-arm it themselves (`exec`, `openLink`).
+  root.addEventListener('pointerdown', () => {
+    core.rteActive = true;
+    const release = () => {
+      core.rteActive = false;
+      window.removeEventListener('pointerup', release, true);
+      window.removeEventListener('pointercancel', release, true);
+    };
+    window.addEventListener('pointerup', release, true);
+    window.addEventListener('pointercancel', release, true);
+  }, true);
   root.addEventListener('mousedown', (e) => e.stopPropagation());
   root.addEventListener('click', (e) => e.stopPropagation());
 
@@ -208,7 +228,12 @@ function linkPopover(core, b, vars) {
   const r = el('div', { display: 'flex', alignItems: 'center', gap: '5px' });
   const input = el('input', inputStyle, { placeholder: 'https://example.com' });
   input.value = d.href;
-  setTimeout(() => input.focus(), 0);
+  // `openLink()` (editor-core.js) arms `rteActive` so the block blur this
+  // focus steal fires is swallowed; the blur is synchronous inside `focus()`,
+  // so releasing right after keeps the guard from outliving its one job
+  // (stuck true, it made every later blur -- and so click-outside-to-close --
+  // dead, e.g. after cancelling the popover with Escape).
+  setTimeout(() => { input.focus(); core.rteActive = false; }, 0);
   // Debounced (typeCommit): each draft update re-renders everything. Flushed
   // explicitly before applyLink -- both Enter and the Apply button (which
   // suppresses blur on mousedown to keep the text selection) read the draft
