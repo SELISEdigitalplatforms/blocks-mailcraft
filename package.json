@@ -60,7 +60,7 @@
   },
   "scripts": {
     "build": "node build.js",
-    "test": "node test/storage.test.mjs && node test/export.test.mjs && node test/templates.test.mjs && node test/system.test.mjs && node test/toolbar.test.mjs && node test/editor-dom.test.mjs && node test/css-cascade.test.mjs && node test/render-dom.test.mjs && node test/import-html.test.mjs && node test/interaction.test.mjs && node test/focus-preserve.test.mjs && node test/shortcuts.test.mjs && node test/import-structure.test.mjs && node test/roundtrip.test.mjs",
+    "test": "node test/storage.test.mjs && node test/export.test.mjs && node test/templates.test.mjs && node test/system.test.mjs && node test/toolbar.test.mjs && node test/editor-dom.test.mjs && node test/css-cascade.test.mjs && node test/render-dom.test.mjs && node test/import-html.test.mjs && node test/interaction.test.mjs && node test/focus-preserve.test.mjs && node test/shortcuts.test.mjs && node test/import-structure.test.mjs && node test/roundtrip.test.mjs && node test/code-tools.test.mjs",
     "prepublishOnly": "npm run build && npm test",
     "coverage": "c8 --reporter=text --reporter=text-summary --src=src --all --exclude=\"test/**\" --exclude=\"examples/**\" --exclude=\"build.js\" npm test"
   },

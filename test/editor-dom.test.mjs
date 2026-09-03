@@ -487,6 +487,94 @@ await it('the code source wraps long lines within the visible pane', async () =>
   assert.equal(highlightedRows.length, el.core.state.codeSrc.split('\n').length, 'one numbered highlight row per source line');
 });
 
+await it('the wrap toggle switches the source pane to horizontal scroll and back, and persists', async () => {
+  const el = await mountEditor();
+  el.importHtml(EMAIL);
+  await settle(3);
+  el.core.openCode();
+  await settle(2);
+  const textarea = q(el, '.mc-code-source textarea');
+  const scrollPane = textarea.parentElement.parentElement;
+  el.toggleCodeWrap();
+  assert.equal(textarea.wrap, 'off');
+  assert.equal(textarea.style.whiteSpace, 'pre');
+  assert.equal(scrollPane.style.overflowX, 'auto');
+  assert.equal(win().localStorage.getItem('mailcraft.codewrap'), 'off', 'the preference persists');
+  el.toggleCodeWrap();
+  assert.equal(textarea.wrap, 'soft');
+  assert.equal(textarea.style.whiteSpace, 'pre-wrap');
+  assert.equal(scrollPane.style.overflowX, 'hidden');
+});
+
+await it('format pretty-prints the source pane without touching what it renders', async () => {
+  const el = await mountEditor();
+  await settle(2);
+  el.core.openCode();
+  await settle(2);
+  el.core.setCodeSrc('<table><tr><td>Hello</td></tr></table>');
+  el.formatCodeSource();
+  await settle(2);
+  const src = el.core.state.codeSrc;
+  assert.ok(src.includes('\n  <tr>'), 'structure got its indentation');
+  assert.equal(src.replace(/>\s+</g, '><').trim(), '<table><tr><td>Hello</td></tr></table>', 'only whitespace between tags changed');
+  assert.equal(el.core.state.codeDirty, true, 'formatting is a pane edit, applied only via Apply');
+});
+
+await it('find highlights matches, steps through them, and replace-all rewrites the pane', async () => {
+  const el = await mountEditor();
+  await settle(2);
+  el.core.openCode();
+  await settle(2);
+  el.core.setCodeSrc('<td>alpha</td>\n<td>ALPHA</td>');
+  el.openCodeFind();
+  el.codeFindInput.value = 'alpha';
+  el.codeFindInput.dispatchEvent(new (win().Event)('input', { bubbles: true }));
+  assert.equal(el.codeFindBar.style.display, 'flex');
+  assert.equal(el.codeFindCount.textContent, '1/2', 'case-insensitive count');
+  assert.ok(q(el, '.mc-code-source pre mark'), 'matches are marked in the highlight layer');
+  el.codeFindStep(1);
+  assert.equal(el.codeFindCount.textContent, '2/2');
+  const ta = q(el, '.mc-code-source textarea');
+  assert.equal(ta.value.slice(ta.selectionStart, ta.selectionEnd).toLowerCase(), 'alpha', 'stepping selects the match');
+  el.codeReplaceInput.value = 'beta';
+  el.codeReplaceAll();
+  await settle(2);
+  assert.equal(el.core.state.codeSrc, '<td>beta</td>\n<td>beta</td>');
+  el.closeCodeFind();
+  assert.equal(el.codeFindBar.style.display, 'none');
+});
+
+await it('clicking the preview reveals the matching source, and the caret highlights the preview', async () => {
+  const el = await mountEditor();
+  await settle(2);
+  el.core.openCode();
+  await settle(2);
+  const src = '<html><head></head><body><table><tr><td>one</td><td>two</td></tr></table></body></html>';
+  el.core.setCodeSrc(src);
+  await settle(2);
+  // jsdom iframes don't parse srcdoc -- stand in a same-shape document, the
+  // way the scrollbar test above does.
+  const frame = q(el, '.mc-code-frame');
+  const previewDocument = win().document.implementation.createHTMLDocument('preview');
+  previewDocument.body.innerHTML = '<table><tr><td>one</td><td>two</td></tr></table>';
+  Object.defineProperty(frame, 'contentDocument', { configurable: true, value: previewDocument });
+  frame.dispatchEvent(new (win().Event)('load'));
+  const second = previewDocument.getElementsByTagName('td')[1];
+  el.revealSourceFromPreview(second);
+  const ta = q(el, '.mc-code-source textarea');
+  assert.equal(ta.value.slice(ta.selectionStart, ta.selectionEnd), '<td>', 'the clicked cell\'s open tag is selected');
+  assert.equal(ta.selectionStart, src.indexOf('<td>two'), 'and it is the second td, not the first');
+  assert.ok(second.hasAttribute('data-mc-hit'), 'the same element is outlined in the preview');
+  assert.ok(previewDocument.head.querySelector('[data-mc-inspect-style]'), 'the outline style is preview-only injection');
+  // Caret -> preview: put the caret inside the first cell and inspect.
+  ta.setSelectionRange(src.indexOf('one'), src.indexOf('one'));
+  el.inspectFromCaret();
+  const first = previewDocument.getElementsByTagName('td')[0];
+  assert.ok(first.hasAttribute('data-mc-hit'), 'the element under the caret is outlined');
+  assert.equal(second.hasAttribute('data-mc-hit'), false, 'the previous outline moved');
+  assert.equal(el.core.state.codeSrc, src, 'inspection never edits the source');
+});
+
 await it('the light/dark toggle repaints without losing the document', async () => {
   const el = await mountEditor();
   el.importHtml(EMAIL);

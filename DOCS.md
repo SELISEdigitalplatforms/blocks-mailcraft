@@ -610,12 +610,20 @@ The complete catalog of UI strings that `.messages` accepts — every key the ed
 | `blocks.dragHint` | Drag a block onto the canvas |
 | `canvas.meta` | {rows} rows · {blocks} blocks · {width}px |
 | `code.applyNote` | Apply parses each top-level table row back into a canvas row you can still select, reorder and delete — hand-written markup survives the round trip. |
+| `code.find` | Find |
+| `code.format` | Format source (indentation only) |
+| `code.goToLine` | Go to line |
 | `code.liveHtmlPreviewTitle` | Live HTML preview |
 | `code.livePreview` | Live preview |
 | `code.meta` | {kb} KB · {lines} lines |
+| `code.nextMatch` | Next match |
+| `code.prevMatch` | Previous match |
+| `code.replace` | Replace |
+| `code.replaceAll` | Replace all |
 | `code.source` | Source |
 | `code.statusEdited` | Code view — edited — preview live, not yet applied |
 | `code.statusSynced` | Code view — in sync with the canvas |
+| `code.wrap` | Word wrap |
 | `device.desktop` | Desktop |
 | `device.desktopHint` | Desktop width |
 | `device.mobile` | Mobile |

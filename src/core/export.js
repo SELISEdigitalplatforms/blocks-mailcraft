@@ -114,12 +114,15 @@ export function decorateLogicTags(html) {
   const chip = (kind, expr, end) => {
     const color = kind === 'each' ? '#7c3aed' : '#0e7490';
     const word = end ? (kind === 'each' ? 'END LOOP' : 'END IF') : (kind === 'each' ? 'REPEAT EACH' : 'SHOW IF');
-    return '<span style="display:inline-flex;align-items:center;gap:7px;box-sizing:border-box;border:1.5px dashed ' + color + ';border-radius:7px;background:' + color + '14;padding:4px 10px;margin:2px 0;color:' + color + ';font-family:ui-monospace,monospace;font-size:9.5px;font-weight:700;letter-spacing:0.12em;">'
+    // data-mc-deco marks decoration-only nodes so the code view's inspect
+    // link can skip them when counting elements (they exist only in the
+    // preview document, never in the source string being mapped).
+    return '<span data-mc-deco="" style="display:inline-flex;align-items:center;gap:7px;box-sizing:border-box;border:1.5px dashed ' + color + ';border-radius:7px;background:' + color + '14;padding:4px 10px;margin:2px 0;color:' + color + ';font-family:ui-monospace,monospace;font-size:9.5px;font-weight:700;letter-spacing:0.12em;">'
       + (end ? '⏶ ' : '⏷ ') + word
       + (expr ? ' <span style="font-weight:400;font-size:11px;letter-spacing:0;">{{ ' + esc(expr) + ' }}</span>' : '')
       + '</span>';
   };
-  const bandRow = (kind, expr, end) => '<tr><td colspan="99" style="padding:2px 8px;">' + chip(kind, expr, end) + '</td></tr>';
+  const bandRow = (kind, expr, end) => '<tr><td colspan="99" data-mc-deco="" style="padding:2px 8px;">' + chip(kind, expr, end) + '</td></tr>';
   let s = String(html || '');
   // Between-row tags first (adjacent to a <tr> or after a </tr>), looped for
   // the same adjacency reason as import-html's foldLogicWrappers.

@@ -10,6 +10,7 @@ import { brandLockup } from './core/brand.js';
 import { TOKEN } from './core/variables.js';
 import { hl, cssUrl } from './core/sanitize.js';
 import { decorateLogicTags } from './core/export.js';
+import { formatHtml, scanElements, elementAtOffset, findMatches, markRanges } from './core/code-tools.js';
 import { withFocusPreserved } from './render/focus-preserve.js';
 import { captureTemplatePng } from './render/screenshot.js';
 import { resolveToolbar, toolbarKey } from './core/toolbar.js';
@@ -1668,14 +1669,39 @@ export class MailCraftEditor extends ElementBase {
 
     const cols = elS('div', 'display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; min-height: 0; background: var(--ed-work);', { class: 'mc-code-split' });
     const left = elS('div', 'display: grid; grid-template-rows: auto 1fr; min-height: 0; border: 1px solid var(--ed-line); border-radius: 12px; overflow: hidden; background: var(--ed-panel);', { class: 'mc-code-source' });
-    const leftHead = elS('div', 'padding: 7px 16px; border-bottom: 1px solid var(--ed-line); font-family: var(--ed-font); font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ed-muted); display: flex; justify-content: space-between;', { class: 'mc-pane-label' });
+    const leftHead = elS('div', 'padding: 5px 16px; border-bottom: 1px solid var(--ed-line); font-family: var(--ed-font); font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ed-muted); display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 30px; box-sizing: border-box;', { class: 'mc-pane-label' });
+    this._codeFind = { open: false, q: '', index: 0, matches: [] };
     this.codeMetaEl = elS('span');
-    leftHead.append(elS('span', '', { text: t('code.source'), 'data-i18n': 'code.source' }), this.codeMetaEl);
+    // Native `title` tooltips here on purpose: the pane clips overflow, so the
+    // shared tip() bubble would be cut off at this edge.
+    const miniBtn = (iconName, key, onClick) => {
+      const b = elS('button', 'border: 1px solid var(--ed-line); background: transparent; color: var(--ed-muted); cursor: pointer; width: 26px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 6px; flex: none; transition: border-color 0.16s, color 0.16s;', { type: 'button', title: t(key), 'data-i18n-title': key, 'aria-label': t(key) });
+      b.appendChild(icon(iconName, 13));
+      b.addEventListener('mouseenter', () => { b.style.borderColor = 'var(--ed-accent)'; });
+      b.addEventListener('mouseleave', () => { b.style.borderColor = b.getAttribute('aria-pressed') === 'true' ? 'var(--ed-accent)' : 'var(--ed-line)'; });
+      b.addEventListener('click', onClick);
+      return b;
+    };
+    this.codeFindBtn = miniBtn('search', 'code.find', () => (this._codeFind.open ? this.closeCodeFind() : this.openCodeFind()));
+    this.codeWrapBtn = miniBtn('wrap', 'code.wrap', () => this.toggleCodeWrap());
+    this.codeFormatBtn = miniBtn('indent', 'code.format', () => this.formatCodeSource());
+    const tools = elS('div', 'display: flex; align-items: center; gap: 5px;', { class: 'mc-code-tools' });
+    tools.append(this.codeFindBtn, this.codeWrapBtn, this.codeFormatBtn, this.codeMetaEl);
+    leftHead.append(elS('span', '', { text: t('code.source'), 'data-i18n': 'code.source' }), tools);
     left.appendChild(leftHead);
     const editorWrap = elS('div', 'position: relative; min-height: 0;');
     editorWrap.appendChild(this.buildCodeEditor());
+    editorWrap.appendChild(this.buildCodeFindBar());
     left.appendChild(editorWrap);
     cols.appendChild(left);
+    // VS Code muscle memory, scoped to the panel so the host page's own
+    // Ctrl+F is untouched anywhere else.
+    overlay.addEventListener('keydown', (e) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+      const k = e.key.toLowerCase();
+      if (k === 'f') { e.preventDefault(); e.stopPropagation(); this.openCodeFind(); }
+      if (k === 'g') { e.preventDefault(); e.stopPropagation(); this.openCodeFind(true); }
+    });
 
     const right = elS('div', 'display: grid; grid-template-rows: auto 1fr; min-height: 0; border: 1px solid var(--ed-line); border-radius: 12px; overflow: hidden; background: var(--ed-panel);', { class: 'mc-code-preview' });
     right.appendChild(elS('div', 'padding: 7px 16px; border-bottom: 1px solid var(--ed-line); background: var(--ed-panel); font-family: var(--ed-font); font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ed-muted);', { text: t('code.livePreview'), 'data-i18n': 'code.livePreview', class: 'mc-pane-label' }));
@@ -1689,7 +1715,7 @@ export class MailCraftEditor extends ElementBase {
     const previewWrap = elS('div', 'overflow: auto; display: flex; justify-content: center; background: var(--ed-work);', { class: 'mc-code-preview-body' });
     this.codePreviewBody = previewWrap;
     this.codeFrame = elS('iframe', "width: 100%; height: 100%; min-height: 420px; border: 0; background: #ffffff; transition: width 0.24s cubic-bezier(0.22,0.61,0.36,1);", { title: t('code.liveHtmlPreviewTitle'), 'data-i18n-title': 'code.liveHtmlPreviewTitle', class: 'mc-code-frame' });
-    this.codeFrame.addEventListener('load', () => this.syncCodePreviewScrollbar());
+    this.codeFrame.addEventListener('load', () => { this.syncCodePreviewScrollbar(); this.wireCodePreviewInspect(); });
     previewWrap.appendChild(this.codeFrame);
     right.appendChild(previewWrap);
     cols.appendChild(right);
@@ -1710,21 +1736,99 @@ export class MailCraftEditor extends ElementBase {
     // in the transparent textarea drift off the highlighted layer beneath.
     const root = elS('div', 'position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; background: var(--ed-work);', { dir: 'ltr' });
     const inner = elS('div', 'position: relative; min-height: 100%; width: 100%; min-width: 0;');
+    this.codeScroller = root;
+    this.codeInnerEl = inner;
+    // Word wrap is a per-user editor preference, not document state -- kept
+    // out of the core (and out of the draft) on purpose.
+    try { this._codeWrap = localStorage.getItem('mailcraft.codewrap') !== 'off'; } catch { this._codeWrap = true; }
     this.codePre = elS('pre', `${MONO} margin: 0; padding: 14px 0 80px; width: 100%; min-width: 0; min-height: 100%; white-space: normal; color: var(--ed-text); pointer-events: none; background: linear-gradient(to right, var(--ed-panel-2) 0 52px, var(--ed-work) 52px);`, { 'aria-hidden': 'true' });
     this.codeTextarea = elS('textarea', `${MONO} position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 14px 18px 80px 70px; border: 0; background: transparent; color: transparent; caret-color: var(--ed-accent); white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; overflow: hidden; resize: none; outline: none;`, { spellcheck: 'false', wrap: 'soft', 'data-focus-key': 'code-src' });
     this.codeTextarea.addEventListener('input', (e) => this.core.setCodeSrc(e.target.value));
-    this.codeTextarea.addEventListener('keydown', (e) => {
-      if (e.key !== 'Tab') return;
-      e.preventDefault();
-      const ta = e.target; const a = ta.selectionStart; const b = ta.selectionEnd;
-      const next = ta.value.slice(0, a) + '  ' + ta.value.slice(b);
-      this.core.setCodeSrc(next);
-      ta.value = next;
-      ta.selectionStart = ta.selectionEnd = a + 2;
+    this.codeTextarea.addEventListener('keydown', (e) => this.onCodeEditorKeydown(e));
+    // Caret tracking: repaints the active-line wash and (debounced) points the
+    // live preview at the element under the caret, DevTools-style. Typing is
+    // deliberately excluded from the inspect ping -- the preview iframe is
+    // 350ms behind while typing, and scrolling it mid-thought is noise.
+    const caretPing = () => {
+      if (!this.core.state.codeOpen) return;
+      this.refreshCodeCaret();
+      clearTimeout(this._inspectTimer);
+      this._inspectTimer = setTimeout(() => this.inspectFromCaret(), 160);
+    };
+    this.codeTextarea.addEventListener('click', caretPing);
+    this.codeTextarea.addEventListener('keyup', (e) => {
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key)) caretPing();
     });
     inner.append(this.codePre, this.codeTextarea);
     root.appendChild(inner);
     return root;
+  }
+
+  /** Editing keys inside the source textarea. Inserts run through `codeInsertText` so the browser's native undo stack (Ctrl+Z) survives -- the old Tab handler reassigned `.value` and silently wiped it. */
+  onCodeEditorKeydown(e) {
+    const ta = e.target;
+    if (e.key === 'Escape' && this._codeFind && this._codeFind.open) {
+      // Escape means "close the find bar", not the whole modal -- stop it
+      // before the window-level shortcut handler sees it.
+      e.preventDefault();
+      e.stopPropagation();
+      this.closeCodeFind();
+      return;
+    }
+    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && !e.isComposing) {
+      // Auto-indent: a new line starts at the previous line's indentation.
+      e.preventDefault();
+      const at = ta.selectionStart;
+      const lineStart = ta.value.lastIndexOf('\n', at - 1) + 1;
+      const ind = (/^[ \t]*/.exec(ta.value.slice(lineStart, at)) || [''])[0];
+      this.codeInsertText('\n' + ind);
+      this.refreshCodeCaret();
+      return;
+    }
+    if (e.key !== 'Tab') return;
+    e.preventDefault();
+    const a = ta.selectionStart;
+    const b = ta.selectionEnd;
+    const val = ta.value;
+    if (!e.shiftKey && !val.slice(a, b).includes('\n')) { this.codeInsertText('  '); return; }
+    // Multi-line selection (or Shift+Tab): indent/outdent whole lines.
+    const start = val.lastIndexOf('\n', a - 1) + 1;
+    let end = val.indexOf('\n', b);
+    if (end === -1) end = val.length;
+    const block = val.slice(start, end);
+    const next = e.shiftKey ? block.replace(/^ {1,2}/gm, '') : block.replace(/^/gm, '  ');
+    if (next === block) return;
+    try { ta.setSelectionRange(start, end); } catch { return; }
+    this.codeInsertText(next);
+    try { ta.setSelectionRange(start, start + next.length); } catch { /* ignore */ }
+  }
+
+  /**
+   * Replaces the textarea selection with `text`, preferring `execCommand
+   * ('insertText')` so the edit lands on the browser's native undo stack --
+   * deprecated but universally supported for exactly this, and the only way
+   * Ctrl+Z keeps working across Format / Replace / Tab. The manual splice
+   * covers environments without it (jsdom); both paths end in `setCodeSrc`
+   * (execCommand fires a real `input` event, the splice calls it directly).
+   */
+  codeInsertText(text) {
+    const ta = this.codeTextarea;
+    try { ta.focus(); } catch { /* ignore */ }
+    const a = ta.selectionStart;
+    const b = ta.selectionEnd;
+    const expected = ta.value.slice(0, a) + text + ta.value.slice(b);
+    try {
+      const doc = this.ownerDocument;
+      if (doc && doc.execCommand) (text === '' ? doc.execCommand('delete', false) : doc.execCommand('insertText', false, text));
+    } catch { /* fall through to the splice */ }
+    // Trust the result, not the return value: environments shim execCommand as
+    // a truthy no-op (jsdom), and some browsers report success on edits they
+    // dropped. When it really ran, its input event has already hit setCodeSrc.
+    if (ta.value === expected) return;
+    ta.value = expected;
+    const at = a + text.length;
+    try { ta.setSelectionRange(at, at); } catch { /* ignore */ }
+    this.core.setCodeSrc(ta.value);
   }
 
   /** The iframe owns a separate document, so the Shadow DOM scrollbar rules
@@ -1750,6 +1854,7 @@ export class MailCraftEditor extends ElementBase {
     const t = this.core.t;
     this.codeModal.style.display = s.codeOpen ? 'grid' : 'none';
     if (!s.codeOpen) return;
+    this.applyCodeWrap();
     this.refreshCodeSource();
     if (this._codeFrameSrc !== s.codeLive) {
       // Display-only: the preview pane draws logic tags as the canvas's
@@ -1773,8 +1878,8 @@ export class MailCraftEditor extends ElementBase {
     this.codePreviewBody.classList.toggle('is-device', phone);
   }
 
-  /** Repaint the syntax layer, gutter and metadata without touching the
-   * canvas, inspector, iframe, or focused textarea node. */
+  /** Repaint the syntax layer, gutter, find marks and metadata without
+   * touching the canvas, inspector, iframe, or focused textarea node. */
   refreshCodeSource() {
     if (!this.core.state.codeOpen || !this.codeTextarea) return;
     const s = this.core.state;
@@ -1782,9 +1887,356 @@ export class MailCraftEditor extends ElementBase {
     this.codeStatusEl.textContent = s.codeDirty ? t('code.statusEdited') : t('code.statusSynced');
     if (this.codeTextarea.value !== s.codeSrc) this.codeTextarea.value = s.codeSrc;
     const lines = s.codeSrc.split('\n');
-    this.codePre.innerHTML = lines.map((line, index) => `<span style="display:grid;grid-template-columns:52px minmax(0,1fr);min-height:20px"><span style="padding-right:10px;text-align:right;color:var(--ed-faint);border-right:1px solid var(--ed-line);user-select:none">${index + 1}</span><span style="min-width:0;padding:0 18px;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word">${hl(line) || '&#8203;'}</span></span>`).join('');
-    const lineCount = lines.length;
-    this.codeMetaEl.textContent = t('code.meta', { kb: (s.codeSrc.length / 1024).toFixed(1), lines: lineCount });
+    // Find state: recomputed on every repaint so marks track live edits.
+    const find = this._codeFind;
+    let matches = [];
+    if (find && find.open && find.q) {
+      matches = findMatches(s.codeSrc, find.q);
+      find.matches = matches;
+      if (find.index >= matches.length) find.index = Math.max(0, matches.length - 1);
+    } else if (find) {
+      find.matches = [];
+      find.index = 0;
+    }
+    if (this.codeFindCount) this.codeFindCount.textContent = matches.length ? `${find.index + 1}/${matches.length}` : '0/0';
+    const wrap = this._codeWrap !== false;
+    const rowCols = wrap ? '52px minmax(0,1fr)' : '52px max-content';
+    const cellWrapCss = wrap ? 'white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word' : 'white-space:pre';
+    const caret = Math.min(this.codeTextarea.selectionStart || 0, s.codeSrc.length);
+    let pos = 0;
+    let mi = 0;
+    let caretLine = 0;
+    this.codePre.innerHTML = lines.map((line, index) => {
+      const lineEnd = pos + line.length;
+      const isCaret = caret >= pos && caret <= lineEnd;
+      if (isCaret) caretLine = index;
+      const ranges = [];
+      while (mi < matches.length && matches[mi].start <= lineEnd) {
+        const m = matches[mi];
+        if (m.end > pos) ranges.push({ start: Math.max(0, m.start - pos), end: Math.min(line.length, m.end - pos), cur: mi === find.index });
+        mi++;
+      }
+      const html = (ranges.length ? markRanges(hl(line), ranges) : hl(line)) || '&#8203;';
+      const numCss = 'padding-right:10px;text-align:right;user-select:none;border-right:1px solid var(--ed-line);' + (isCaret ? 'color:var(--ed-accent);font-weight:700' : 'color:var(--ed-faint)');
+      const rowCss = `display:grid;grid-template-columns:${rowCols};min-height:20px;${isCaret ? 'background:var(--ed-soft);' : ''}`;
+      pos = lineEnd + 1;
+      return `<span style="${rowCss}"><span style="${numCss}">${index + 1}</span><span style="min-width:0;padding:0 18px;${cellWrapCss}">${html}</span></span>`;
+    }).join('');
+    this._codeCaretLine = caretLine;
+    this.codeMetaEl.textContent = t('code.meta', { kb: (s.codeSrc.length / 1024).toFixed(1), lines: lines.length });
+  }
+
+  /** Cheap caret-only follow-up: repaints the rows only when the caret changed line, so plain clicks and arrow keys don't pay the full rebuild twice. */
+  refreshCodeCaret() {
+    if (!this.core.state.codeOpen || !this.codeTextarea) return;
+    const caret = this.codeTextarea.selectionStart || 0;
+    const line = this.core.state.codeSrc.slice(0, caret).split('\n').length - 1;
+    if (line !== this._codeCaretLine) this.refreshCodeSource();
+  }
+
+  /** 0-based line index of a character offset into the source pane. */
+  codeLineOf(offset) {
+    return this.core.state.codeSrc.slice(0, Math.max(0, offset)).split('\n').length - 1;
+  }
+
+  /** Scrolls the numbered row for `line` into view; `flash` outlines it for a beat (how "here it is" reads after a preview click or Go-to-line). */
+  scrollCodeLineIntoView(line, flash) {
+    const row = this.codePre && this.codePre.children[line];
+    if (!row) return;
+    if (typeof row.scrollIntoView === 'function') { try { row.scrollIntoView({ block: 'center' }); } catch { /* ignore */ } }
+    if (!flash) return;
+    row.style.outline = '1.5px solid var(--ed-accent)';
+    row.style.outlineOffset = '-1px';
+    setTimeout(() => { row.style.outline = ''; row.style.outlineOffset = ''; }, 900);
+  }
+
+  // ---- code view: wrap + format ------------------------------------------
+
+  /** Applies the current wrap mode to both layers. Wrap off swaps the pane to one-source-line-per-row with a shared horizontal scroll: the inner sizer grows to the widest highlighted row and the transparent textarea (absolutely positioned over it) inherits that width, so caret and colors stay aligned. */
+  applyCodeWrap() {
+    const ta = this.codeTextarea;
+    if (!ta) return;
+    const on = this._codeWrap !== false;
+    ta.setAttribute('wrap', on ? 'soft' : 'off');
+    ta.style.whiteSpace = on ? 'pre-wrap' : 'pre';
+    ta.style.overflowWrap = on ? 'anywhere' : 'normal';
+    ta.style.wordBreak = on ? 'break-word' : 'normal';
+    if (this.codeScroller) this.codeScroller.style.overflowX = on ? 'hidden' : 'auto';
+    if (this.codeInnerEl) {
+      this.codeInnerEl.style.width = on ? '100%' : 'max-content';
+      this.codeInnerEl.style.minWidth = on ? '0' : '100%';
+    }
+    if (this.codeWrapBtn) {
+      this.codeWrapBtn.setAttribute('aria-pressed', String(on));
+      this.codeWrapBtn.style.color = on ? 'var(--ed-accent)' : 'var(--ed-muted)';
+      this.codeWrapBtn.style.borderColor = on ? 'var(--ed-accent)' : 'var(--ed-line)';
+    }
+  }
+
+  toggleCodeWrap() {
+    this._codeWrap = this._codeWrap === false;
+    try { localStorage.setItem('mailcraft.codewrap', this._codeWrap ? 'on' : 'off'); } catch { /* ignore */ }
+    this.applyCodeWrap();
+    this.refreshCodeSource();
+  }
+
+  /** Pretty-prints the source pane in place (core/code-tools.js `formatHtml` -- whitespace between tags only, the rendered email is unchanged). One undo step; nothing reaches the canvas until Apply. */
+  formatCodeSource() {
+    const src = this.core.state.codeSrc;
+    let next = src;
+    try { next = formatHtml(src); } catch { next = src; }
+    if (next === src) return;
+    const ta = this.codeTextarea;
+    try { ta.focus(); ta.setSelectionRange(0, ta.value.length); } catch { /* ignore */ }
+    this.codeInsertText(next);
+    try { ta.setSelectionRange(0, 0); } catch { /* ignore */ }
+    if (this.codeScroller) this.codeScroller.scrollTop = 0;
+    this.refreshCodeSource();
+  }
+
+  // ---- code view: find / replace / go-to-line ------------------------------
+
+  buildCodeFindBar() {
+    const t = this.core.t;
+    const bar = elS('div', 'position: absolute; top: 8px; right: 16px; z-index: 6; display: none; flex-direction: column; gap: 6px; padding: 8px; background: var(--ed-panel); border: 1px solid var(--ed-line-2); border-radius: 10px; box-shadow: var(--ed-shadow-lg);', { class: 'mc-code-findbar', dir: 'ltr' });
+    const INPUT = 'box-sizing: border-box; background: var(--ed-panel-2); border: 1px solid var(--ed-line); color: var(--ed-text); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; padding: 5px 8px; border-radius: 6px; outline: none;';
+    const iconBtn = (name, key, onClick) => {
+      const b = elS('button', 'border: 1px solid var(--ed-line); background: transparent; color: var(--ed-muted); cursor: pointer; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 6px; flex: none; transition: border-color 0.16s;', { type: 'button', title: t(key), 'data-i18n-title': key, 'aria-label': t(key) });
+      b.appendChild(icon(name, 12));
+      b.addEventListener('mouseenter', () => { b.style.borderColor = 'var(--ed-accent)'; });
+      b.addEventListener('mouseleave', () => { b.style.borderColor = 'var(--ed-line)'; });
+      b.addEventListener('click', onClick);
+      return b;
+    };
+    const textBtn = (key, onClick) => {
+      const b = elS('button', 'border: 1px solid var(--ed-line); background: transparent; color: var(--ed-text); cursor: pointer; height: 24px; padding: 0 8px; display: flex; align-items: center; border-radius: 6px; font-family: var(--ed-font); font-size: 10.5px; font-weight: 600; flex: none; transition: border-color 0.16s;', { type: 'button' });
+      b.appendChild(elS('span', '', { text: t(key), 'data-i18n': key }));
+      b.addEventListener('mouseenter', () => { b.style.borderColor = 'var(--ed-accent)'; });
+      b.addEventListener('mouseleave', () => { b.style.borderColor = 'var(--ed-line)'; });
+      b.addEventListener('click', onClick);
+      return b;
+    };
+    const row1 = elS('div', 'display: flex; align-items: center; gap: 6px;');
+    this.codeFindInput = elS('input', INPUT + 'width: 168px;', { placeholder: t('code.find'), 'data-i18n-placeholder': 'code.find', 'data-focus-key': 'code-find' });
+    this.codeFindInput.addEventListener('input', (e) => {
+      this._codeFind.q = e.target.value;
+      this._codeFind.index = 0;
+      this.refreshCodeSource();
+    });
+    this.codeFindInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); this.codeFindStep(e.shiftKey ? -1 : 1); } });
+    this.codeFindCount = elS('span', 'font-family: ui-monospace, monospace; font-size: 10.5px; color: var(--ed-muted); min-width: 42px; text-align: center; flex: none;', { text: '0/0' });
+    row1.append(this.codeFindInput, this.codeFindCount, iconBtn('up', 'code.prevMatch', () => this.codeFindStep(-1)), iconBtn('down', 'code.nextMatch', () => this.codeFindStep(1)), iconBtn('x', 'action.close', () => this.closeCodeFind()));
+    const row2 = elS('div', 'display: flex; align-items: center; gap: 6px;');
+    this.codeReplaceInput = elS('input', INPUT + 'width: 130px;', { placeholder: t('code.replace'), 'data-i18n-placeholder': 'code.replace', 'data-focus-key': 'code-replace' });
+    this.codeReplaceInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); this.codeReplaceCurrent(); } });
+    this.codeLineInput = elS('input', INPUT + 'width: 52px;', { placeholder: ':42', title: t('code.goToLine'), 'data-i18n-title': 'code.goToLine', 'aria-label': t('code.goToLine'), 'data-focus-key': 'code-goline' });
+    this.codeLineInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); this.codeGoToLine(e.target.value); } });
+    row2.append(this.codeReplaceInput, textBtn('code.replace', () => this.codeReplaceCurrent()), textBtn('code.replaceAll', () => this.codeReplaceAll()), this.codeLineInput);
+    bar.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopPropagation();
+      this.closeCodeFind();
+    });
+    bar.append(row1, row2);
+    this.codeFindBar = bar;
+    return bar;
+  }
+
+  openCodeFind(focusLine) {
+    const f = this._codeFind;
+    f.open = true;
+    this.codeFindBar.style.display = 'flex';
+    const ta = this.codeTextarea;
+    const sel = ta.value.slice(ta.selectionStart || 0, ta.selectionEnd || 0);
+    if (sel && !sel.includes('\n')) {
+      this.codeFindInput.value = sel;
+      f.q = sel;
+      f.index = 0;
+    }
+    this.refreshCodeSource();
+    const target = focusLine ? this.codeLineInput : this.codeFindInput;
+    try { target.focus(); target.select(); } catch { /* ignore */ }
+  }
+
+  closeCodeFind() {
+    this._codeFind.open = false;
+    this.codeFindBar.style.display = 'none';
+    this.refreshCodeSource();
+    try { this.codeTextarea.focus(); } catch { /* ignore */ }
+  }
+
+  codeFindStep(dir) {
+    const f = this._codeFind;
+    if (!f.matches.length) return;
+    f.index = (f.index + dir + f.matches.length) % f.matches.length;
+    const m = f.matches[f.index];
+    // Selection set silently (focus stays in the find bar); the pane shows the
+    // current match through its mark, and Escape lands the caret on it.
+    try { this.codeTextarea.setSelectionRange(m.start, m.end); } catch { /* ignore */ }
+    this.refreshCodeSource();
+    this.scrollCodeLineIntoView(this.codeLineOf(m.start));
+  }
+
+  codeReplaceCurrent() {
+    const f = this._codeFind;
+    if (!f.matches.length) return;
+    const m = f.matches[f.index];
+    const ta = this.codeTextarea;
+    try { ta.focus(); ta.setSelectionRange(m.start, m.end); } catch { return; }
+    this.codeInsertText(this.codeReplaceInput.value);
+    // Matches recompute on the repaint; the unchanged index now points at what
+    // was the following occurrence.
+    this.refreshCodeSource();
+    this.scrollCodeLineIntoView(this.codeLineOf(m.start));
+    try { this.codeReplaceInput.focus(); } catch { /* ignore */ }
+  }
+
+  codeReplaceAll() {
+    const f = this._codeFind;
+    if (!f.q || !f.matches.length) return;
+    const src = this.core.state.codeSrc;
+    const rep = this.codeReplaceInput.value;
+    let out = '';
+    let last = 0;
+    for (const m of f.matches) { out += src.slice(last, m.start) + rep; last = m.end; }
+    out += src.slice(last);
+    const ta = this.codeTextarea;
+    try { ta.focus(); ta.setSelectionRange(0, ta.value.length); } catch { return; }
+    this.codeInsertText(out);
+    try { ta.setSelectionRange(0, 0); } catch { /* ignore */ }
+    this.refreshCodeSource();
+    try { this.codeFindInput.focus(); } catch { /* ignore */ }
+  }
+
+  codeGoToLine(value) {
+    const num = parseInt(String(value).replace(/[^0-9]/g, ''), 10);
+    if (!num) return;
+    const lines = this.core.state.codeSrc.split('\n');
+    const line = Math.min(Math.max(1, num), lines.length) - 1;
+    let off = 0;
+    for (let i = 0; i < line; i++) off += lines[i].length + 1;
+    try { this.codeTextarea.focus(); this.codeTextarea.setSelectionRange(off, off); } catch { /* ignore */ }
+    this.refreshCodeSource();
+    this.scrollCodeLineIntoView(line, true);
+  }
+
+  // ---- code view: inspect (code <-> preview) -------------------------------
+
+  /** Tag scan of the source pane, cached per source string -- caret pings and preview clicks both read it. */
+  codeScan() {
+    const src = this.core.state.codeSrc;
+    if (this._codeScanSrc !== src) {
+      this._codeScanSrc = src;
+      this._codeScanned = scanElements(src);
+    }
+    return this._codeScanned;
+  }
+
+  /** Same-tag elements of the preview document in document order, minus the decoration nodes `decorateLogicTags` adds (chips/band rows exist only in the preview, never in the source being mapped). */
+  codePreviewEls(doc, tag) {
+    const deco = (el) => (el.closest && el.closest('[data-mc-deco]'))
+      || (el.firstElementChild && el.firstElementChild.hasAttribute && el.firstElementChild.hasAttribute('data-mc-deco'));
+    return Array.from(doc.getElementsByTagName(tag)).filter((el) => !deco(el));
+  }
+
+  /**
+   * Caret -> preview half of the inspect link. Both documents render the same
+   * string, so "the nth <td>" identifies the same element on both sides --
+   * per-tag counting on purpose: the parser's inserted <tbody>s (and the
+   * preview-only decoration, filtered above) would shift any global index.
+   * When the counts for a tag disagree (mid-typing, malformed markup), the
+   * mapping walks up to the nearest ancestor whose counts still line up
+   * rather than guessing.
+   */
+  inspectFromCaret() {
+    const s = this.core.state;
+    if (!s.codeOpen) return;
+    const doc = this.codeFrame && this.codeFrame.contentDocument;
+    if (!doc || !doc.body) return;
+    const scan = this.codeScan();
+    const caret = Math.min(this.codeTextarea.selectionStart || 0, Math.max(0, s.codeSrc.length - 1));
+    let el = elementAtOffset(scan, caret);
+    let node = null;
+    while (el) {
+      const list = this.codePreviewEls(doc, el.tag);
+      if (list.length === (scan.byTag[el.tag] || []).length) { node = list[el.nth] || null; break; }
+      el = el.parent >= 0 ? scan.els[el.parent] : null;
+    }
+    this.highlightPreviewNode(node);
+  }
+
+  highlightPreviewNode(node) {
+    const doc = this.codeFrame && this.codeFrame.contentDocument;
+    if (!doc) return;
+    if (this._previewHit && this._previewHit !== node) {
+      try { this._previewHit.removeAttribute('data-mc-hit'); } catch { /* ignore */ }
+    }
+    this._previewHit = null;
+    if (!node || node === doc.body || node === doc.documentElement) return;
+    this._previewHit = node;
+    node.setAttribute('data-mc-hit', '');
+    this.ensureInspectStyle(doc);
+    if (typeof node.scrollIntoView === 'function') {
+      try { node.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch { try { node.scrollIntoView(); } catch { /* ignore */ } }
+    }
+  }
+
+  /** Preview-only outline style, injected the same way as the preview scrollbar chrome -- the source string and everything exported stay untouched. */
+  ensureInspectStyle(doc) {
+    if (!doc.head) return;
+    const view = this.ownerDocument && this.ownerDocument.defaultView;
+    const accent = (view && view.getComputedStyle(this.mc).getPropertyValue('--ed-accent').trim()) || '#2563eb';
+    let style = doc.head.querySelector('[data-mc-inspect-style]');
+    if (!style) {
+      style = doc.createElement('style');
+      style.setAttribute('data-mc-inspect-style', '');
+      doc.head.appendChild(style);
+    }
+    style.textContent = `[data-mc-hit] { outline: 2px solid ${accent} !important; outline-offset: -1px !important; }`;
+  }
+
+  /** Attach the preview -> code click handler to the iframe's current document (each srcdoc load mints a new one). Capture phase so an <a> highlights its source instead of navigating the preview away. */
+  wireCodePreviewInspect() {
+    const doc = this.codeFrame && this.codeFrame.contentDocument;
+    if (!doc || doc === this._inspectWiredDoc) return;
+    this._inspectWiredDoc = doc;
+    this._previewHit = null;
+    doc.addEventListener('click', (e) => {
+      if (!this.core.state.codeOpen) return;
+      e.preventDefault();
+      this.revealSourceFromPreview(e.target);
+    }, true);
+  }
+
+  /** Preview -> caret half of the inspect link: selects the clicked element's open tag in the source pane and scrolls its line into view. */
+  revealSourceFromPreview(target) {
+    const doc = this.codeFrame && this.codeFrame.contentDocument;
+    if (!doc) return;
+    const scan = this.codeScan();
+    let node = target && target.nodeType === 1 ? target : target && target.parentElement;
+    let found = null;
+    let hit = null;
+    while (node && node !== doc.documentElement) {
+      if (node.closest && node.closest('[data-mc-deco]')) { node = node.parentElement; continue; }
+      const tag = node.tagName.toLowerCase();
+      const list = this.codePreviewEls(doc, tag);
+      const nth = list.indexOf(node);
+      if (nth !== -1 && (scan.byTag[tag] || []).length === list.length) {
+        found = scan.byTag[tag][nth];
+        hit = node;
+        break;
+      }
+      node = node.parentElement;
+    }
+    if (!found) return;
+    try {
+      this.codeTextarea.focus();
+      this.codeTextarea.setSelectionRange(found.openStart, found.openEnd);
+    } catch { /* ignore */ }
+    this.refreshCodeSource();
+    this.scrollCodeLineIntoView(this.codeLineOf(found.openStart), true);
+    this.highlightPreviewNode(hit);
   }
 
   // ---- modals: AI copy --------------------------------------------------
