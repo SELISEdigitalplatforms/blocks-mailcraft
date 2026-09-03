@@ -4,6 +4,18 @@ All notable changes to `@seliseblocks/mailcraft` are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.13] — 2026-09-03
+
+### Added
+- **The code view's source and preview panes are now inspect-linked, DevTools-style.** Click (or arrow) the caret anywhere in the source and the element it sits in is outlined and scrolled into view in the live preview; click any element in the preview and its open tag is selected in the source, with the line scrolled into view and flashed. The mapping counts same-tag elements on both sides — immune to the parser's inserted `<tbody>`s and to the preview-only `{{#if}}` chips, which now carry a `data-mc-deco` marker and are skipped — and when the counts disagree mid-edit it walks up to the nearest ancestor that still lines up rather than guessing. The outline is injected into the preview document the same way the preview scrollbar chrome is: the source string, Apply and Export stay byte-for-byte untouched. Clicking a link in the preview now inspects it instead of navigating the preview away.
+- **Format** button in the source pane: a conservative pretty-printer (two-space indentation, one structural tag per line) that only moves whitespace the renderer cannot see. It never invents a space between inline or inline-block elements (hybrid email columns survive), keeps `<style>`, `<pre>` and MSO conditional comments byte-identical, gives `{{#if}}`/`{{/each}}` tags their own lines, and is idempotent. Formatting is a pane edit like any other — nothing reaches the canvas until Apply.
+- **Word wrap** toggle in the source pane: wrap off shows one source line per numbered row with a shared horizontal scroll. The preference persists per browser.
+- **Find and replace** (Ctrl+F / Cmd+F): a floating bar over the source pane with case-insensitive matches highlighted in the code, a current-match counter, Enter/Shift+Enter to step, Replace and Replace all, plus a **go-to-line** field (Ctrl+G). Escape closes the bar without closing the modal.
+- **The source pane types like an editor now.** Enter auto-indents to the current line's depth, Tab and Shift+Tab indent and outdent multi-line selections, and the caret's line gets a wash with an accent line number.
+
+### Fixed
+- **Ctrl+Z works in the code editor again.** The old Tab handler reassigned the textarea's value, which silently wiped the browser's native undo stack; every programmatic edit (Tab, Enter, Format, Replace) now goes through `insertText`, so the whole editing session stays undoable.
+
 ## [0.2.12] — 2026-09-03
 
 ### Fixed
