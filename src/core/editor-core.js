@@ -580,7 +580,7 @@ export class EditorCore {
    * dragging through uniformly-formatted text rebuilds nothing at all.
    */
   formatFingerprint(b) {
-    let s = b.id + '|' + this.currentTag() + '|' + (b.props.size || 16) + '|' + (this.state.linkDraft ? 1 : 0) + '|';
+    let s = b.id + '|' + this.currentTag() + '|' + this.selSize(b) + '|' + (this.state.linkDraft ? 1 : 0) + '|';
     for (const cmd of ['bold', 'italic', 'underline', 'strikeThrough', 'superscript', 'subscript', 'justifyLeft', 'justifyCenter', 'justifyRight', 'justifyFull', 'insertUnorderedList', 'insertOrderedList']) {
       let on = false;
       try { on = document.queryCommandState(cmd); } catch { /* ignore */ }
@@ -622,6 +622,13 @@ export class EditorCore {
   };
 
   size(b, delta) {
+    // A non-collapsed selection inside a rich text block means the user is
+    // sizing a *run*, not the block -- every neighbouring control (bold,
+    // color, highlight) is selection-scoped, so a ± that rewrote the whole
+    // block's prop here read as broken. Only `text` can keep the resulting
+    // spans: a heading folds back through `textContent` (syncEdit), which
+    // would silently drop them, so it stays block-level.
+    if (b.type === 'text' && this.sizeSelection(b, delta)) return;
     // Uncommitted inline formatting is folded into props by `setProp` below
     // (`onFoldLiveEdit`), not here. This used to do its own fold, as a second
     // commit: that read `editEl.innerHTML` unconditionally, so a second click
@@ -637,6 +644,114 @@ export class EditorCore {
     const cur = Number(live.props.size) || 16;
     const [lo, hi] = SIZE_SPAN[b.type] || [10, 64];
     this.setProp(b.id, 'size', Math.max(lo, Math.min(hi, cur + delta)));
+  }
+
+  /** Nearest inline px font-size walking up from `node` to the edited block's wrapper -- null when no run declares one (the block prop then owns the size). */
+  inlineSizeAt(node) {
+    let n = node && node.nodeType === 1 ? node : (node ? node.parentElement : null);
+    while (n && n !== this.editEl) {
+      const m = /^([\d.]+)px$/.exec((n.style && n.style.fontSize) || '');
+      if (m) return parseFloat(m[1]);
+      n = n.parentElement;
+    }
+    return null;
+  }
+
+  /** What the ± readout should show: the inline size at the selection when the caret sits inside a sized run, else the block's own size. Also part of `formatFingerprint`, so moving the caret across differently-sized runs refreshes the toolbar. */
+  selSize(b) {
+    const live = this.find(this.state.doc, b.id).block || b;
+    const base = Number(live.props.size) || 16;
+    if (b.type !== 'text' || this.state.editing !== b.id || !this.editEl) return base;
+    const sel = this.getSelection();
+    const node = sel && sel.rangeCount && this.editEl.contains(sel.anchorNode)
+      ? sel.anchorNode
+      : (this.savedRange && this.editEl.contains(this.savedRange.startContainer) ? this.savedRange.startContainer : null);
+    const inline = node ? this.inlineSizeAt(node) : null;
+    return inline == null ? base : Math.round(inline);
+  }
+
+  /**
+   * Sizes just the selected run(s) of text by wrapping each selected text node
+   * in a `font-size` span (or restepping the span a previous click made --
+   * repeated ± must not nest one span per click). Wrapping happens at the text
+   * node, the innermost level, so the new size always outranks any inline size
+   * an imported ancestor carries. The change lives in the contenteditable like
+   * bold/italic do and folds into props through the same blur/commit path.
+   *
+   * Returns false when the click is not selection-scoped -- no live edit, a
+   * bare caret, or a selection covering the whole block. The last keeps
+   * select-all + ± behaving as the block-level master scale it always was
+   * (`syncRichContent` then *scales* mixed sizes instead of flattening them,
+   * and the saved `size` prop stays truthful).
+   */
+  sizeSelection(b, delta) {
+    const root = this.editEl;
+    if (!root || !root.isConnected || this.state.editing !== b.id) return false;
+    const sel = this.getSelection();
+    // Same fallback discipline as `exec`: the live selection wins when it is
+    // inside the edited block; `savedRange` covers focus stolen by a control.
+    let src = sel && sel.rangeCount && root.contains(sel.anchorNode) && root.contains(sel.focusNode) ? sel.getRangeAt(0) : null;
+    if (!src && this.savedRange && root.contains(this.savedRange.startContainer) && root.contains(this.savedRange.endContainer)) src = this.savedRange;
+    if (!src || src.collapsed) return false;
+    const range = src.cloneRange();
+    const total = root.textContent.length;
+    if (charOffset(root, range.startContainer, range.startOffset) === 0
+      && charOffset(root, range.endContainer, range.endOffset) === total) return false;
+
+    const [lo, hi] = SIZE_SPAN.text;
+    const live = this.find(this.state.doc, b.id).block || b;
+    const cur = this.inlineSizeAt(range.startContainer) || Number(live.props.size) || 16;
+    const next = Math.max(lo, Math.min(hi, Math.round(cur) + delta));
+
+    // Split the boundary text nodes so every text node intersecting the range
+    // is *fully* inside it; order matters when both ends share one node.
+    const endC = range.endContainer;
+    if (endC.nodeType === 3 && range.endOffset < endC.nodeValue.length) endC.splitText(range.endOffset);
+    const startC = range.startContainer;
+    if (startC.nodeType === 3 && range.startOffset > 0) {
+      const tail = startC.splitText(range.startOffset);
+      range.setStart(tail, 0);
+      if (endC === startC) range.setEnd(tail, tail.nodeValue.length);
+    }
+    const s = charOffset(root, range.startContainer, range.startOffset);
+    const e = charOffset(root, range.endContainer, range.endOffset);
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const hits = [];
+    let pos = 0; let tn;
+    while ((tn = walker.nextNode())) {
+      const len = tn.nodeValue.length;
+      if (len && pos >= s && pos + len <= e) hits.push(tn);
+      pos += len;
+      if (pos >= e) break;
+    }
+    // Something non-text was selected (an image, say): still handled -- the
+    // click must not fall through and resize the whole block.
+    if (!hits.length) return true;
+    const wraps = hits.map((node) => {
+      const parent = node.parentElement;
+      if (parent && parent !== root && parent.tagName === 'SPAN' && parent.childNodes.length === 1) {
+        parent.style.fontSize = next + 'px';
+        return parent;
+      }
+      const span = document.createElement('span');
+      span.style.fontSize = next + 'px';
+      node.replaceWith(span);
+      span.appendChild(node);
+      return span;
+    });
+    // Reselect the runs so the next ± click steps from here, and cache the
+    // range the way `exec` does for controls that steal focus. Boundaries go
+    // *inside* the first/last wrap (each holds exactly one text node), so the
+    // selection anchor sits under the new span and `selSize` reads it for the
+    // toolbar readout.
+    const first = wraps[0].firstChild;
+    const last = wraps[wraps.length - 1].lastChild;
+    const r2 = document.createRange();
+    r2.setStart(first, 0);
+    r2.setEnd(last, last.nodeValue.length);
+    if (sel) { sel.removeAllRanges(); sel.addRange(r2); }
+    this.savedRange = r2.cloneRange();
+    return true;
   }
 
   hasCountdown() { return this.state.doc.rows.some((r) => r.cols.some((c) => c.blocks.some((b) => b.type === 'countdown'))); }

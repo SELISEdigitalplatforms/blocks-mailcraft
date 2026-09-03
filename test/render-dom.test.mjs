@@ -326,6 +326,69 @@ await it('one ± click on a heading at the panel edge no longer collapses it', a
   assert.equal(cur().props.size, 12, 'floor holds at the panel minimum');
 });
 
+// The ± pair used to be block-level only: with a run of text selected it still
+// rewrote `props.size`, so "make these two words bigger" resized the whole
+// block. With a non-collapsed selection inside a text block the pair now wraps
+// just the selected run, the way bold/color always worked.
+// jsdom's Selection only accepts document-tree ranges, so like the caret tests
+// in shortcuts.test.mjs these stand in a light-DOM contenteditable for the
+// block's shadow node -- the code under test only sees `core.editEl`.
+async function withSizedSelection(html, from, to) {
+  const { el, block } = await withText();
+  el.core.setProp(block.id, 'size', 15);
+  el.core.setState({ editing: block.id, sel: { type: 'block', id: block.id } });
+  await settle(3);
+  const doc = win().document;
+  const box = doc.createElement('div');
+  box.setAttribute('contenteditable', 'true');
+  box.innerHTML = html;
+  doc.body.appendChild(box);
+  el.core.editEl = box;
+  const range = doc.createRange();
+  range.setStart(box.firstChild, from);
+  range.setEnd(box.firstChild, to);
+  const sel = win().getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  return { el, block, box };
+}
+
+await it('± with a selection sizes only the selected run, not the block', async () => {
+  const { el, block, box } = await withSizedSelection('Tap the button below', 4, 14); // "the button"
+  el.core.size(block, 1);
+  const cur = () => el.getContent().rows.flatMap((r) => r.cols.flatMap((c) => c.blocks))[0];
+  const span = box.querySelector('span[style]');
+  assert.ok(span, 'the selected run is wrapped');
+  assert.equal(span.textContent, 'the button', 'only the selection is wrapped');
+  assert.equal(span.style.fontSize, '16px', 'stepped up from the block base of 15');
+  await settle();
+  assert.equal(cur().props.size, 15, 'the block prop did not move');
+  assert.equal(el.core.selSize(cur()), 16, 'the readout follows the run, not the block');
+
+  // A second click steps the same span instead of nesting a new one per click.
+  el.core.size(block, 1);
+  assert.equal(box.querySelectorAll('span[style]').length, 1, 'no nesting on repeated clicks');
+  assert.equal(span.style.fontSize, '17px');
+
+  // The change folds into the document through the same commit path bold uses.
+  el.core.syncEdit(block);
+  await settle();
+  assert.ok(/font-size:\s*17px/.test(cur().props.html), 'the run size survives the fold');
+  assert.equal(cur().props.size, 15, 'the block prop still owns the rest of the text');
+  box.remove();
+});
+
+await it('± with the whole block selected keeps the block-level master scale', async () => {
+  const text = 'All of this text';
+  const { el, block, box } = await withSizedSelection(text, 0, text.length);
+  el.core.size(block, 1);
+  await settle();
+  const cur = () => el.getContent().rows.flatMap((r) => r.cols.flatMap((c) => c.blocks))[0];
+  assert.equal(cur().props.size, 16, 'select-all still moves the block prop');
+  assert.ok(!box.querySelector('span[style]'), 'and wraps nothing');
+  box.remove();
+});
+
 await it('the RTE size controls appear only on blocks that render a size', async () => {
   const { el, block } = await withText();
   el.core.setState({ editing: block.id, sel: { type: 'block', id: block.id } });

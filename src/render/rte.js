@@ -138,7 +138,10 @@ export function renderRte(core, b) {
   if (b.type === 'text' || b.type === 'heading') r1.append(
     sep(),
     btn('minus', 'Smaller text', () => core.size(b, -1)),
-    el('span', { fontFamily: 'var(--ed-font)', fontSize: '9.5px', color: 'var(--rte-muted)', minWidth: '32px', textAlign: 'center' }, { text: (b.props.size || 16) + 'px' }),
+    // `selSize`, not `props.size`: with the caret inside a run the ± pair
+    // sized on its own (core `sizeSelection`), the readout shows that run's
+    // size -- the block prop no longer tells the whole story.
+    el('span', { fontFamily: 'var(--ed-font)', fontSize: '9.5px', color: 'var(--rte-muted)', minWidth: '32px', textAlign: 'center' }, { text: core.selSize(b) + 'px' }),
     btn('plus', 'Larger text', () => core.size(b, 1)),
   );
 
