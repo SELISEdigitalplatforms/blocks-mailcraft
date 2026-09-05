@@ -83,14 +83,17 @@ export const createStoryViewer = function (core, hooks) {
     open: false, page: 0, pages: 1, playing: true, done: false, held: false,
     remaining: PAGE_MS, startedAt: 0, timer: 0, token: 0,
     url: '', blob: null, natW: 0, natH: 0, cardW: 0, cardH: 0, showH: 0,
-    format: 0, saving: false,
+    format: 0, saving: false, onClose: null,
   };
 
   // ---- chrome -----------------------------------------------------------
 
   // Dim only, no backdrop blur -- a full-screen blur is a many-frame stall on
   // weak GPUs each time the overlay fades in; the deeper dim carries the focus.
-  const overlay = el('div', 'position: absolute; inset: 0; z-index: 78; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 11px; padding: 22px; box-sizing: border-box; background: rgba(9,11,16,0.86); opacity: 0; transition: opacity 0.22s ease;', { class: 'mc-story' });
+  // Deep dim rather than translucent: bright chrome underneath (the export
+  // dialog's buttons, a colourful canvas) bled through 0.86 right where the
+  // viewer's own header sits and read as clutter.
+  const overlay = el('div', 'position: absolute; inset: 0; z-index: 78; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 11px; padding: 22px; box-sizing: border-box; background: rgba(8,10,15,0.94); opacity: 0; transition: opacity 0.22s ease;', { class: 'mc-story' });
   // Clicking the dark surround closes; clicks on the card are the tap zones'
   // business and must not fall through to here.
   overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
@@ -108,13 +111,19 @@ export const createStoryViewer = function (core, hooks) {
   headRow.append(headText, closeBtn);
 
   const card = el('div', 'position: relative; overflow: hidden; border-radius: 16px; background: #fff; flex: none; box-shadow: 0 26px 70px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.09); transform: scale(0.965) translateY(10px); opacity: 0; transition: transform 0.34s cubic-bezier(0.22,0.61,0.36,1), opacity 0.24s ease;');
-  const shot = el('img', 'position: absolute; left: 0; top: 0; width: 100%; display: block; opacity: 0; transform: translate3d(0,0,0); transition: opacity 0.32s ease;', { alt: '' });
+  // `will-change` keeps the tall capture promoted to its own layer for the
+  // life of the viewer -- without it the browser may demote between slides
+  // and re-rasterize megapixels on the next one, which is the visible hitch.
+  const shot = el('img', 'position: absolute; left: 0; top: 0; width: 100%; display: block; opacity: 0; transform: translate3d(0,0,0); transition: opacity 0.32s ease; will-change: transform;', { alt: '', decoding: 'async' });
   card.appendChild(shot);
 
   // Skeleton: shown while the capture renders and cross-faded out when the
   // image arrives, so the card never flashes empty or resizes under the eye.
   const skeleton = el('div', 'position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 11px; background: var(--ed-panel); color: var(--ed-faint); transition: opacity 0.28s ease;');
-  const shimmer = el('div', 'position: absolute; inset: 0; background: linear-gradient(100deg, transparent 22%, var(--ed-soft) 40%, transparent 58%); background-size: 260% 100%; animation: mcStoryShimmer 1.6s linear infinite;');
+  // The sweep animates `transform`, not `background-position`: the capture
+  // work saturates the main thread exactly while this plays, and a composited
+  // transform keeps gliding where a per-frame background repaint stutters.
+  const shimmer = el('div', 'position: absolute; top: 0; bottom: 0; left: 0; width: 60%; background: linear-gradient(100deg, transparent, var(--ed-soft), transparent); transform: translateX(-110%); animation: mcStoryShimmer 1.6s linear infinite; will-change: transform;');
   const skelText = el('div', 'position: relative; font-family: var(--ed-font); font-size: 12.5px; font-weight: 600; color: var(--ed-text);');
   const skelHint = el('div', 'position: relative; font-family: ui-monospace, monospace; font-size: 9.5px; letter-spacing: 0.07em; line-height: 1.7; color: var(--ed-faint); max-width: 76%; text-align: center;');
   const retryBtn = el('button', 'position: relative; display: none; border: 1px solid var(--ed-line); background: transparent; color: var(--ed-text); cursor: pointer; height: 30px; padding: 0 13px; border-radius: 8px; align-items: center; gap: 7px; font-family: var(--ed-font); font-size: 11.5px; font-weight: 600;', { type: 'button' });
@@ -409,18 +418,24 @@ export const createStoryViewer = function (core, hooks) {
       s.url = URL.createObjectURL(blob);
       shot.onload = () => {
         if (token !== s.token) return;
-        s.natW = shot.naturalWidth;
-        s.natH = shot.naturalHeight;
-        layout();
-        shot.style.opacity = '1';
-        skeleton.style.opacity = '0';
-        setTimeout(() => { if (token === s.token) skeleton.style.display = 'none'; }, 300);
-        setActionsEnabled(true);
-        // A template that fits on one screen has nothing to advance through:
-        // land on "replay" rather than running an invisible timer.
-        if (s.pages < 2) { s.done = true; s.playing = false; }
-        syncPlayBtn();
-        arm();
+        // Decode the megapixels off-screen first: fading in an undecoded
+        // image rasterizes it inside the fade and drops its first frames.
+        const ready = shot.decode ? shot.decode().catch(() => {}) : Promise.resolve();
+        ready.then(() => {
+          if (token !== s.token) return;
+          s.natW = shot.naturalWidth;
+          s.natH = shot.naturalHeight;
+          layout();
+          shot.style.opacity = '1';
+          skeleton.style.opacity = '0';
+          setTimeout(() => { if (token === s.token) skeleton.style.display = 'none'; }, 300);
+          setActionsEnabled(true);
+          // A template that fits on one screen has nothing to advance through:
+          // land on "replay" rather than running an invisible timer.
+          if (s.pages < 2) { s.done = true; s.playing = false; }
+          syncPlayBtn();
+          arm();
+        });
       };
       shot.src = s.url;
     }, () => {
@@ -460,9 +475,10 @@ export const createStoryViewer = function (core, hooks) {
     step(e.deltaY > 0 ? 1 : -1);
   }, { passive: false });
 
-  function open() {
+  function open(opts) {
     if (s.open) return;
     s.open = true;
+    s.onClose = (opts && opts.onClose) || null;
     overlay.style.display = 'flex';
     overlay.removeAttribute('aria-hidden');
     kickerEl.textContent = t('story.kicker');
@@ -471,7 +487,14 @@ export const createStoryViewer = function (core, hooks) {
     card.style.transform = 'scale(1) translateY(0)';
     card.style.opacity = '1';
     layout();
-    load();
+    // The capture blocks the main thread in bursts (render, layout, serialize,
+    // rasterize, encode) -- started immediately those bursts land inside the
+    // entrance transition and visibly stutter it. The skeleton goes up now;
+    // the capture starts once the chrome has finished arriving (0.34s card
+    // transition, plus a beat).
+    showSkeleton(false);
+    renderMeta();
+    setTimeout(() => { if (s.open) load(); }, 380);
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('resize', layout);
     closeBtn.focus({ preventScroll: true });
@@ -482,6 +505,11 @@ export const createStoryViewer = function (core, hooks) {
     s.open = false;
     s.token++;
     clearTimeout(s.timer);
+    // Restore whatever the host parked for the viewer (the export dialog) as
+    // the fade-out starts, so leaving reads as returning, not as a blank beat.
+    const restore = s.onClose;
+    s.onClose = null;
+    if (restore) restore();
     window.removeEventListener('keydown', onKey, true);
     window.removeEventListener('resize', layout);
     overlay.style.opacity = '0';

@@ -108,7 +108,7 @@ export const STYLE = `
 @keyframes mcIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes mcFade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes mcPulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
-@keyframes mcStoryShimmer { from { background-position: 140% 0; } to { background-position: -40% 0; } }
+@keyframes mcStoryShimmer { from { transform: translateX(-110%); } to { transform: translateX(280%); } }
 
 /*
  * Hover/selection outlines on canvas rows and blocks. Re-rendering on every

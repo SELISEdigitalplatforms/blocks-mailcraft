@@ -4,6 +4,13 @@ All notable changes to `@seliseblocks/mailcraft` are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **The screenshot viewer opens and slides smoothly.** Three sources of jank, all on the main thread at once: the capture's heavy bursts (render, layout, serialize, rasterize, encode) started inside the entrance animation and stuttered it — the skeleton now goes up immediately and the capture waits for the chrome to finish arriving; the skeleton's shimmer animated `background-position`, a full-card repaint per frame exactly while that work ran — it sweeps on a composited `transform` now; and the tall capture image wasn't pinned to its own compositor layer, so a slide could re-rasterize megapixels mid-transition — `will-change: transform` keeps it promoted, and the image is fully decoded off-screen before it fades in.
+- **Faster reopen on photo-heavy templates.** Every capture re-fetched and re-inlined each external image; the inlined bytes are now cached per URL for the session (a failed fetch is evicted, so a transient network error is not pinned).
+- **The viewer no longer reads as a modal stacked on the export dialog.** Opened from the dialog's Screenshot button, the dialog is parked while the viewer is up and restored when it closes; the backdrop also dims deeper (0.86 → 0.94), so bright chrome underneath stops bleeding through the viewer's own header.
+
 ## [0.2.15] — 2026-09-05
 
 ### Added

@@ -487,8 +487,12 @@ export class MailCraftEditor extends ElementBase {
    */
   screenshotPng(options) { return captureTemplatePng(this.core, this.mc, options); }
 
-  /** Opens the story-style viewer over the editor and captures into it -- what the Screenshot button does. Nothing touches the filesystem until the user picks Download inside it. */
-  previewScreenshot() { this.story.open(); }
+  /** Opens the story-style viewer over the editor and captures into it -- what the Screenshot button does. The export dialog, which hosts that button, is parked while the viewer is up and restored when it closes, so the two never read as stacked modals. Nothing touches the filesystem until the user picks Download inside it. */
+  previewScreenshot() {
+    const fromExport = this.core.state.exportOpen;
+    if (fromExport) this.core.setState({ exportOpen: false });
+    this.story.open(fromExport ? { onClose: () => this.core.setState({ exportOpen: true }) } : undefined);
+  }
 
   /** `screenshotPng(options)` plus the same save-a-file flow as the HTML export download, with success/failure toasts. Pass an already-captured blob (the story viewer does) to save that one instead of rendering a second time; the filename extension follows the blob's actual type. */
   async downloadScreenshot(blob, options) {

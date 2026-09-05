@@ -62,8 +62,15 @@ function encodeCanvas(canvas, mime, quality) {
   });
 }
 
+// Inlined bytes are cached per URL for the session: every capture (open,
+// retry, reopen) used to re-fetch each remote image, which is most of a slow
+// open on a photo-heavy template. A failed fetch is evicted so a transient
+// network error does not pin the blank-pixel fallback forever.
+const inlineCache = new Map();
+
 function toDataUri(url) {
-  return fetch(url, { mode: 'cors' }).then((res) => {
+  if (inlineCache.has(url)) return inlineCache.get(url);
+  const job = fetch(url, { mode: 'cors' }).then((res) => {
     if (!res.ok) throw new Error('fetch failed: ' + res.status);
     return res.blob();
   }).then((blob) => new Promise((resolve, reject) => {
@@ -71,7 +78,12 @@ function toDataUri(url) {
     fr.onload = () => resolve(fr.result);
     fr.onerror = reject;
     fr.readAsDataURL(blob);
-  }));
+  })).catch((err) => {
+    inlineCache.delete(url);
+    throw err;
+  });
+  inlineCache.set(url, job);
+  return job;
 }
 
 async function inlineExternalImages(root) {
