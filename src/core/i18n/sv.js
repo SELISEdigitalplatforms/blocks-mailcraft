@@ -181,7 +181,6 @@ export const SV = {
   'rte.highlightColor': 'Överstrykningsfärg',
   'rte.removeHighlight': 'Ta bort överstrykning',
   'rte.clearFormatting': 'Rensa formatering',
-  'action.downloadPng': 'Ladda ner PNG',
   'action.screenshot': 'Skärmbild',
   'action.screenshotHint': 'Se hela mallen som en bild och ladda ner den',
   'toast.pngSaved': 'Skärmbild nedladdad',
@@ -198,6 +197,8 @@ export const SV = {
   'story.pause': 'Pausa',
   'story.replay': 'Spela upp igen',
   'story.copy': 'Kopiera',
+  'story.download': 'Ladda ner {fmt}',
+  'story.format': 'Bildformat — PNG är förlustfritt, JPG och WebP är mindre filer',
   'story.meta': '{w}×{h} · skärm {i} av {n}',
   'footer.poweredBy': 'Drivs av SELISE Blocks © 2026',
 };

@@ -238,7 +238,6 @@ export const EN = {
   'rte.clearFormatting': 'Clear formatting',
 
   // Screenshot export (export modal / element `screenshotPng()`)
-  'action.downloadPng': 'Download PNG',
   'action.screenshot': 'Screenshot',
   'action.screenshotHint': 'Preview the full template as an image, then download it',
   'toast.pngSaved': 'Screenshot downloaded',
@@ -257,6 +256,8 @@ export const EN = {
   'story.pause': 'Pause',
   'story.replay': 'Replay',
   'story.copy': 'Copy',
+  'story.download': 'Download {fmt}',
+  'story.format': 'Image format — PNG is lossless, JPG and WebP are smaller files',
   'story.meta': '{w}×{h} · screen {i} of {n}',
 
   // Footer strip (core/footer.js). One string, so a translator localizes

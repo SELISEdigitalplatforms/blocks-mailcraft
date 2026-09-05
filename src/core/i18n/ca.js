@@ -181,7 +181,6 @@ export const CA = {
   'rte.highlightColor': 'Color de ressaltat',
   'rte.removeHighlight': 'Treu el ressaltat',
   'rte.clearFormatting': 'Neteja el format',
-  'action.downloadPng': 'Baixa el PNG',
   'action.screenshot': 'Captura',
   'action.screenshotHint': 'Previsualitza tota la plantilla com a imatge i baixa-la',
   'toast.pngSaved': 'Captura baixada',
@@ -198,6 +197,8 @@ export const CA = {
   'story.pause': 'Pausa',
   'story.replay': 'Torna a reproduir',
   'story.copy': 'Copia',
+  'story.download': 'Baixa el {fmt}',
+  'story.format': 'Format de la imatge — el PNG és sense pèrdues; JPG i WebP són fitxers més petits',
   'story.meta': '{w}×{h} · pantalla {i} de {n}',
   'footer.poweredBy': 'Amb la tecnologia de SELISE Blocks © 2026',
 };

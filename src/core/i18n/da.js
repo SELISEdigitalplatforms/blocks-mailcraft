@@ -181,7 +181,6 @@ export const DA = {
   'rte.highlightColor': 'Fremhævningsfarve',
   'rte.removeHighlight': 'Fjern fremhævning',
   'rte.clearFormatting': 'Ryd formatering',
-  'action.downloadPng': 'Hent PNG',
   'action.screenshot': 'Skærmbillede',
   'action.screenshotHint': 'Se hele skabelonen som et billede, og hent det',
   'toast.pngSaved': 'Skærmbillede hentet',
@@ -198,6 +197,8 @@ export const DA = {
   'story.pause': 'Pause',
   'story.replay': 'Afspil igen',
   'story.copy': 'Kopiér',
+  'story.download': 'Hent {fmt}',
+  'story.format': 'Billedformat — PNG er tabsfrit, JPG og WebP er mindre filer',
   'story.meta': '{w}×{h} · skærm {i} af {n}',
   'footer.poweredBy': 'Drevet af SELISE Blocks © 2026',
 };

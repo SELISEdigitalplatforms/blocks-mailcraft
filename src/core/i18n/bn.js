@@ -203,7 +203,6 @@ export const BN = {
   'rte.highlightColor': 'হাইলাইট রং',
   'rte.removeHighlight': 'হাইলাইট সরান',
   'rte.clearFormatting': 'ফরম্যাটিং মুছুন',
-  'action.downloadPng': 'PNG ডাউনলোড',
   'action.screenshot': 'স্ক্রিনশট',
   'action.screenshotHint': 'পুরো টেমপ্লেট ছবি হিসেবে দেখুন, তারপর ডাউনলোড করুন',
   'toast.pngSaved': 'স্ক্রিনশট ডাউনলোড হয়েছে',
@@ -220,6 +219,8 @@ export const BN = {
   'story.pause': 'থামান',
   'story.replay': 'আবার চালান',
   'story.copy': 'কপি',
+  'story.download': '{fmt} ডাউনলোড',
+  'story.format': 'ছবির ফরম্যাট — PNG লসলেস, JPG ও WebP ফাইল ছোট',
   'story.meta': '{w}×{h} · স্ক্রিন {i} / {n}',
   'footer.poweredBy': 'SELISE Blocks দ্বারা পরিচালিত © 2026',
 };

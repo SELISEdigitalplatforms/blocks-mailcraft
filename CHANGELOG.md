@@ -4,6 +4,16 @@ All notable changes to `@seliseblocks/mailcraft` are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.15] — 2026-09-05
+
+### Added
+- **Compressed screenshots.** `screenshotPng(options)` takes `{ format: 'png' | 'jpeg' | 'webp', quality: 0–1, scale }`, so a long template can be captured as a JPG or WebP at a fraction of the PNG's size (PNG stays the lossless default). The capture itself is still one lossless render; a lossy pick re-encodes it at download time against the template's page colour, and never captures twice. `downloadScreenshot(blob?, options?)` passes the options through and names the file by the format that was actually encoded (a browser without a WebP encoder falls back to PNG, per spec). Copy still hands the clipboard a PNG — it accepts nothing else.
+- **The screenshot viewer's actions are one floating control bar now.** Play/pause and Copy sit as quiet segments beside a segmented **PNG | JPG | WEBP** picker (all three visible, the active one lit) and a solid Download button that renames itself with the chosen format. The capture's dimensions and screen position moved up under the Screenshot kicker, where a full header line keeps them from truncating; on narrow cards Copy folds to its icon so Download keeps its label.
+- **The demo templates have product and hero imagery now.** Six of the example templates (back in stock, cart left behind, rate your headphones, meet Nova, The Sunday Brief, your order shipped) were shipping with no images at all — colour tiles stood in where a product shot or hero belongs. Each now carries flat SVG illustrations as self-contained `data:` URIs, so the gallery keeps working from `file://`, offline, and inside the screenshot capture's no-network rule. All six still converge as save round-trip fixed points.
+
+### Changed
+- The `action.downloadPng` message key is retired in favour of `story.download` (`'Download {fmt}'`) and the new `story.format` hint, in all 31 locales. A host override table using the old key should move to the new ones.
+
 ## [0.2.14] — 2026-09-03
 
 ### Fixed

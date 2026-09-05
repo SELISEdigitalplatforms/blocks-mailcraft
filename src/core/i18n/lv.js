@@ -181,7 +181,6 @@ export const LV = {
   'rte.highlightColor': 'Izcēluma krāsa',
   'rte.removeHighlight': 'Noņemt izcēlumu',
   'rte.clearFormatting': 'Notīrīt formatējumu',
-  'action.downloadPng': 'Lejupielādēt PNG',
   'action.screenshot': 'Ekrānuzņēmums',
   'action.screenshotHint': 'Apskatīt visu veidni kā attēlu un lejupielādēt to',
   'toast.pngSaved': 'Ekrānuzņēmums lejupielādēts',
@@ -198,6 +197,8 @@ export const LV = {
   'story.pause': 'Pauzēt',
   'story.replay': 'Atskaņot vēlreiz',
   'story.copy': 'Kopēt',
+  'story.download': 'Lejupielādēt {fmt}',
+  'story.format': 'Attēla formāts — PNG ir bezzudumu, JPG un WebP faili ir mazāki',
   'story.meta': '{w}×{h} · ekrāns {i} no {n}',
   'footer.poweredBy': 'Darbina SELISE Blocks © 2026',
 };

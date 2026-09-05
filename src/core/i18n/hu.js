@@ -181,7 +181,6 @@ export const HU = {
   'rte.highlightColor': 'Kiemelés színe',
   'rte.removeHighlight': 'Kiemelés eltávolítása',
   'rte.clearFormatting': 'Formázás törlése',
-  'action.downloadPng': 'PNG letöltése',
   'action.screenshot': 'Képernyőkép',
   'action.screenshotHint': 'A teljes sablon megtekintése képként, majd letöltése',
   'toast.pngSaved': 'Képernyőkép letöltve',
@@ -198,6 +197,8 @@ export const HU = {
   'story.pause': 'Szünet',
   'story.replay': 'Újrajátszás',
   'story.copy': 'Másolás',
+  'story.download': '{fmt} letöltése',
+  'story.format': 'Képformátum — a PNG veszteségmentes, a JPG és a WebP kisebb fájl',
   'story.meta': '{w}×{h} · {i}/{n} képernyő',
   'footer.poweredBy': 'Működteti a SELISE Blocks © 2026',
 };

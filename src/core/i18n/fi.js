@@ -181,7 +181,6 @@ export const FI = {
   'rte.highlightColor': 'Korostusväri',
   'rte.removeHighlight': 'Poista korostus',
   'rte.clearFormatting': 'Poista muotoilut',
-  'action.downloadPng': 'Lataa PNG',
   'action.screenshot': 'Kuvakaappaus',
   'action.screenshotHint': 'Katso koko pohja kuvana ja lataa se',
   'toast.pngSaved': 'Kuvakaappaus ladattiin',
@@ -198,6 +197,8 @@ export const FI = {
   'story.pause': 'Keskeytä',
   'story.replay': 'Toista uudelleen',
   'story.copy': 'Kopioi',
+  'story.download': 'Lataa {fmt}',
+  'story.format': 'Kuvamuoto — PNG on häviötön, JPG ja WebP ovat pienempiä tiedostoja',
   'story.meta': '{w}×{h} · näkymä {i}/{n}',
   'footer.poweredBy': 'Taustalla SELISE Blocks © 2026',
 };

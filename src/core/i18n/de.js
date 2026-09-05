@@ -181,7 +181,6 @@ export const DE = {
   'rte.highlightColor': 'Markierungsfarbe',
   'rte.removeHighlight': 'Markierung entfernen',
   'rte.clearFormatting': 'Formatierung entfernen',
-  'action.downloadPng': 'PNG herunterladen',
   'action.screenshot': 'Screenshot',
   'action.screenshotHint': 'Die gesamte Vorlage als Bild ansehen und herunterladen',
   'toast.pngSaved': 'Screenshot heruntergeladen',
@@ -198,6 +197,8 @@ export const DE = {
   'story.pause': 'Pause',
   'story.replay': 'Erneut abspielen',
   'story.copy': 'Kopieren',
+  'story.download': '{fmt} herunterladen',
+  'story.format': 'Bildformat — PNG ist verlustfrei, JPG und WebP sind kleinere Dateien',
   'story.meta': '{w}×{h} · Ansicht {i} von {n}',
   'footer.poweredBy': 'Bereitgestellt von SELISE Blocks © 2026',
 };

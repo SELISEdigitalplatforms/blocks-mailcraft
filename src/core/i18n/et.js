@@ -181,7 +181,6 @@ export const ET = {
   'rte.highlightColor': 'Esiletõstu värv',
   'rte.removeHighlight': 'Eemalda esiletõst',
   'rte.clearFormatting': 'Eemalda vorming',
-  'action.downloadPng': 'Laadi PNG alla',
   'action.screenshot': 'Kuvatõmmis',
   'action.screenshotHint': 'Vaata kogu malli pildina ja laadi see alla',
   'toast.pngSaved': 'Kuvatõmmis laaditi alla',
@@ -198,6 +197,8 @@ export const ET = {
   'story.pause': 'Peata',
   'story.replay': 'Esita uuesti',
   'story.copy': 'Kopeeri',
+  'story.download': 'Laadi {fmt} alla',
+  'story.format': 'Pildivorming — PNG on kadudeta, JPG ja WebP on väiksemad failid',
   'story.meta': '{w}×{h} · vaade {i}/{n}',
   'footer.poweredBy': 'Töötab SELISE Blocks © 2026 põhjal',
 };

@@ -204,7 +204,6 @@ export const AR = {
   'rte.highlightColor': 'لون التمييز',
   'rte.removeHighlight': 'إزالة التمييز',
   'rte.clearFormatting': 'مسح التنسيق',
-  'action.downloadPng': 'تنزيل PNG',
   'action.screenshot': 'لقطة شاشة',
   'action.screenshotHint': 'معاينة القالب كاملاً كصورة، ثم تنزيله',
   'toast.pngSaved': 'تم تنزيل لقطة الشاشة',
@@ -221,6 +220,8 @@ export const AR = {
   'story.pause': 'إيقاف مؤقت',
   'story.replay': 'إعادة التشغيل',
   'story.copy': 'نسخ',
+  'story.download': 'تنزيل {fmt}',
+  'story.format': 'صيغة الصورة — PNG بلا فقدان، وJPG وWebP ملفات أصغر',
   'story.meta': '{w}×{h} · شاشة {i} من {n}',
   'footer.poweredBy': 'مدعوم من SELISE Blocks © 2026',
 };

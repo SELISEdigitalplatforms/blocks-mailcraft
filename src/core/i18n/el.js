@@ -181,7 +181,6 @@ export const EL = {
   'rte.highlightColor': 'Χρώμα επισήμανσης',
   'rte.removeHighlight': 'Αφαίρεση επισήμανσης',
   'rte.clearFormatting': 'Καθαρισμός μορφοποίησης',
-  'action.downloadPng': 'Λήψη PNG',
   'action.screenshot': 'Στιγμιότυπο',
   'action.screenshotHint': 'Δείτε όλο το πρότυπο ως εικόνα και κατεβάστε το',
   'toast.pngSaved': 'Το στιγμιότυπο κατέβηκε',
@@ -198,6 +197,8 @@ export const EL = {
   'story.pause': 'Παύση',
   'story.replay': 'Επανάληψη',
   'story.copy': 'Αντιγραφή',
+  'story.download': 'Λήψη {fmt}',
+  'story.format': 'Μορφή εικόνας — το PNG είναι χωρίς απώλειες, τα JPG και WebP είναι μικρότερα αρχεία',
   'story.meta': '{w}×{h} · οθόνη {i} από {n}',
   'footer.poweredBy': 'Με την υποστήριξη του SELISE Blocks © 2026',
 };

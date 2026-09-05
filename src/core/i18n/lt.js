@@ -181,7 +181,6 @@ export const LT = {
   'rte.highlightColor': 'Paryškinimo spalva',
   'rte.removeHighlight': 'Pašalinti paryškinimą',
   'rte.clearFormatting': 'Išvalyti formatavimą',
-  'action.downloadPng': 'Atsisiųsti PNG',
   'action.screenshot': 'Ekrano kopija',
   'action.screenshotHint': 'Peržiūrėti visą šabloną kaip paveikslėlį ir jį atsisiųsti',
   'toast.pngSaved': 'Ekrano kopija atsisiųsta',
@@ -198,6 +197,8 @@ export const LT = {
   'story.pause': 'Pristabdyti',
   'story.replay': 'Paleisti iš naujo',
   'story.copy': 'Kopijuoti',
+  'story.download': 'Atsisiųsti {fmt}',
+  'story.format': 'Vaizdo formatas — PNG be nuostolių, JPG ir WebP failai mažesni',
   'story.meta': '{w}×{h} · ekranas {i} iš {n}',
   'footer.poweredBy': 'Veikia su SELISE Blocks © 2026',
 };

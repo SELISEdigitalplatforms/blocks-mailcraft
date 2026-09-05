@@ -96,8 +96,10 @@ function tip(node, label, dir, align) {
  * a host's own table, an imported locale from `core/i18n/`, or both merged via
  * `defineMessages`; see `core/i18n/index.js`).
  * Methods: `getContent()`, `setContent(doc)`, `importHtml(html)`, `exportHtml()`,
- * `loadTemplate(tpl)`, `screenshotPng()`
- * (full-template PNG as a Blob), `previewScreenshot()` (story-style viewer),
+ * `loadTemplate(tpl)`, `screenshotPng(options)`
+ * (full-template image as a Blob; `options.format`/`quality`/`scale` pick
+ * PNG, JPEG or WebP and the compression), `previewScreenshot()` (story-style
+ * viewer with its own format picker),
  * `downloadScreenshot()`, `copyScreenshot()`, `undo()`, `redo()`.
  * Events: `change` (detail: doc), `export` (detail: html string).
  */
@@ -473,20 +475,30 @@ export class MailCraftEditor extends ElementBase {
     return html;
   }
 
-  /** Full-template screenshot as a PNG Blob (2x resolution, desktop width, independent of the current device/zoom view). See render/screenshot.js for the technique and its limits. */
-  screenshotPng() { return captureTemplatePng(this.core, this.mc); }
+  /**
+   * Full-template screenshot as an image Blob (2x resolution by default,
+   * desktop width, independent of the current device/zoom view). `options`
+   * is the compression dial: `{ format: 'png' | 'jpeg' | 'webp', quality:
+   * 0..1 (lossy formats, default 0.85), scale (default 2) }`. PNG is
+   * lossless; JPEG/WebP are typically a fraction of the size on a long
+   * template. Read the returned `blob.type` for what was actually encoded --
+   * a browser without a WebP encoder hands back PNG. See
+   * render/screenshot.js for the technique and its limits.
+   */
+  screenshotPng(options) { return captureTemplatePng(this.core, this.mc, options); }
 
   /** Opens the story-style viewer over the editor and captures into it -- what the Screenshot button does. Nothing touches the filesystem until the user picks Download inside it. */
   previewScreenshot() { this.story.open(); }
 
-  /** `screenshotPng()` plus the same save-a-file flow as the HTML export download, with success/failure toasts. Pass an already-captured blob (the story viewer does) to save that one instead of rendering a second time. */
-  async downloadScreenshot(blob) {
+  /** `screenshotPng(options)` plus the same save-a-file flow as the HTML export download, with success/failure toasts. Pass an already-captured blob (the story viewer does) to save that one instead of rendering a second time; the filename extension follows the blob's actual type. */
+  async downloadScreenshot(blob, options) {
     const t = this.core.t;
     try {
-      const png = blob || await this.screenshotPng();
+      const png = blob || await this.screenshotPng(options);
+      const ext = { 'image/jpeg': 'jpg', 'image/webp': 'webp' }[png.type] || 'png';
       const a = document.createElement('a');
       a.href = URL.createObjectURL(png);
-      a.download = 'email.png';
+      a.download = 'email.' + ext;
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 1500);
       this.core.flash(t('toast.pngSaved'));

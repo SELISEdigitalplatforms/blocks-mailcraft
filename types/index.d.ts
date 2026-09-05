@@ -228,6 +228,16 @@ export interface Template {
   build?: () => EmailDocument;
 }
 
+/** Compression options for `screenshotPng` and `downloadScreenshot`. */
+export interface ScreenshotOptions {
+  /** `'png'` (default) is lossless; `'jpeg'`/`'webp'` are compressed and much smaller. */
+  format?: 'png' | 'jpeg' | 'webp';
+  /** Encoder quality for the lossy formats, 0–1. Default 0.85. Ignored for PNG. */
+  quality?: number;
+  /** Device-pixel multiplier. Default 2; use 1 for a smaller file at screen resolution. */
+  scale?: number;
+}
+
 // ---------------------------------------------------------------------------
 // The element
 
@@ -291,14 +301,19 @@ export class MailCraftEditor extends HTMLElement {
   undo(): void;
   redo(): void;
 
-  /** The full template as a PNG. */
-  screenshotPng(): Promise<Blob>;
+  /**
+   * The full template as an image Blob. PNG (the default) is lossless;
+   * `format: 'jpeg' | 'webp'` with an optional `quality` produces a much
+   * smaller, compressed file. Read the returned `blob.type` for what was
+   * actually encoded — a browser without a WebP encoder hands back PNG.
+   */
+  screenshotPng(options?: ScreenshotOptions): Promise<Blob>;
 
-  /** Opens the story-style screenshot viewer. */
+  /** Opens the story-style screenshot viewer (it has its own PNG/JPG/WebP download toggle). */
   previewScreenshot(): void;
 
-  /** Saves a screenshot — captures first if no blob is passed. */
-  downloadScreenshot(blob?: Blob): Promise<void>;
+  /** Saves a screenshot — captures first (with `options`) if no blob is passed. The filename extension follows the blob's actual type. */
+  downloadScreenshot(blob?: Blob, options?: ScreenshotOptions): Promise<void>;
 
   /** Copies a screenshot to the clipboard — captures first if no blob is passed. */
   copyScreenshot(blob?: Blob): Promise<void>;
@@ -377,9 +392,9 @@ export interface EditorHandle {
   loadTemplate(tpl: Template): void;
   undo(): void;
   redo(): void;
-  screenshotPng(): Promise<Blob>;
+  screenshotPng(options?: ScreenshotOptions): Promise<Blob>;
   previewScreenshot(): void;
-  downloadScreenshot(blob?: Blob): Promise<void>;
+  downloadScreenshot(blob?: Blob, options?: ScreenshotOptions): Promise<void>;
   copyScreenshot(blob?: Blob): Promise<void>;
 }
 

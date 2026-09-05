@@ -206,7 +206,6 @@ export const DZ = {
   'rte.highlightColor': 'གསལ་སྟོན་ཚོས་གཞི',
   'rte.removeHighlight': 'གསལ་སྟོན་རྩ་བསྐྲད',
   'rte.clearFormatting': 'རྣམ་གཞག་བསུབ',
-  'action.downloadPng': 'PNG ཕབ་ལེན',
   'action.screenshot': 'བརྙན་ཤེལ་པར',
   'action.screenshotHint': 'ཊེམ་པེལེཊ་ཧྲིལ་བུ་པར་བཟུམ་སྦེ་བལྟ་ཞིནམ་ལས་ཕབ་ལེན་འབད',
   'toast.pngSaved': 'བརྙན་ཤེལ་པར་ཕབ་ལེན་བྱུང',
@@ -223,6 +222,8 @@ export const DZ = {
   'story.pause': 'འཕྲལ་བཀག',
   'story.replay': 'སླར་གཏང',
   'story.copy': 'འདྲ་བཤུས',
+  'story.download': '{fmt} ཕབ་ལེན',
+  'story.format': 'པར་གྱི་རྣམ་གཞག — PNG ཉམས་ཆག་མེད། JPG དང་ WebP ཡིག་སྣོད་ཆུང་ཀུ་ཨིན',
   'story.meta': '{w}×{h} · གསལ་གཞི {i}/{n}',
   'footer.poweredBy': 'SELISE Blocks གིས་མཁོ་སྤྲོད © 2026',
 };

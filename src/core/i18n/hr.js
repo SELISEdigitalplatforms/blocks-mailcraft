@@ -181,7 +181,6 @@ export const HR = {
   'rte.highlightColor': 'Boja isticanja',
   'rte.removeHighlight': 'Ukloni isticanje',
   'rte.clearFormatting': 'Ukloni oblikovanje',
-  'action.downloadPng': 'Preuzmi PNG',
   'action.screenshot': 'Snimka zaslona',
   'action.screenshotHint': 'Pogledaj cijeli predložak kao sliku i preuzmi ga',
   'toast.pngSaved': 'Snimka zaslona preuzeta',
@@ -198,6 +197,8 @@ export const HR = {
   'story.pause': 'Pauza',
   'story.replay': 'Ponovno pokreni',
   'story.copy': 'Kopiraj',
+  'story.download': 'Preuzmi {fmt}',
+  'story.format': 'Format slike — PNG je bez gubitaka, JPG i WebP su manje datoteke',
   'story.meta': '{w}×{h} · zaslon {i} od {n}',
   'footer.poweredBy': 'Pokreće SELISE Blocks © 2026',
 };

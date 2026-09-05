@@ -181,7 +181,6 @@ export const SK = {
   'rte.highlightColor': 'Farba zvýraznenia',
   'rte.removeHighlight': 'Odstrániť zvýraznenie',
   'rte.clearFormatting': 'Zrušiť formátovanie',
-  'action.downloadPng': 'Stiahnuť PNG',
   'action.screenshot': 'Snímka',
   'action.screenshotHint': 'Zobraziť celú šablónu ako obrázok a stiahnuť ju',
   'toast.pngSaved': 'Snímka stiahnutá',
@@ -198,6 +197,8 @@ export const SK = {
   'story.pause': 'Pozastaviť',
   'story.replay': 'Prehrať znova',
   'story.copy': 'Kopírovať',
+  'story.download': 'Stiahnuť {fmt}',
+  'story.format': 'Formát obrázka — PNG je bezstratový, JPG a WebP sú menšie súbory',
   'story.meta': '{w}×{h} · obrazovka {i} z {n}',
   'footer.poweredBy': 'Beží na SELISE Blocks © 2026',
 };

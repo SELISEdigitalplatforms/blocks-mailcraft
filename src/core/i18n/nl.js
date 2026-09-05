@@ -181,7 +181,6 @@ export const NL = {
   'rte.highlightColor': 'Markeerkleur',
   'rte.removeHighlight': 'Markering verwijderen',
   'rte.clearFormatting': 'Opmaak wissen',
-  'action.downloadPng': 'PNG downloaden',
   'action.screenshot': 'Schermafbeelding',
   'action.screenshotHint': 'Bekijk de hele template als afbeelding en download die',
   'toast.pngSaved': 'Schermafbeelding gedownload',
@@ -198,6 +197,8 @@ export const NL = {
   'story.pause': 'Pauzeren',
   'story.replay': 'Opnieuw afspelen',
   'story.copy': 'Kopiëren',
+  'story.download': '{fmt} downloaden',
+  'story.format': 'Afbeeldingsformaat — PNG is verliesvrij, JPG en WebP zijn kleinere bestanden',
   'story.meta': '{w}×{h} · scherm {i} van {n}',
   'footer.poweredBy': 'Mogelijk gemaakt door SELISE Blocks © 2026',
 };

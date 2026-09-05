@@ -1,4 +1,5 @@
 import { icon } from '../core/icons.js';
+import { transcodeShot } from './screenshot.js';
 
 /**
  * Story-style screenshot viewer: the PNG that `render/screenshot.js` produces
@@ -27,6 +28,18 @@ const SLIDE_MS = 560;
  * same email" rather than a cut to an unrelated image.
  */
 const STEP = 0.92;
+
+/**
+ * What the download format toggle cycles through. The capture itself is
+ * always PNG (lossless preview, and the clipboard accepts nothing else);
+ * a lossy pick re-encodes that one capture at download time. Format
+ * acronyms are proper names, so the labels are not translated.
+ */
+const FORMATS = [
+  { id: 'png', label: 'PNG' },
+  { id: 'jpeg', label: 'JPG' },
+  { id: 'webp', label: 'WEBP' },
+];
 
 function el(tag, css, attrs = {}, ...kids) {
   const node = document.createElement(tag);
@@ -70,6 +83,7 @@ export const createStoryViewer = function (core, hooks) {
     open: false, page: 0, pages: 1, playing: true, done: false, held: false,
     remaining: PAGE_MS, startedAt: 0, timer: 0, token: 0,
     url: '', blob: null, natW: 0, natH: 0, cardW: 0, cardH: 0, showH: 0,
+    format: 0, saving: false,
   };
 
   // ---- chrome -----------------------------------------------------------
@@ -85,7 +99,11 @@ export const createStoryViewer = function (core, hooks) {
   const headRow = el('div', 'display: flex; align-items: center; gap: 10px; flex: none;');
   const headText = el('div', 'flex: 1; min-width: 0;');
   const kickerEl = el('div', 'font-family: ui-monospace, monospace; font-size: 8.5px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,255,255,0.5);');
-  headText.append(kickerEl);
+  // The capture's dimensions and page position live under the kicker, where a
+  // full header line keeps them legible -- squeezed into the footer next to
+  // the buttons they ellipsized on any card narrow enough to matter.
+  const metaEl = el('div', 'display: none; margin-top: 4px; font-family: ui-monospace, monospace; font-size: 9px; letter-spacing: 0.09em; color: rgba(255,255,255,0.42); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;');
+  headText.append(kickerEl, metaEl);
   const closeBtn = ghostBtn('width: 30px; padding: 0;', t('action.close'), 'x', () => close());
   headRow.append(headText, closeBtn);
 
@@ -128,12 +146,82 @@ export const createStoryViewer = function (core, hooks) {
     zone('left: 32%; right: 0;', () => step(1)),
   );
 
-  const footer = el('div', 'display: flex; align-items: center; gap: 8px; flex: none;');
-  const metaEl = el('div', 'flex: 1; min-width: 0; font-family: ui-monospace, monospace; font-size: 9px; letter-spacing: 0.09em; color: rgba(255,255,255,0.5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;');
-  const playBtn = ghostBtn('width: 30px; padding: 0;', t('story.pause'), 'pause', () => (s.playing ? pause(false) : play()));
-  const copyBtn = ghostBtn('padding: 0 11px;', t('story.copy'), 'copy', () => hooks.copy(s.blob), true);
-  const dlBtn = ghostBtn('padding: 0 11px; border-color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.16);', t('action.downloadPng'), 'download', () => hooks.download(s.blob), true);
-  footer.append(metaEl, playBtn, copyBtn, dlBtn);
+  // One floating action bar with a real hierarchy: Download is the solid
+  // primary, Copy a quiet neighbour, play/pause a small transport control,
+  // and the format is a segmented PNG/JPG/WEBP picker -- all three values
+  // visible with the active one lit, instead of a chip that cycles blind.
+  const footer = el('div', 'display: flex; align-items: center; justify-content: center; flex: none;');
+  const BAR_BTN = 'border: none; background: transparent; color: rgba(255,255,255,0.92); cursor: pointer; height: 34px; border-radius: 999px; display: flex; align-items: center; justify-content: center; gap: 7px; font-family: var(--ed-font); font-size: 11.5px; font-weight: 600; transition: background 0.16s, color 0.16s, opacity 0.16s;';
+  const barBtn = (css, label, iconName, onClick, opts = {}) => {
+    const btn = el('button', BAR_BTN + css, { type: 'button', title: label, 'aria-label': label });
+    btn.iconSlot = icon(iconName, 14);
+    btn.labelSlot = opts.text ? el('span', '', { text: label }) : null;
+    btn.append(btn.iconSlot);
+    if (btn.labelSlot) btn.append(btn.labelSlot);
+    const rest = opts.restBg || 'transparent';
+    const hover = opts.hoverBg || 'rgba(255,255,255,0.12)';
+    btn.addEventListener('mouseenter', () => { btn.style.background = hover; });
+    btn.addEventListener('mouseleave', () => { btn.style.background = rest; });
+    btn.addEventListener('click', onClick);
+    return btn;
+  };
+
+  const playBtn = barBtn('width: 34px; padding: 0;', t('story.pause'), 'pause', () => (s.playing ? pause(false) : play()));
+  const copyBtn = barBtn('padding: 0 13px;', t('story.copy'), 'copy', () => hooks.copy(s.blob), { text: true });
+
+  // Format acronyms are proper names, so the segment labels themselves are
+  // not translated; the shared tooltip is.
+  const segBtns = [];
+  const seg = el('div', 'display: flex; align-items: center; gap: 2px; padding: 3px; background: rgba(0,0,0,0.35); border-radius: 999px; flex: none; transition: opacity 0.16s;');
+  FORMATS.forEach((fmt, i) => {
+    const b = el('button', 'border: none; cursor: pointer; height: 26px; padding: 0 11px; border-radius: 999px; background: transparent; color: rgba(255,255,255,0.55); font-family: ui-monospace, monospace; font-size: 8.5px; font-weight: 700; letter-spacing: 0.09em; transition: background 0.16s, color 0.16s;', { type: 'button', text: fmt.label });
+    b.addEventListener('click', () => { s.format = i; syncFormat(); });
+    b.addEventListener('mouseenter', () => { if (s.format !== i) { b.style.color = '#fff'; b.style.background = 'rgba(255,255,255,0.1)'; } });
+    b.addEventListener('mouseleave', () => syncFormat());
+    segBtns.push(b);
+    seg.appendChild(b);
+  });
+
+  const dlBtn = barBtn('padding: 0 16px; font-weight: 700; background: #fff; color: #14171c;', t('story.download', { fmt: FORMATS[0].label }), 'download', () => download(), { text: true, restBg: '#fff', hoverBg: '#dfe5ee' });
+
+  const bar = el('div', 'display: flex; align-items: center; gap: 6px; padding: 5px; background: rgba(23,26,34,0.92); border: 1px solid rgba(255,255,255,0.14); border-radius: 999px; box-shadow: 0 18px 44px rgba(0,0,0,0.5);');
+  bar.append(playBtn, copyBtn, seg, dlBtn);
+  footer.append(bar);
+
+  function syncFormat() {
+    const fmt = FORMATS[s.format];
+    segBtns.forEach((b, i) => {
+      const on = i === s.format;
+      b.style.background = on ? '#fff' : 'transparent';
+      b.style.color = on ? '#14171c' : 'rgba(255,255,255,0.55)';
+      b.title = t('story.format');
+      b.setAttribute('aria-label', t('story.format') + ' — ' + FORMATS[i].label);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    dlBtn.labelSlot.textContent = t('story.download', { fmt: fmt.label });
+    dlBtn.title = t('story.download', { fmt: fmt.label });
+    dlBtn.setAttribute('aria-label', dlBtn.title);
+  }
+  syncFormat();
+
+  /**
+   * PNG downloads hand the capture over as-is; a lossy pick re-encodes it
+   * first (against the template's page colour -- JPEG has no alpha). The
+   * `saving` latch keeps a double-click from encoding twice, and an encoder
+   * failure falls back to the lossless capture rather than saving nothing.
+   */
+  async function download() {
+    if (!s.blob || s.saving) return;
+    const fmt = FORMATS[s.format];
+    let out = s.blob;
+    if (fmt.id !== 'png') {
+      s.saving = true;
+      try { out = await transcodeShot(s.blob, { format: fmt.id }, core.state.doc.theme.bg); }
+      catch { out = s.blob; }
+      finally { s.saving = false; }
+    }
+    hooks.download(out);
+  }
 
   overlay.append(rail, headRow, card, footer);
 
@@ -235,6 +323,7 @@ export const createStoryViewer = function (core, hooks) {
 
   function renderMeta() {
     metaEl.textContent = s.natW ? t('story.meta', { w: s.natW, h: s.natH, i: s.page + 1, n: s.pages }) : '';
+    metaEl.style.display = s.natW ? 'block' : 'none';
   }
 
   // ---- layout -----------------------------------------------------------
@@ -247,13 +336,21 @@ export const createStoryViewer = function (core, hooks) {
    */
   function layout() {
     if (!s.open) return;
-    const availH = Math.max(280, overlay.clientHeight - 44 - 96);
+    // 44 is the overlay's own padding; 118 covers the chrome around the card:
+    // rail (3), the two-line header (~36), the action bar (~46) and the gaps.
+    const availH = Math.max(280, overlay.clientHeight - 44 - 118);
     const availW = Math.max(240, overlay.clientWidth - 44);
     s.cardH = availH;
     s.cardW = Math.max(240, Math.min(430, availW, Math.round(availH * 0.75)));
     card.style.width = s.cardW + 'px';
     card.style.height = s.cardH + 'px';
     [rail, headRow, footer].forEach((n) => { n.style.width = s.cardW + 'px'; });
+    // On a narrow card the full bar cannot fit; Copy folds to its icon so the
+    // primary Download keeps its label.
+    const tight = s.cardW < 390;
+    copyBtn.labelSlot.style.display = tight ? 'none' : '';
+    copyBtn.style.width = tight ? '34px' : '';
+    copyBtn.style.padding = tight ? '0' : '0 13px';
     if (!s.natW) return;
     s.showH = s.cardW * (s.natH / s.natW);
     s.pages = s.showH <= s.cardH ? 1 : Math.ceil((s.showH - s.cardH) / (s.cardH * STEP)) + 1;
@@ -273,11 +370,13 @@ export const createStoryViewer = function (core, hooks) {
   // ---- load / open / close ----------------------------------------------
 
   function setActionsEnabled(on) {
-    [copyBtn, dlBtn, playBtn].forEach((b) => {
+    [copyBtn, dlBtn, playBtn, ...segBtns].forEach((b) => {
       b.disabled = !on;
-      b.style.opacity = on ? '' : '0.4';
       b.style.pointerEvents = on ? '' : 'none';
     });
+    // The segmented picker dims as one unit -- fading its segments separately
+    // would leave the inset track behind them at full strength.
+    [copyBtn, playBtn, dlBtn, seg].forEach((n) => { n.style.opacity = on ? '' : '0.4'; });
   }
 
   function showSkeleton(failed) {
@@ -404,8 +503,7 @@ export const createStoryViewer = function (core, hooks) {
     closeBtn.setAttribute('aria-label', t('action.close'));
     copyBtn.labelSlot.textContent = t('story.copy');
     copyBtn.title = t('story.copy');
-    dlBtn.labelSlot.textContent = t('action.downloadPng');
-    dlBtn.title = t('action.downloadPng');
+    syncFormat();
     retryBtn.lastChild.textContent = t('story.retry');
     if (s.open) { kickerEl.textContent = t('story.kicker'); renderMeta(); }
     syncPlayBtn();

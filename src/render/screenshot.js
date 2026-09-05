@@ -31,6 +31,37 @@ import { renderDoc } from './canvas.js';
 
 const BLANK_PIXEL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
+/** Encodings the capture can produce. Anything unrecognized falls back to PNG. */
+const MIME = { png: 'image/png', jpeg: 'image/jpeg', jpg: 'image/jpeg', webp: 'image/webp' };
+
+/**
+ * `{ scale, format, quality }` with every hole filled. A bare number is the
+ * legacy third argument (scale). `quality` only matters to the lossy formats;
+ * canvas encoders take 0..1, and out-of-range input falls back to the default
+ * rather than clamping to an extreme the caller clearly did not mean.
+ */
+function shotOptions(options) {
+  const o = typeof options === 'number' ? { scale: options } : options || {};
+  const q = Number(o.quality);
+  return {
+    scale: Number(o.scale) > 0 ? Number(o.scale) : 2,
+    mime: MIME[String(o.format || 'png').toLowerCase()] || 'image/png',
+    quality: q >= 0 && q <= 1 ? q : 0.85,
+  };
+}
+
+/**
+ * `canvas.toBlob` wrapped as a promise. A browser that cannot encode the
+ * requested type is allowed by spec to hand back PNG instead (Safari does
+ * this for WebP), so callers read `blob.type` rather than trusting the
+ * request.
+ */
+function encodeCanvas(canvas, mime, quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('image encoding failed'))), mime, quality);
+  });
+}
+
 function toDataUri(url) {
   return fetch(url, { mode: 'cors' }).then((res) => {
     if (!res.ok) throw new Error('fetch failed: ' + res.status);
@@ -66,7 +97,13 @@ async function inlineExternalImages(root) {
 
 /**
  * Renders the current document full-length (desktop width, independent of
- * the device toggle and zoom) and returns a PNG Blob at `scale`x resolution.
+ * the device toggle and zoom) and returns an image Blob. `options` is either
+ * a bare scale number (the legacy signature) or
+ * `{ scale = 2, format = 'png' | 'jpeg' | 'webp', quality = 0.85 }` --
+ * `format`/`quality` are the compression dial: PNG is lossless and biggest,
+ * JPEG and WebP are lossy and typically a fraction of the size on a long
+ * template. Check the returned `blob.type` for what was actually encoded
+ * (a browser without a WebP encoder hands back PNG).
  * `mountInto` is any attached container inside the editor's shadow root --
  * the tree must live in the live document briefly, off-screen, to lay out
  * and be measured before serialization.
@@ -74,7 +111,8 @@ async function inlineExternalImages(root) {
  * (`export const` + async function expression, not `export async function`:
  * build.js's transform only recognizes `export (const|function|class)`.)
  */
-export const captureTemplatePng = async function (core, mountInto, scale = 2) {
+export const captureTemplatePng = async function (core, mountInto, options) {
+  const { scale, mime, quality } = shotOptions(options);
   const theme = core.state.doc.theme;
   const pad = 32;
   const wrapper = document.createElement('div');
@@ -139,11 +177,49 @@ export const captureTemplatePng = async function (core, mountInto, scale = 2) {
     canvas.width = Math.max(1, Math.round(w * fit));
     canvas.height = Math.max(1, Math.round(h * fit));
     const ctx = canvas.getContext('2d');
+    // The lossy formats carry no alpha channel, and an unpainted canvas pixel
+    // encodes as black in JPEG -- lay the page colour down first.
+    if (mime !== 'image/png') {
+      ctx.fillStyle = theme.bg || '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    return await new Promise((resolve, reject) => {
-      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('PNG encoding failed'))), 'image/png');
-    });
+    return await encodeCanvas(canvas, mime, quality);
   } finally {
     wrapper.remove();
+  }
+};
+
+/**
+ * Re-encodes an already-captured shot without rendering the template again:
+ * the story viewer captures once as PNG (lossless for the preview and the
+ * clipboard, which only accepts `image/png`) and converts here only when the
+ * user downloads as JPG or WebP. `bg` fills behind the pixels for the lossy
+ * formats. Same caveat as the capture: read the returned `blob.type`.
+ */
+export const transcodeShot = async function (blob, options, bg) {
+  const { mime, quality } = shotOptions(options);
+  if (mime === 'image/png' && blob.type === 'image/png') return blob;
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = new Image();
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = () => reject(new Error('shot decode failed'));
+      img.src = url;
+    });
+    if (img.decode) await img.decode().catch(() => {});
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, img.naturalWidth);
+    canvas.height = Math.max(1, img.naturalHeight);
+    const ctx = canvas.getContext('2d');
+    if (mime !== 'image/png') {
+      ctx.fillStyle = bg || '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    ctx.drawImage(img, 0, 0);
+    return await encodeCanvas(canvas, mime, quality);
+  } finally {
+    URL.revokeObjectURL(url);
   }
 };

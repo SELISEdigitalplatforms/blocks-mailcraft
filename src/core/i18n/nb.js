@@ -181,7 +181,6 @@ export const NB = {
   'rte.highlightColor': 'Uthevingsfarge',
   'rte.removeHighlight': 'Fjern utheving',
   'rte.clearFormatting': 'Fjern formatering',
-  'action.downloadPng': 'Last ned PNG',
   'action.screenshot': 'Skjermbilde',
   'action.screenshotHint': 'Se hele malen som et bilde, og last det ned',
   'toast.pngSaved': 'Skjermbilde lastet ned',
@@ -198,6 +197,8 @@ export const NB = {
   'story.pause': 'Pause',
   'story.replay': 'Spill av igjen',
   'story.copy': 'Kopier',
+  'story.download': 'Last ned {fmt}',
+  'story.format': 'Bildeformat — PNG er tapsfritt, JPG og WebP er mindre filer',
   'story.meta': '{w}×{h} · skjerm {i} av {n}',
   'footer.poweredBy': 'Drevet av SELISE Blocks © 2026',
 };

@@ -181,7 +181,6 @@ export const FR = {
   'rte.highlightColor': 'Couleur de surlignage',
   'rte.removeHighlight': 'Supprimer le surlignage',
   'rte.clearFormatting': 'Effacer la mise en forme',
-  'action.downloadPng': 'Télécharger le PNG',
   'action.screenshot': 'Capture',
   'action.screenshotHint': 'Voir tout le modèle sous forme d’image, puis le télécharger',
   'toast.pngSaved': 'Capture téléchargée',
@@ -198,6 +197,8 @@ export const FR = {
   'story.pause': 'Pause',
   'story.replay': 'Revoir',
   'story.copy': 'Copier',
+  'story.download': 'Télécharger le {fmt}',
+  'story.format': 'Format d’image — le PNG est sans perte, JPG et WebP sont plus légers',
   'story.meta': '{w}×{h} · écran {i} sur {n}',
   'footer.poweredBy': 'Propulsé par SELISE Blocks © 2026',
 };

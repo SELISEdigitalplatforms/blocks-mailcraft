@@ -1,6 +1,6 @@
 {
   "name": "@seliseblocks/mailcraft",
-  "version": "0.2.14",
+  "version": "0.2.15",
   "description": "Framework-agnostic drag-and-drop email template editor, packaged as a zero-dependency Web Component.",
   "license": "MIT",
   "author": "SELISE Digital Platforms",

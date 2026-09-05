@@ -101,7 +101,8 @@ ATTRS     variables="a,b,c" | locale="de" | theme="dark" | dir="rtl"
 PROPS     .variables .toolbar .footer .uiFont .accent .messages .aiProvider .iconProvider
           .storageProvider .storageLimits
 METHODS   exportHtml() importHtml(html) loadTemplate(tpl) undo() redo()
-          screenshotPng() previewScreenshot() downloadScreenshot() copyScreenshot()
+          screenshotPng({format:'png'|'jpeg'|'webp', quality, scale}?)
+          previewScreenshot() downloadScreenshot() copyScreenshot()
 
 KEYS      Bound on window, so they survive toolbar="none":
           Esc (leave field / deselect + close), Ctrl/Cmd+Z, Shift+Ctrl/Cmd+Z,

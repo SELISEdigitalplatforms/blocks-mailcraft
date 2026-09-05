@@ -181,7 +181,6 @@ export const BG = {
   'rte.highlightColor': 'Цвят на маркиране',
   'rte.removeHighlight': 'Премахване на маркирането',
   'rte.clearFormatting': 'Изчистване на форматирането',
-  'action.downloadPng': 'Изтегляне на PNG',
   'action.screenshot': 'Екранна снимка',
   'action.screenshotHint': 'Прегледайте целия шаблон като изображение и го изтеглете',
   'toast.pngSaved': 'Екранната снимка е изтеглена',
@@ -198,6 +197,8 @@ export const BG = {
   'story.pause': 'Пауза',
   'story.replay': 'Отначало',
   'story.copy': 'Копиране',
+  'story.download': 'Изтегляне на {fmt}',
+  'story.format': 'Формат на изображението — PNG е без загуби, JPG и WebP са по-малки файлове',
   'story.meta': '{w}×{h} · екран {i} от {n}',
   'footer.poweredBy': 'С технологията на SELISE Blocks © 2026',
 };

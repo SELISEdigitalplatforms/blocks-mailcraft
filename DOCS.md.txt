@@ -542,9 +542,9 @@ template, not to your app.
 | `importHtml(html)` | number of rows produced |
 | `loadTemplate({ name, html })` | — |
 | `undo()` / `redo()` | — |
-| `screenshotPng()` | full template as a PNG `Blob` |
-| `previewScreenshot()` | opens the story-style viewer |
-| `downloadScreenshot(blob?)` / `copyScreenshot(blob?)` | save / clipboard — captures first if no blob is passed |
+| `screenshotPng(options?)` | full template as an image `Blob`. PNG by default (lossless); `{ format: 'jpeg' \| 'webp', quality: 0–1 }` compresses it to a fraction of the size, and `scale` (default 2) trades resolution for bytes. Read the returned `blob.type` — a browser without a WebP encoder hands back PNG |
+| `previewScreenshot()` | opens the story-style viewer, with its own PNG / JPG / WebP download toggle |
+| `downloadScreenshot(blob?, options?)` / `copyScreenshot(blob?)` | save / clipboard — captures first (with `options`) if no blob is passed; the filename extension follows the blob's actual type |
 
 ### Events
 
@@ -580,7 +580,6 @@ The complete catalog of UI strings that `.messages` accepts — every key the ed
 | `action.codeHint` | Edit the raw HTML with a live preview |
 | `action.deleteHint` | Delete — ⌫ |
 | `action.download` | Download |
-| `action.downloadPng` | Download PNG |
 | `action.duplicateHint` | Duplicate — ⌘D |
 | `action.export` | Export |
 | `action.exportHint` | Export your email |
@@ -707,8 +706,10 @@ The complete catalog of UI strings that `.messages` accepts — every key the ed
 | `storage.loading` | Loading files… |
 | `storage.uploading` | Uploading {count}… |
 | `story.copy` | Copy |
+| `story.download` | Download {fmt} |
 | `story.failed` | Screenshot failed |
 | `story.failedHint` | An image in the template could not be loaded for capture. |
+| `story.format` | Image format — PNG is lossless, JPG and WebP are smaller files |
 | `story.kicker` | Screenshot |
 | `story.meta` | {w}×{h} · screen {i} of {n} |
 | `story.pause` | Pause |

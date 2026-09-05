@@ -181,7 +181,6 @@ export const RO = {
   'rte.highlightColor': 'Culoarea evidențierii',
   'rte.removeHighlight': 'Elimină evidențierea',
   'rte.clearFormatting': 'Șterge formatarea',
-  'action.downloadPng': 'Descarcă PNG',
   'action.screenshot': 'Captură de ecran',
   'action.screenshotHint': 'Vezi tot șablonul ca imagine, apoi descarc-o',
   'toast.pngSaved': 'Captura a fost descărcată',
@@ -198,6 +197,8 @@ export const RO = {
   'story.pause': 'Pauză',
   'story.replay': 'Redă din nou',
   'story.copy': 'Copiază',
+  'story.download': 'Descarcă {fmt}',
+  'story.format': 'Formatul imaginii — PNG este fără pierderi, JPG și WebP sunt fișiere mai mici',
   'story.meta': '{w}×{h} · ecranul {i} din {n}',
   'footer.poweredBy': 'Susținut de SELISE Blocks © 2026',
 };

@@ -181,7 +181,6 @@ export const UK = {
   'rte.highlightColor': 'Колір виділення',
   'rte.removeHighlight': 'Прибрати виділення',
   'rte.clearFormatting': 'Очистити форматування',
-  'action.downloadPng': 'Завантажити PNG',
   'action.screenshot': 'Знімок екрана',
   'action.screenshotHint': 'Переглянути весь шаблон як зображення та завантажити його',
   'toast.pngSaved': 'Знімок завантажено',
@@ -198,6 +197,8 @@ export const UK = {
   'story.pause': 'Пауза',
   'story.replay': 'Відтворити ще раз',
   'story.copy': 'Копіювати',
+  'story.download': 'Завантажити {fmt}',
+  'story.format': 'Формат зображення — PNG без втрат, JPG і WebP — менші файли',
   'story.meta': '{w}×{h} · екран {i} з {n}',
   'footer.poweredBy': 'Працює на SELISE Blocks © 2026',
 };

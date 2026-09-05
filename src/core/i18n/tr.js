@@ -181,7 +181,6 @@ export const TR = {
   'rte.highlightColor': 'Vurgu rengi',
   'rte.removeHighlight': 'Vurguyu kaldır',
   'rte.clearFormatting': 'Biçimlendirmeyi temizle',
-  'action.downloadPng': 'PNG indir',
   'action.screenshot': 'Ekran görüntüsü',
   'action.screenshotHint': 'Şablonun tamamını görsel olarak görün, sonra indirin',
   'toast.pngSaved': 'Ekran görüntüsü indirildi',
@@ -198,6 +197,8 @@ export const TR = {
   'story.pause': 'Duraklat',
   'story.replay': 'Yeniden oynat',
   'story.copy': 'Kopyala',
+  'story.download': '{fmt} indir',
+  'story.format': 'Görsel biçimi — PNG kayıpsızdır, JPG ve WebP daha küçük dosyalardır',
   'story.meta': '{w}×{h} · ekran {i}/{n}',
   'footer.poweredBy': 'SELISE Blocks tarafından desteklenir © 2026',
 };
