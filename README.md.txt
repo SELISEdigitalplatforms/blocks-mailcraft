@@ -31,7 +31,7 @@ editor.exportHtml();
 editor.destroy();
 ```
 
-That is a working editor. It speaks HTML in both directions — there is no document format to store or migrate:
+That is a working editor. It speaks HTML in both directions; there is no document format to store or migrate:
 
 ```js
 editor.loadTemplate({ name: 'Welcome', html });   // give it HTML
@@ -45,7 +45,7 @@ Exported HTML is valid input to `loadTemplate`, so saving the export *is* saving
 | | |
 |---|---|
 | `variables="first_name,company"` | merge tags, exported as `{{first_name}}` |
-| Condition / Loop blocks | dynamic content — exported as `{{#if …}}` / `{{#each …}}` for your sending engine |
+| Condition / Loop blocks | dynamic content, exported as `{{#if …}}` / `{{#each …}}` for your sending engine |
 | `locale="de"` | 31 languages, RTL automatic |
 | `theme="light" \| "dark"` | host owns light/dark; hides the built-in toggle |
 | `ui-font="inherit"` | match your app's font |
@@ -64,7 +64,7 @@ Every attribute is also a property. TypeScript declarations ship with the packag
 Everything an assistant needs to wire this up correctly:
 
 ```
-PACKAGE   @seliseblocks/mailcraft — Web Component, zero runtime deps
+PACKAGE   @seliseblocks/mailcraft: Web Component, zero runtime deps
 IMPORT    import '@seliseblocks/mailcraft'   (side effect: registers the element)
           Safe to import under SSR; the element itself renders in a browser only.
 TYPES     TypeScript declarations ship in the package (types/index.d.ts) for every
@@ -117,18 +117,18 @@ UPLOADS   A provider plus `maxBytes` are required, or every upload is refused;
                                      limits? }
           provider.limits is merged per key under .storageLimits, and satisfies
           the requirement on its own. With no provider the library is empty and
-          local to the draft — the package ships no files of its own.
+          local to the draft; the package ships no files of its own.
           The editor never talks to a backend of its own; its only fetch is the
           screenshot capture inlining the template's own images.
 
 TOOLBAR   Parts: logo status device undo redo theme ai code preview export
           Attribute = allow-list (keep these). Property = { part: false } (drop these).
           none|hidden|off|false = no bar at all; all = the default.
-          Hidden undo/redo/export stay reachable — methods, plus Ctrl/Cmd+Z, +E.
+          Hidden undo/redo/export stay reachable: methods, plus Ctrl/Cmd+Z, +E.
           preview, code and ai are bar-only: hiding them removes the panel.
 
-DO NOT    Do not use getContent()/setContent() — internal, shape may change.
-          Do not expect a campaign/title option — there is none; <title> is "Email".
+DO NOT    Do not use getContent()/setContent(): internal, shape may change.
+          Do not expect a campaign/title option; there is none. <title> is "Email".
 ```
 
 ## Develop
@@ -137,6 +137,6 @@ DO NOT    Do not use getContent()/setContent() — internal, shape may change.
 npm install && node build.js && npm test
 ```
 
-`examples/vanilla.html` is a complete host page — open it directly, no server needed. It ships in the npm package too, so it is there after an install; the [hosted copy](https://mailcraft.seliseblocks.com/examples/vanilla.html) is the same file.
+`examples/vanilla.html` is a complete host page: open it directly, no server needed. It ships in the npm package too, so it is there after an install; the [hosted copy](https://mailcraft.seliseblocks.com/examples/vanilla.html) is the same file.
 
 MIT
