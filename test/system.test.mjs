@@ -390,8 +390,12 @@ await it('row backgrounds, overlays and per-column cards survive export', async 
   row.props.overlay = 40;
   row.props.radius = 6;
   const html = buildHtml({ doc }, stubRoot({}), boxCss);
-  assert.match(html, /linear-gradient\(rgba\(20,22,24,0\.4\)/, 'overlay emitted');
-  assert.match(html, /url\(&quot;https:\/\/example\.com\/hero\.jpg&quot;\)/, 'encoded background url');
+  // The tint is its own box, never a layer in the background-image: a layered
+  // value is what outlook.com's sanitiser drops whole (see export.test.mjs).
+  assert.match(html, /background-color:rgba\(20,22,24,0\.4\)/, 'overlay emitted as its own box');
+  assert.equal(/linear-gradient/.test(html), false, 'and never as a background layer');
+  assert.match(html, /url\(https:\/\/example\.com\/hero\.jpg\)/, 'background url, unquoted');
+  assert.match(html, /background="https:\/\/example\.com\/hero\.jpg"/, 'and repeated as an attribute');
   assert.match(html, /background:#f7f7f7/, 'column card background emitted');
   assert.match(html, /border-radius:8px/, 'column radius emitted');
   assert.match(html, /padding:10px 12px/, 'column padding emitted');

@@ -1,7 +1,7 @@
 import { icon, brandIcon, socialKey, SOCIAL_BRAND, contrastInk } from '../core/icons.js';
 import { pad } from '../core/layout-style.js';
 import { parseItems, cellsOf } from '../core/parse.js';
-import { linkHref } from '../core/sanitize.js';
+import { linkHref, cssUrl } from '../core/sanitize.js';
 
 function el(tag, style, attrs) {
   const node = document.createElement(tag);
@@ -385,7 +385,14 @@ export function blockBody(b, theme, live, ctx) {
       const edit = live;
       const borderSide = (on) => (p.border && on !== false ? p.border + 'px ' + (p.borderStyle || 'solid') + ' ' + p.lineColor : '0');
       const box = el('div', {
-        background: p.bgImage ? 'linear-gradient(rgba(0,0,0,0), rgba(0,0,0,0)), url("' + p.bgImage + '")' : p.bg,
+        // Colour and image as separate longhands, never one shorthand. The
+        // shorthand made `p.bg` unreachable the moment an image was set --
+        // there was no colour left underneath when a client refused the image
+        // -- and it opened with a no-op `linear-gradient()` that outlook.com's
+        // sanitiser drops the whole declaration over, taking the photo with
+        // it. Same rule as a row's background (core/export.js).
+        backgroundColor: p.bg || 'transparent',
+        backgroundImage: p.bgImage ? 'url("' + cssUrl(p.bgImage) + '")' : 'none',
         backgroundSize: 'cover', backgroundPosition: 'center',
         borderTop: borderSide(p.topBorder), borderRight: borderSide(p.rightBorder),
         borderBottom: borderSide(p.bottomBorder), borderLeft: borderSide(p.leftBorder),

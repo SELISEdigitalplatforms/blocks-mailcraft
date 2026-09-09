@@ -194,6 +194,9 @@ export function buildHtml(state, root, boxCss, opts) {
    * per block with no deduplication.
    */
   const need = { stack: false, twoUp: false, reverse: false, hideM: false, hideD: false };
+  // Set by the first row that emits a `v:rect`; decides whether the VML
+  // namespace is declared on <html> (see the msoHead comment below).
+  let usedVml = false;
   /**
    * One decision per row, made once: what goes on the row box (`<tr>`, or the
    * flex/grid wrapper) and what goes on each cell.
@@ -279,12 +282,44 @@ export function buildHtml(state, root, boxCss, opts) {
       // The `<tr>` is what becomes the flex container for two-up and reverse;
       // in the default one-up stack it carries no class at all, exactly as before.
       : '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr' + (plan.row ? ' class="' + plan.row + '"' : '') + '>\n          ' + cells + '\n          </tr></table>';
-    const tdBg = rp.bgImage
-      ? 'background-color:' + (rp.bg || t.contentBg || 'transparent') + ';background-image:' + (rp.overlay ? 'linear-gradient(rgba(20,22,24,' + (rp.overlay / 100) + '),rgba(20,22,24,' + (rp.overlay / 100) + ')),' : '') + 'url(&quot;' + cssUrl(rp.bgImage) + '&quot;);background-size:' + (rp.bgSize || 'cover') + ';background-position:' + (rp.bgPos || 'center') + ';background-repeat:' + (rp.bgRepeat || 'no-repeat') + ';'
+    /*
+     * A row's background image.
+     *
+     * Emitted as LONGHANDS, never the `background` shorthand, and never as a
+     * layered value. The old shape put the tint in front of the photo in one
+     * declaration --
+     *   background-image:linear-gradient(rgba(20,22,24,.46),...),url("...")
+     * -- and outlook.com's sanitiser (which is what New Outlook for Windows
+     * and Outlook on the web both run) drops a declaration it cannot fully
+     * parse rather than salvaging the layers it understands. A comma list
+     * opening with `linear-gradient(...)` is exactly that, so the tint took
+     * the photo down with it and the row fell back to flat colour. The tint
+     * is now a solid rgba wrapper (`tinted` below), which every client that
+     * paints the image at all also paints.
+     *
+     * `background=` and `bgcolor=` restate the same two values as HTML
+     * attributes. They cost nothing, they outlive sanitisers that drop CSS
+     * wholesale, and the importer already reads `background` back
+     * (import-html.js `bgImageOf`). They can only ride the `<td>`: in the
+     * boxed branch the painted element is a `<div>`, where the attributes do
+     * not exist, so that branch stays CSS-only.
+     *
+     * The URL is unquoted. `cssUrl` percent-encodes quotes, parens, spaces
+     * and backslashes, so there is nothing left for a bare `url(...)` to trip
+     * over, and one less thing for a sanitiser to re-serialise wrongly.
+     */
+    const bgUrl = rp.bgImage ? cssUrl(rp.bgImage) : '';
+    const bgColor = rp.bg || t.contentBg || 'transparent';
+    const tdBg = bgUrl
+      ? 'background-color:' + bgColor + ';'
+        + 'background-image:url(' + attrEsc(bgUrl) + ');'
+        + 'background-size:' + (rp.bgSize || 'cover') + ';'
+        + 'background-position:' + (rp.bgPos || 'center') + ';'
+        + 'background-repeat:' + (rp.bgRepeat || 'no-repeat') + ';'
       // Falls all the way through to `transparent`: a row inherits the
       // content column's background, and that column may itself be unpainted
       // now that it can be -- 'background:;' is not a declaration.
-      : 'background:' + (rp.bg || t.contentBg || 'transparent') + ';';
+      : 'background:' + bgColor + ';';
     const tdBorder = rowBorderCss(rp)
       + (rp.radius ? 'border-radius:' + rp.radius + 'px;' : '')
       + (rp.shadow ? 'box-shadow:' + rp.shadow + ';' : '');
@@ -296,13 +331,61 @@ export function buildHtml(state, root, boxCss, opts) {
     // the margin sits outside the painted box, exactly as the canvas draws
     // it. Rows using neither keep the old markup byte for byte.
     const boxed = rp.mt || rp.mr || rp.mb || rp.ml || rp.my || (rp.maxW && rp.maxW < 100);
+    /*
+     * The tint, as its own box. It has to carry the row's padding: the band a
+     * reader sees is the padded box, so a tint sized to the content alone
+     * would leave an untinted ring of bare photo around it. The painted
+     * element gives its padding up in exchange (`ownPad` below).
+     *
+     * `rgba()` is understood by every client that renders the image in the
+     * first place. Classic Outlook understands neither the CSS background nor
+     * rgba, and gets the photo through VML with no tint over it -- the one
+     * place the two paths differ.
+     */
+    const ov = bgUrl && rp.overlay ? rp.overlay / 100 : 0;
+    const ownPad = ov ? 'padding:0;' : 'padding:' + rowPad(rp) + ';';
+    const tinted = ov
+      ? '<div style="background-color:rgba(20,22,24,' + ov + ');padding:' + rowPad(rp) + ';">\n          ' + body + '\n          </div>'
+      : body;
+    /*
+     * VML, for the one engine that has never read a CSS background: Word,
+     * behind Outlook 2007-2021 and Classic Outlook for Microsoft 365. New
+     * Outlook skips conditional comments entirely, so none of this reaches
+     * the client this fix was written for -- it is the Classic half of the
+     * same feature, and it is free to carry.
+     *
+     * `v:rect` needs pixel dimensions, and a row's height is content-driven.
+     * The height here is therefore an ESTIMATE (padding plus a nominal 90px a
+     * block), which `mso-fit-shape-to-text` then treats as a floor rather
+     * than a clip: Word grows the shape to whatever the content actually
+     * needs. A row whose content is shorter than the estimate paints a taller
+     * photo band in Classic Outlook than elsewhere; that is the residual cost
+     * of not asking the author for a height.
+     */
+    const vmlWidth = boxed && rp.maxW && rp.maxW < 100 ? Math.round(t.width * (rp.maxW / 100)) : t.width;
+    const vmlOpen = () => {
+      usedVml = true;
+      const padT = rp.pt ?? rp.py ?? 0;
+      const padB = rp.pb ?? rp.py ?? 0;
+      const blockCount = r.cols.reduce((a, c) => a + c.blocks.length, 0);
+      const h = Math.max(120, padT + padB + Math.max(1, blockCount) * 90);
+      return '<!--[if gte mso 9]><v:rect fill="true" stroke="false" style="width:' + vmlWidth + 'px;height:' + h + 'px;">'
+        + '<v:fill type="frame" src="' + attrEsc(bgUrl) + '" color="' + (bgColor === 'transparent' ? '#ffffff' : bgColor) + '" />'
+        + '<v:textbox inset="0,0,0,0" style="mso-fit-shape-to-text:true"><![endif]-->';
+    };
+    const painted = bgUrl
+      ? vmlOpen() + '\n          ' + tinted + '\n          <!--[if gte mso 9]></v:textbox></v:rect><![endif]-->'
+      : tinted;
     if (boxed) {
       const cap = rp.maxW && rp.maxW < 100 ? 'max-width:' + rp.maxW + '%;' : '';
       // centerEmpty only when capped: an uncapped box spans the cell anyway,
       // and `auto` there would only read back as a lost slider value.
-      return '      <tr>\n        <td style="padding:0;">\n        <div style="' + cap + 'margin:' + rowMargin(rp, !!cap) + ';padding:' + rowPad(rp) + ';' + tdBg + tdBorder + '">\n          ' + body + '\n        </div>\n        </td>\n      </tr>';
+      return '      <tr>\n        <td style="padding:0;">\n        <div style="' + cap + 'margin:' + rowMargin(rp, !!cap) + ';' + ownPad + tdBg + tdBorder + '">\n          ' + painted + '\n        </div>\n        </td>\n      </tr>';
     }
-    return '      <tr>\n        <td style="padding:' + rowPad(rp) + ';' + tdBg + tdBorder + '">\n          ' + body + '\n        </td>\n      </tr>';
+    const tdAttrs = bgUrl
+      ? ' background="' + attrEsc(bgUrl) + '"' + (bgColor === 'transparent' ? '' : ' bgcolor="' + bgColor + '"')
+      : '';
+    return '      <tr>\n        <td' + tdAttrs + ' style="' + ownPad + tdBg + tdBorder + '">\n          ' + painted + '\n        </td>\n      </tr>';
   }).join('\n') + (logic.tail ? '\n      ' + logic.tail : '');
   // The page section -- the full-width area the content column sits on. Its
   // padding is the band a mail client shows around the template, and `radius`
@@ -397,13 +480,17 @@ export function buildHtml(state, root, boxCss, opts) {
     + '  img { max-width:100% !important; height:auto !important; }\n'
     + '}\n</style>';
   /*
-   * `xmlns:o` earns its place; `xmlns:v` does not. The Office namespace is
-   * what makes `<o:OfficeDocumentSettings>` parse, and `PixelsPerInch` 96 is
-   * a live bug fix rather than a legacy one: on a high-DPI Windows display
-   * Outlook renders at 120dpi and scales the whole template about 25% larger
-   * than authored. VML's namespace is deliberately absent -- nothing here
-   * emits VML, and declaring a namespace for markup that never appears is
-   * noise in every other client.
+   * `xmlns:o` always earns its place; `xmlns:v` earns it conditionally. The
+   * Office namespace is what makes `<o:OfficeDocumentSettings>` parse, and
+   * `PixelsPerInch` 96 is a live bug fix rather than a legacy one: on a
+   * high-DPI Windows display Outlook renders at 120dpi and scales the whole
+   * template about 25% larger than authored.
+   *
+   * VML's namespace ships only when a row actually emitted a `v:rect` for its
+   * background image. The old rule here -- "declaring a namespace for markup
+   * that never appears is noise in every other client" -- is unchanged; it is
+   * just that the markup now sometimes appears, so the namespace follows it
+   * rather than being absent on principle or present on every send.
    */
   const msoHead = '\n<!--[if mso]>\n<xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml>\n<![endif]-->';
   // `text-size-adjust` at 100%, never `none`: both stop a mobile client
@@ -430,5 +517,5 @@ export function buildHtml(state, root, boxCss, opts) {
     });
   };
   const bodyStyle = 'margin:0;padding:0;background:' + pageBg + ';font-family:' + t.font.replace(/"/g, "'") + ';color:' + t.text + ';-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;text-size-adjust:100%;';
-  return msoHarden(stampLinks('<!doctype html>\n<html lang="en" xmlns:o="urn:schemas-microsoft-com:office:office">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<meta name="color-scheme" content="light">\n<meta name="supported-color-schemes" content="light">\n<title>' + 'Email' + '</title>' + msoHead + stackCss + '\n</head>\n<body style="' + bodyStyle + '">\n<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:' + pageBg + ';">\n  <tr><td align="center" style="padding:' + pagePad + ';">\n    ' + ghostOpen + '\n    ' + shell + '\n    ' + ghostClose + '\n  </td></tr>\n</table>\n</body>\n</html>'));
+  return msoHarden(stampLinks('<!doctype html>\n<html lang="en" xmlns:o="urn:schemas-microsoft-com:office:office"' + (usedVml ? ' xmlns:v="urn:schemas-microsoft-com:vml"' : '') + '>\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<meta name="color-scheme" content="light">\n<meta name="supported-color-schemes" content="light">\n<title>' + 'Email' + '</title>' + msoHead + stackCss + '\n</head>\n<body style="' + bodyStyle + '">\n<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:' + pageBg + ';">\n  <tr><td align="center" style="padding:' + pagePad + ';">\n    ' + ghostOpen + '\n    ' + shell + '\n    ' + ghostClose + '\n  </td></tr>\n</table>\n</body>\n</html>'));
 }

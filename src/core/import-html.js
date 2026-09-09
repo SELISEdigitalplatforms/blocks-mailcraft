@@ -151,12 +151,78 @@ function bgImageOf(el) {
   return (el.getAttribute && el.getAttribute('background')) || '';
 }
 
-/** The exporter's own overlay idiom, read back: a section image ships as `linear-gradient(rgba(20,22,24,a),rgba(20,22,24,a)),url(...)` (core/export.js), and the alpha is the row's `overlay` percentage. Only that exact neutral-dark signature is folded back -- a foreign gradient says nothing about MailCraft's tint and stays out of the model, exactly as before. Without this the tint silently vanished on every save/reload while the photo survived. */
+/**
+ * The tint box a section image now ships behind: the painted element's only
+ * child, a `<div>` whose background is the exporter's own neutral-dark rgba
+ * (core/export.js). Recognized by that exact signature and nothing else, so a
+ * foreign wrapper that happens to be a single div is left alone -- and by CSS
+ * rather than by a marker attribute, so it survives `exportHtml({markers:false})`.
+ *
+ * It is scaffolding, not content: the walk descends through it, and the row
+ * padding it carries is the row's (the exporter moved it off the cell so the
+ * tint covers the whole band, not just the content area).
+ */
+function tintOf(el) {
+  if (!el || !el.children || el.children.length !== 1) return null;
+  const kid = el.children[0];
+  if (!kid || kid.tagName !== 'DIV' || !kid.style) return null;
+  const m = String(kid.style.backgroundColor || kid.style.background || '')
+    .match(/^rgba\(\s*20,\s*22,\s*24,\s*(0?\.\d+|1|0)\s*\)$/);
+  if (!m) return null;
+  return { el: kid, pct: Math.round(parseFloat(m[1]) * 100) };
+}
+
+/**
+ * The exporter's overlay idiom, read back: the alpha of the neutral-dark tint
+ * over a section image is the row's `overlay` percentage. Only that exact
+ * signature is folded back -- a foreign gradient says nothing about
+ * MailCraft's tint and stays out of the model. Without this the tint silently
+ * vanished on every save/reload while the photo survived.
+ *
+ * One shape is read here, the layered `linear-gradient(...),url(...)` that the
+ * exporter shipped before the Outlook fix. Current exports carry the tint as
+ * its own box instead, and `unwrapTints` has already rewritten those into this
+ * shape by the time any of this runs -- so both eras arrive here identical.
+ */
 function overlayOf(el) {
-  const st = el.style;
+  const st = el && el.style;
   if (!st) return 0;
   const m = ((st.backgroundImage || '') + ' ' + (st.background || '')).match(/linear-gradient\(rgba\(20,\s*22,\s*24,\s*(0?\.\d+|1|0)\s*\)/);
   return m ? Math.round(parseFloat(m[1]) * 100) : 0;
+}
+
+/**
+ * Normalises the current export's tint box back into the legacy layered
+ * background, in the parsed DOM, before anything walks it.
+ *
+ * The exporter can no longer put the tint in the `background-image` (see
+ * core/export.js: outlook.com drops a layered value whole), so it ships the
+ * photo on the cell and the tint on a `<div>` inside it, which also carries
+ * the row padding so the tint covers the padded band rather than just the
+ * content. Left alone, that div reads as content: the walker took its rgba
+ * for the row's own background colour and the row padding vanished with it.
+ *
+ * Rewriting it here rather than teaching the walker about it keeps the change
+ * to one pre-pass -- every downstream path (bgOf, paddingOf, overlayOf, the
+ * column-wrapper and band-merge heuristics) then sees the shape it has always
+ * seen. Guarded on the host actually carrying a background image, so an
+ * unrelated div that happens to be this exact rgba is left alone.
+ */
+function unwrapTints(doc) {
+  Array.from(doc.body.querySelectorAll('*')).forEach((host) => {
+    const url = bgImageOf(host);
+    if (!url) return;
+    const tint = tintOf(host);
+    if (!tint) return;
+    const a = tint.pct / 100;
+    host.style.backgroundImage = 'linear-gradient(rgba(20,22,24,' + a + '),rgba(20,22,24,' + a + ')),url("' + url + '")';
+    const st = tint.el.style;
+    const pad = st.padding
+      || [st.paddingTop, st.paddingRight, st.paddingBottom, st.paddingLeft].filter(Boolean).join(' ');
+    if (pad) host.style.padding = pad;
+    while (tint.el.firstChild) host.insertBefore(tint.el.firstChild, tint.el);
+    tint.el.remove();
+  });
 }
 
 /** Carries a wrapper's background image (hero photo sections) onto the rows it produced, mirroring applyBg -- fit/position/repeat come along when declared. */
@@ -2113,6 +2179,9 @@ export function htmlToDoc(src) {
   // (never-inlined exports, hand-written emails) classify like inlined ones.
   // Best-effort: a pathological stylesheet must never block the import.
   try { inlineStylesheets(doc); } catch { /* proceed with inline styles only */ }
+  // Then fold the tint box back into a layered background, so the walk below
+  // sees one shape for section images regardless of which exporter wrote them.
+  try { unwrapTints(doc); } catch { /* an odd tree is not worth failing the import over */ }
   // Theme first: themeFromParsedDoc consumes the styles it claims off the
   // scaffold nodes, and the row walker must see the cleaned DOM.
   const theme = themeFromParsedDoc(doc);

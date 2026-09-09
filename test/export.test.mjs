@@ -100,9 +100,79 @@ await it('raw html and css blocks pass through untouched', async () => {
   assert.match(html, /<style data-mc="css"[^>]*>\.x \{ color: red \}<\/style>/);
 });
 
-await it('a row background image is emitted as a css url', async () => {
+// The New Outlook regression, pinned. outlook.com's sanitiser -- which is
+// what both New Outlook for Windows and Outlook on the web run -- drops a
+// `background-image` whose value it cannot fully parse instead of salvaging
+// the layers it understands. The old emission opened the value with
+// `linear-gradient(...)`, so a tinted hero lost its photo in every Outlook
+// that is not Word, while a plain <img> in the same email rendered fine.
+await it('a row background image is one unlayered longhand, never a gradient list', async () => {
+  const html = render(docOf([], { bgImage: 'https://cdn.example.com/hero.png', overlay: 40 }));
+  const decl = html.match(/background-image:[^;]*/)[0];
+  assert.equal(decl, 'background-image:url(https://cdn.example.com/hero.png)');
+  assert.equal(/linear-gradient/.test(decl), false, 'the tint must not ride the background-image');
+  assert.match(html, /background-size:cover;background-position:center;background-repeat:no-repeat;/);
+  assert.equal(/background:[^;]*url\(/.test(html), false, 'longhands only, never the shorthand');
+});
+
+// Unquoted on purpose: cssUrl percent-encodes quotes, parens, spaces and
+// backslashes, so there is nothing left for a bare url(...) to trip over --
+// and one less thing for a sanitiser to re-serialise wrongly.
+await it('the background url is unquoted, and ampersands are entity-escaped', async () => {
+  const html = render(docOf([], { bgImage: 'https://cdn.example.com/h.png?a=1&b=2' }));
+  assert.match(html, /background-image:url\(https:\/\/cdn\.example\.com\/h\.png\?a=1&amp;b=2\)/);
+  assert.equal(html.includes('&quot;'), false, 'no quote entities left inside url()');
+});
+
+// Belt to the CSS braces: a client (or a sanitiser) that drops the style
+// attribute wholesale still has the image and the colour as HTML attributes,
+// and the importer already reads `background` back.
+await it('a row background image repeats as background= and bgcolor= attributes', async () => {
   const html = render(docOf([], { bgImage: 'https://cdn.example.com/hero.png' }));
-  assert.match(html, /background-image:url\(&quot;https:\/\/cdn\.example\.com\/hero\.png&quot;\)/);
+  assert.match(html, /<td background="https:\/\/cdn\.example\.com\/hero\.png" bgcolor="#fffdf8"/);
+});
+
+await it('a transparent row paints no bgcolor attribute', async () => {
+  const doc = docOf([], { bgImage: 'https://cdn.example.com/hero.png', bg: 'transparent' });
+  const html = render(doc);
+  assert.equal(/bgcolor="transparent"/.test(html), false, 'an attribute cannot express transparent');
+});
+
+// The tint, displaced from the background-image, becomes its own box -- and
+// takes the row padding with it, because the band a reader sees is the padded
+// box and a tint sized to the content alone leaves an untinted ring.
+await it('a row overlay ships as its own rgba box carrying the row padding', async () => {
+  const html = render(docOf([], { bgImage: 'https://cdn.example.com/hero.png', overlay: 40, py: 56, px: 36 }));
+  assert.match(html, /<div style="background-color:rgba\(20,22,24,0\.4\);padding:56px 36px 56px 36px;">/);
+  assert.match(html, /<td [^>]*style="padding:0;background-color:/, 'the cell gives its padding up to the tint');
+});
+
+await it('a row with an image but no overlay keeps its padding on the cell', async () => {
+  const html = render(docOf([], { bgImage: 'https://cdn.example.com/hero.png', py: 56, px: 36 }));
+  assert.match(html, /<td [^>]*style="padding:56px 36px 56px 36px;background-color:/);
+  assert.equal(/rgba\(20,22,24/.test(html), false, 'no tint box when there is no overlay');
+});
+
+// Classic Outlook (the Word engine) has never read a CSS background. New
+// Outlook skips conditional comments entirely, so none of this reaches the
+// client the fix above was written for -- it is the other half of the same
+// feature, and it is free to carry.
+await it('a row background image ships a VML rect for the Word engine', async () => {
+  const html = render(docOf([], { bgImage: 'https://cdn.example.com/hero.png' }));
+  assert.match(html, /<!--\[if gte mso 9\]><v:rect fill="true" stroke="false" style="width:620px;height:\d+px;">/);
+  assert.match(html, /<v:fill type="frame" src="https:\/\/cdn\.example\.com\/hero\.png" color="#fffdf8" \/>/);
+  // The height is an estimate; mso-fit-shape-to-text makes it a floor rather
+  // than a clip, so Word grows the shape to whatever the content needs.
+  assert.match(html, /<v:textbox inset="0,0,0,0" style="mso-fit-shape-to-text:true">/);
+  assert.match(html, /<!--\[if gte mso 9\]><\/v:textbox><\/v:rect><!\[endif\]-->/);
+});
+
+await it('the VML namespace ships only when a row actually emitted VML', async () => {
+  const withBg = render(docOf([], { bgImage: 'https://cdn.example.com/hero.png' }));
+  assert.match(withBg, /<html lang="en" xmlns:o="[^"]*" xmlns:v="urn:schemas-microsoft-com:vml">/);
+  const without = render(docOf([]));
+  assert.equal(/xmlns:v/.test(without), false, 'a namespace for markup that never appears is noise');
+  assert.equal(/v:rect/.test(without), false);
 });
 
 // The regression this file was written for: the background URL is interpolated
