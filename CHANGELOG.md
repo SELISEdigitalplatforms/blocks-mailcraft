@@ -4,6 +4,16 @@ All notable changes to `@seliseblocks/mailcraft` are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.17] — 2026-09-09
+
+### Fixed
+- **A section background image reaches New Outlook.** A row's photo shipped as one layered declaration — `background-image: linear-gradient(rgba(20,22,24,α),…), url(…)`, the tint in front of the image — and outlook.com's sanitiser, which is what both New Outlook for Windows and Outlook on the web run, drops a declaration it cannot fully parse rather than salvaging the layers it understands. So the tint took the photo down with it and the row fell back to flat colour, while an ordinary `<img>` in the same email rendered fine. The hero section sets a 46% tint by default, so every hero was affected. The image now ships as unlayered longhands with the tint as its own `rgba()` box (which also carries the row padding, so it covers the whole band rather than just the content area), the url is unquoted, and `background=`/`bgcolor=` repeat both values as HTML attributes for anything that drops CSS wholesale.
+- **Classic Outlook gets the photo too.** The same rows now emit a VML `v:rect`/`v:fill` behind the content for the Word engine, which has never read a CSS background. `v:rect` needs pixel dimensions and a row's height is content-driven, so the height is an estimate (padding plus a nominal allowance per block) that `mso-fit-shape-to-text` treats as a floor — Word grows the shape to whatever the content actually needs. The VML namespace is declared on `<html>` only when a row actually emitted VML. The tint is the one thing Classic still does not get: it understands neither the CSS background nor `rgba()`.
+- **A Section box keeps its background colour when it also has an image.** The box wrote both through the `background` shorthand, so setting an image made the colour unreachable — there was nothing left underneath when a client refused the image — and the shorthand opened with a no-op `linear-gradient()`, the same construct the sanitiser rejects. Colour and image are separate longhands now, and the box runs its image url through `cssUrl` like everywhere else.
+
+### Notes for hosts
+- Templates exported by earlier versions still load unchanged: the importer folds the current tint box back into the old layered shape before anything walks it, so both eras read identically and the overlay percentage survives a save/reload either way.
+
 ## [0.2.16] — 2026-09-05
 
 ### Fixed
