@@ -104,6 +104,18 @@ async function inlineExternalImages(root) {
       () => { el.style.backgroundImage = 'none'; },
     ));
   });
+  // The legacy `background` attribute -- what an imported Outlook-first
+  // template, and the exporter's own rows, carry alongside the CSS. Read only
+  // where no CSS image was inlined above, so the two never fetch twice.
+  root.querySelectorAll('[background]').forEach((el) => {
+    const src = el.getAttribute('background') || '';
+    if (!src || src.startsWith('data:')) return;
+    if (/url\(/.test(el.style.backgroundImage || '')) return;
+    jobs.push(toDataUri(src).then(
+      (uri) => { el.setAttribute('background', uri); el.style.backgroundImage = 'url("' + uri + '")'; },
+      () => { el.removeAttribute('background'); },
+    ));
+  });
   await Promise.all(jobs);
 }
 

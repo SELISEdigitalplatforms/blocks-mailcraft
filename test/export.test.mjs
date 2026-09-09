@@ -167,6 +167,74 @@ await it('a row background image ships a VML rect for the Word engine', async ()
   assert.match(html, /<!--\[if gte mso 9\]><\/v:textbox><\/v:rect><!\[endif\]-->/);
 });
 
+// The content column carries a background image at document level. It is the
+// content column and not the page because the column is already a <table> --
+// the one element every client paints a background on -- whereas a page
+// background has to ride <body>, which Gmail discards outright.
+await it('a content-area background image is longhands plus attributes, like a row', async () => {
+  // A fresh theme object, never a mutation of the shared THEME -- `docOf`
+  // hands out the same reference to every test, so assigning onto it leaks
+  // into every case that runs afterwards.
+  const doc = docOf([]);
+  doc.theme = { ...THEME, contentBg: '#fffdf8', contentBgImage: 'https://cdn.example.com/paper.png', contentBgSize: 'contain', contentBgPos: 'top', contentBgRepeat: 'repeat' };
+  const html = render(doc);
+  assert.match(html, /<table role="presentation" background="https:\/\/cdn\.example\.com\/paper\.png" bgcolor="#fffdf8"/);
+  assert.match(html, /background-color:#fffdf8;background-image:url\(https:\/\/cdn\.example\.com\/paper\.png\);background-size:contain;background-position:top;background-repeat:repeat;/);
+  assert.equal(/background:[^;]*url\(/.test(html), false, 'longhands only, never the shorthand');
+  assert.equal(/linear-gradient/.test(html), false);
+});
+
+await it('a content area with no image keeps the plain background shorthand', async () => {
+  const html = render(docOf([]));
+  assert.match(html, /max-width:620px;background:#fffdf8;/, 'unchanged when no image is set');
+  assert.equal(/<table role="presentation" background=/.test(html), false, 'no stray attribute');
+});
+
+await it('a transparent content area paints no bgcolor attribute', async () => {
+  const doc = docOf([]);
+  doc.theme = { ...THEME, contentBg: 'transparent', contentBgImage: 'https://cdn.example.com/p.png' };
+  const html = render(doc);
+  assert.equal(/bgcolor="transparent"/.test(html), false);
+  assert.match(html, /background="https:\/\/cdn\.example\.com\/p\.png"/);
+});
+
+await it('a preheader ships hidden at the top of the body, escaped and padded', async () => {
+  const doc = docOf([]);
+  doc.theme = { ...THEME, preheader: 'Your order <shipped> & more' };
+  const html = render(doc);
+  assert.match(html, /<body[^>]*>\n<div style="display:none;font-size:1px;[^"]*mso-hide:all;[^"]*">Your order &lt;shipped&gt; &amp; more(?:&#847;&zwnj;&nbsp;){40}<\/div>/);
+  assert.equal(/<div style="display:none/.test(render(docOf([]))), false, 'none when no preview text is set');
+});
+
+await it('the document direction is the theme\'s, never the UI locale\'s', async () => {
+  const doc = docOf([]);
+  doc.theme = { ...THEME, dir: 'rtl' };
+  assert.match(render(doc), /<html lang="en" dir="rtl"/);
+  assert.equal(/\sdir="/.test(render(docOf([]))), false);
+});
+
+await it('the page wrappers carry bgcolor beside the CSS, but never for transparent or rgba', async () => {
+  assert.match(render(docOf([])), /<body bgcolor="#ece8df"/);
+  assert.match(render(docOf([])), /<table role="presentation" bgcolor="#ece8df" width="100%"/);
+  const doc = docOf([]);
+  doc.theme = { ...THEME, bg: 'transparent' };
+  assert.equal(/bgcolor="transparent"/.test(render(doc)), false);
+});
+
+await it('msoHarden gives the button cell an mso-padding-alt matching its padding', async () => {
+  const cell = '<table role="presentation"><tr><td style="background:#0065b3;border-radius:8px;padding:13px 26px;text-align:center;" align="center"><a href="#">Go</a></td></tr></table>';
+  assert.match(msoHarden(cell), /padding:13px 26px;text-align:center;mso-padding-alt:13px 26px;/);
+  const plain = '<td style="padding:13px 26px;" align="center">x</td>';
+  assert.equal(/mso-padding-alt/.test(msoHarden(plain)), false, 'only the button shape: radius + centred');
+});
+
+await it('msoHarden gives every image bicubic interpolation for Word', async () => {
+  assert.match(msoHarden('<img style="width:60%;" src="a.png">'), /style="width:60%;-ms-interpolation-mode:bicubic;"/);
+  assert.match(msoHarden('<img src="a.png">'), /<img src="a.png" style="-ms-interpolation-mode:bicubic;">/);
+  const once = msoHarden(msoHarden('<img style="width:60%;" src="a.png">'));
+  assert.equal((once.match(/interpolation-mode/g) || []).length, 1, 'idempotent');
+});
+
 await it('the VML namespace ships only when a row actually emitted VML', async () => {
   const withBg = render(docOf([], { bgImage: 'https://cdn.example.com/hero.png' }));
   assert.match(withBg, /<html lang="en" xmlns:o="[^"]*" xmlns:v="urn:schemas-microsoft-com:vml">/);

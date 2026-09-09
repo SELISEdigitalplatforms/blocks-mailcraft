@@ -1,6 +1,6 @@
 import { DEF } from '../core/blocks.js';
 import { boxStyle, rowBg, rowPad, colsWrap, colStyle } from '../core/layout-style.js';
-import { scopeCss } from '../core/sanitize.js';
+import { scopeCss, cssUrl } from '../core/sanitize.js';
 import { cellsOf } from '../core/parse.js';
 import { icon } from '../core/icons.js';
 import { blockBody } from './block-body.js';
@@ -189,7 +189,14 @@ export function renderDoc(core, live) {
   const radius = Number(theme.radius) || 0;
   const borderW = Number(theme.borderW) || 0;
   const root = el('div', {
-    width: width + 'px', maxWidth: '100%', background: theme.contentBg || 'transparent', color: theme.text, fontFamily: theme.font,
+    width: width + 'px', maxWidth: '100%', color: theme.text, fontFamily: theme.font,
+    // Colour and image as separate longhands, mirroring what the exporter
+    // writes -- the canvas has to show the same paint the recipient gets.
+    backgroundColor: theme.contentBg || 'transparent',
+    backgroundImage: theme.contentBgImage ? 'url("' + cssUrl(theme.contentBgImage) + '")' : 'none',
+    backgroundSize: theme.contentBgSize || 'cover',
+    backgroundPosition: theme.contentBgPos || 'center',
+    backgroundRepeat: theme.contentBgRepeat || 'no-repeat',
     // Only when the document actually asks for a shape: an unconditional
     // `0px` would override the editor chrome's own soft corner on the sheet
     // (style.js) and square off every template that never touched the field.
@@ -310,7 +317,20 @@ export function renderDoc(core, live) {
         }
         : { display: 'block' })
       : colsWrap(r.props));
+    /*
+     * What this column measures in a sent email, in px. Word cannot resolve a
+     * percentage width on an image (it falls back to the file's intrinsic
+     * size, which is how a 1200px hero tore the layout open in Outlook), so
+     * the image renderer needs a real number to put in a `width` attribute.
+     * Approximate by construction -- cell gutters and column padding are not
+     * modelled here -- but an approximate cap is the whole difference between
+     * a scaled image and a 1200px one.
+     */
+    const rowPadX = (r.props.pl ?? r.props.px ?? 0) + (r.props.pr ?? r.props.px ?? 0);
+    const gapPx = (r.props.gap || 0) * Math.max(0, r.cols.length - 1);
+    const innerPx = Math.max(40, (Number(theme.width) || 620) - rowPadX - gapPx);
     r.cols.forEach((c, ci) => {
+      const colPx = Math.max(20, Math.round(innerPx * ((c.span || 100) / 100)));
       const colLines = [];
       const items = [];
       c.blocks.forEach((b, bi) => {
@@ -356,7 +376,7 @@ export function renderDoc(core, live) {
         // few pixels from the RTE's own controls. The RTE stands in for it for
         // the duration of the edit; it comes back on blur (still selected).
         if (bSel && ctx.editingId !== b.id) bWrap.appendChild(toolbar(core, b.id, 'block', DEF(b.type).code));
-        bWrap.appendChild(blockBody(b, theme, live, ctx));
+        bWrap.appendChild(blockBody(b, theme, live, ctx, colPx));
         items.push(bWrap);
       });
       let colTracker;

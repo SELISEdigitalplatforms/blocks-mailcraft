@@ -93,7 +93,7 @@ function overrideLinkColor(root, link) {
  * toolbar node or null), `ctx.onTableCellBlur(block, ri, ci, value)`, `ctx.now`
  * (for the countdown), `ctx.vars` and `ctx.onInsertVariable` for the code-view escape hatch.
  */
-export function blockBody(b, theme, live, ctx) {
+export function blockBody(b, theme, live, ctx, colPx) {
   const p = b.props; const t = theme;
   const attr = live ? { 'data-mc-content': b.id } : {};
 
@@ -119,6 +119,25 @@ export function blockBody(b, theme, live, ctx) {
     case 'image': {
       const wrap = el('div', { padding: pad(p), textAlign: p.align, fontSize: '0' }, attr);
       const imgHref = linkHref(p.href);
+      /*
+       * Two things every exported image needs and had neither of.
+       *
+       * `width` as an ATTRIBUTE, in px: the Word engine behind Classic
+       * Outlook does not resolve a percentage width on an image and falls
+       * back to the file's intrinsic size, so a 1200px hero authored at 60%
+       * shipped 1200px wide and tore the layout open. The CSS percentage
+       * stays for every client that can do better -- the attribute is only
+       * the floor Word reads -- and `height:auto` keeps the aspect ratio once
+       * a width is pinned.
+       *
+       * A real `font-size` on the IMG: the wrapper sets `font-size:0` to kill
+       * the inline-block whitespace gap, and alt text inherits it, so with
+       * images blocked (Outlook's default) the alt text rendered at 0px and
+       * the recipient saw nothing at all. The wrapper keeps its 0; the image
+       * carries type of its own for the blocked state.
+       */
+      const pxW = Math.max(1, Math.round(((Number(colPx) || Number(t.width) || 620)) * ((Number(p.width) || 100) / 100)));
+      const altType = { fontSize: '13px', lineHeight: '1.4', fontFamily: t.font, color: t.text };
       if (imgHref) {
         // The % width must live on the anchor, not the img: a percentage on a
         // child of a shrink-to-fit inline-block resolves against the image's
@@ -129,10 +148,10 @@ export function blockBody(b, theme, live, ctx) {
         // click on a linked logo navigates the host application away from the
         // editor, taking the uncommitted document with it.
         a.addEventListener('click', (e) => e.preventDefault());
-        a.appendChild(el('img', { width: '100%', borderRadius: p.radius + 'px', display: 'block', border: '0' }, { src: p.src, alt: p.alt }));
+        a.appendChild(el('img', { width: '100%', height: 'auto', borderRadius: p.radius + 'px', display: 'block', border: '0', ...altType }, { src: p.src, alt: p.alt, width: String(pxW), border: '0' }));
         wrap.appendChild(a);
       } else {
-        wrap.appendChild(el('img', { width: p.width + '%', maxWidth: '100%', borderRadius: p.radius + 'px', display: 'inline-block', border: '0' }, { src: p.src, alt: p.alt }));
+        wrap.appendChild(el('img', { width: p.width + '%', height: 'auto', maxWidth: '100%', borderRadius: p.radius + 'px', display: 'inline-block', border: '0', ...altType }, { src: p.src, alt: p.alt, width: String(pxW), border: '0' }));
       }
       return wrap;
     }
@@ -197,11 +216,29 @@ export function blockBody(b, theme, live, ctx) {
     }
     case 'divider': {
       const wrap = el('div', { padding: p.py + 'px 0' }, attr);
-      wrap.appendChild(el('div', { height: '0', width: p.width + '%', margin: '0 auto', borderTop: p.thickness + 'px ' + (p.lineStyle || 'solid') + ' ' + p.color }));
+      const rule = p.thickness + 'px ' + (p.lineStyle || 'solid') + ' ' + p.color;
+      // Word gives a zero-height div nothing to draw the border on, so the
+      // same rule ships twice: once on this div, which every other client
+      // renders and the importer reads (classifyDivider: a DIV bar with a
+      // border-top), and once on a <td> inside an MSO-only table, the shape
+      // Word does paint. `<!--[if !mso]><!-->` keeps the div out of Word so
+      // it never draws both. Comments are inert to the importer.
+      const doc = wrap.ownerDocument;
+      wrap.appendChild(doc.createComment('[if !mso]><!'));
+      wrap.appendChild(el('div', { height: '0', width: p.width + '%', margin: '0 auto', borderTop: rule, fontSize: '1px', lineHeight: '1px' }, { html: '&nbsp;' }));
+      wrap.appendChild(doc.createComment('<![endif]'));
+      wrap.appendChild(doc.createComment('[if mso]><table role="presentation" width="' + p.width + '%" align="center" cellpadding="0" cellspacing="0" border="0"><tr><td style="border-top:' + rule + ';font-size:1px;line-height:1px;">&nbsp;</td></tr></table><![endif]'));
       return wrap;
     }
-    case 'spacer':
-      return el('div', { height: p.height + 'px' }, attr);
+    case 'spacer': {
+      // An empty div has no height in Word: it needs a character to give a
+      // line to, and an exact line-height to size that line (msoHarden adds
+      // mso-line-height-rule:exactly wherever a px line-height stands). This
+      // is mj-spacer's shape. The NBSP trims to nothing for the importer, so
+      // classifySpacer still sees an empty div with a height.
+      const h = Math.max(0, Number(p.height) || 0);
+      return el('div', { height: h + 'px', lineHeight: h + 'px', fontSize: '1px' }, { ...attr, html: '&nbsp;' });
+    }
     case 'social': {
       // Two independent axes cover every style the block offers without a
       // second hand-drawn icon set per platform: `palette` picks the source
@@ -241,14 +278,32 @@ export function blockBody(b, theme, live, ctx) {
     }
     case 'video': {
       const wrap = el('div', { padding: '4px 0', textAlign: 'center' }, attr);
-      const a = el('a', { display: 'block', position: 'relative' }, { href: linkHref(p.href) });
+      /*
+       * The play badge used to float over the thumbnail with
+       * position:absolute. Gmail strips `position` outright and Word ignores
+       * it, so in both the badge fell to a line below the picture. Now the
+       * thumbnail is the cell's background (the one overlay mechanism email
+       * has) and the badge is plain centred content inside it. The cell needs
+       * a height, since a background gives none: 16:9 of the column width,
+       * which is what a video thumbnail is. The whole cell is the link.
+       */
+      const vw = Math.max(120, Number(colPx) || Number(t.width) || 620);
+      const vh = Math.round(vw * 9 / 16);
+      const vurl = cssUrl(p.src);
+      const table = el('table', { width: '100%', borderCollapse: 'collapse' }, { role: 'presentation', cellpadding: '0', cellspacing: '0', border: '0', width: '100%' });
+      const tr = el('tr'); table.appendChild(tr);
+      const cell = el('td', {
+        height: vh + 'px', textAlign: 'center', verticalAlign: 'middle',
+        backgroundColor: '#111111', backgroundImage: vurl ? 'url("' + vurl + '")' : 'none',
+        backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
+      }, { height: String(vh), align: 'center', valign: 'middle', background: p.src || undefined, bgcolor: '#111111' });
+      const a = el('a', { display: 'inline-block', textDecoration: 'none' }, { href: linkHref(p.href), title: p.caption || undefined });
       a.addEventListener('click', (e) => e.preventDefault());
-      a.appendChild(el('img', { width: '100%', display: 'block', border: '0' }, { src: p.src, alt: p.caption }));
-      const badge = el('span', { position: 'absolute', inset: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' });
-      const circle = el('span', { width: '54px', height: '54px', borderRadius: '50%', background: p.badge, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', paddingLeft: '4px' }, { text: '▶' });
-      badge.appendChild(circle);
-      a.appendChild(badge);
-      wrap.appendChild(a);
+      const circle = el('span', { display: 'inline-block', width: '54px', height: '54px', lineHeight: '54px', borderRadius: '50%', background: p.badge, color: '#fff', textAlign: 'center', fontSize: '18px', fontFamily: 'Arial, sans-serif' }, { text: '▶' });
+      a.appendChild(circle);
+      cell.appendChild(a);
+      tr.appendChild(cell);
+      wrap.appendChild(table);
       wrap.appendChild(el('div', { fontFamily: t.font, fontSize: '12.5px', color: p.badge, opacity: '0.7', marginTop: '8px' }, { text: p.caption }));
       return wrap;
     }
@@ -393,7 +448,9 @@ export function blockBody(b, theme, live, ctx) {
         // it. Same rule as a row's background (core/export.js).
         backgroundColor: p.bg || 'transparent',
         backgroundImage: p.bgImage ? 'url("' + cssUrl(p.bgImage) + '")' : 'none',
-        backgroundSize: 'cover', backgroundPosition: 'center',
+        // The same three controls a row has; hard-coded cover/center meant a
+        // box background could never tile or pin to an edge.
+        backgroundSize: p.bgSize || 'cover', backgroundPosition: p.bgPos || 'center', backgroundRepeat: p.bgRepeat || 'no-repeat',
         borderTop: borderSide(p.topBorder), borderRight: borderSide(p.rightBorder),
         borderBottom: borderSide(p.bottomBorder), borderLeft: borderSide(p.leftBorder),
         borderRadius: p.radius + 'px', padding: p.pad + 'px', textAlign: p.align,

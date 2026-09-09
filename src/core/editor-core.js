@@ -81,6 +81,24 @@ function syncRichContent(block, key, val) {
   return true;
 }
 
+/*
+ * The background-image vocabulary, shared by a row's panel and the content
+ * area's. Duplicated inline in both, they drifted the moment either grew an
+ * option -- and two panels offering different words for the same CSS is the
+ * kind of difference a user reads as a bug.
+ */
+const BG_FIT = [{ value: 'cover', label: 'Fill the section' }, { value: 'contain', label: 'Fit inside' }, { value: 'auto', label: 'Actual size' }];
+// All nine CSS keyword positions. The importer keeps `right bottom` and
+// friends faithfully; with only five single keywords on offer, a select showed
+// nothing for such a value and the first touch of the control destroyed it.
+const BG_POS = [
+  { value: 'center', label: 'Center' }, { value: 'top', label: 'Top' }, { value: 'bottom', label: 'Bottom' },
+  { value: 'left', label: 'Left' }, { value: 'right', label: 'Right' },
+  { value: 'left top', label: 'Top left' }, { value: 'right top', label: 'Top right' },
+  { value: 'left bottom', label: 'Bottom left' }, { value: 'right bottom', label: 'Bottom right' },
+];
+const BG_REPEAT = [{ value: 'no-repeat', label: 'No repeat' }, { value: 'repeat', label: 'Tile' }, { value: 'repeat-x', label: 'Tile across' }];
+
 const BORDER_STYLES = [
   { value: 'solid', label: 'Solid' },
   { value: 'dashed', label: 'Dashed' },
@@ -1417,7 +1435,10 @@ export class EditorCore {
   useAsset(a) {
     const t = this.state.assetTarget;
     if (t) {
-      this.setProp(t.id || t, t.key || 'src', a.url);
+      // `{ theme: true, key }` targets the document's own paint (the content
+      // area's background image); everything else is a block or row id.
+      if (t.theme) this.setTheme(t.key, a.url);
+      else this.setProp(t.id || t, t.key || 'src', a.url);
       this.setState({ libraryOpen: false, assetTarget: null });
       this.flash(this.t('toast.imageReplaced'));
     } else {
@@ -1632,7 +1653,7 @@ export class EditorCore {
           B.color('Header color', 'headBg'), B.color('Line color', 'lineColor'), B.seg('Align', 'align', ALIGN),
         ]));
         case 'css': return decorate(base.concat([B.area('CSS', 'code'), B.text('Note to yourself', 'note')]));
-        case 'box': return decorate(base.concat([B.area('Content (HTML allowed)', 'html'), B.color('Background color', 'bg'), B.btn('Choose background image', () => this.openLibrary({ id: b.id, key: 'bgImage' })), B.text('Background image URL', 'bgImage', 'https://'), B.range('Space inside', 'pad', 0, 160, 2, 'px'), B.range('Border thickness', 'border', 0, 20, 1, 'px')].concat(b.props.border ? [
+        case 'box': return decorate(base.concat([B.area('Content (HTML allowed)', 'html'), B.color('Background color', 'bg'), B.btn('Choose background image', () => this.openLibrary({ id: b.id, key: 'bgImage' })), B.text('Background image URL', 'bgImage', 'https://'), ...(b.props.bgImage ? [B.sel('Image fit', 'bgSize', BG_FIT), B.sel('Image position', 'bgPos', BG_POS), B.sel('Image repeat', 'bgRepeat', BG_REPEAT)] : []), B.range('Space inside', 'pad', 0, 160, 2, 'px'), B.range('Border thickness', 'border', 0, 20, 1, 'px')].concat(b.props.border ? [
           B.sel('Border style', 'borderStyle', BORDER_STYLES), B.color('Border color', 'lineColor'),
           B.tog('Top border', 'topBorder', true), B.tog('Right border', 'rightBorder', true),
           B.tog('Bottom border', 'bottomBorder', true), B.tog('Left border', 'leftBorder', true),
@@ -1718,8 +1739,8 @@ export class EditorCore {
         B.btn(p.bgImage ? 'Change background image' : 'Add background image', () => this.openLibrary({ id: r.id, key: 'bgImage' })),
         ...(p.bgImage ? [
           B.btn('Remove background image', () => this.setProp(r.id, 'bgImage', '')),
-          B.sel('Image fit', 'bgSize', [{ value: 'cover', label: 'Fill the section' }, { value: 'contain', label: 'Fit inside' }, { value: 'auto', label: 'Actual size' }]),
-          B.sel('Image position', 'bgPos', [{ value: 'center', label: 'Center' }, { value: 'top', label: 'Top' }, { value: 'bottom', label: 'Bottom' }, { value: 'left', label: 'Left' }, { value: 'right', label: 'Right' }]),
+          B.sel('Image fit', 'bgSize', BG_FIT),
+          B.sel('Image position', 'bgPos', BG_POS),
           B.range('Darken image', 'overlay', 0, 100, 1, '%'),
         ] : []),
 
@@ -1771,7 +1792,7 @@ export class EditorCore {
           ] : []),
           ...(p.layout === 'grid' ? [B.range('Grid columns', 'gridCols', 1, 12, 1, '')] : []),
           B.text('Background image URL', 'bgImage', 'https://'),
-          B.sel('Image repeat', 'bgRepeat', [{ value: 'no-repeat', label: 'No repeat' }, { value: 'repeat', label: 'Tile' }, { value: 'repeat-x', label: 'Tile across' }]),
+          B.sel('Image repeat', 'bgRepeat', BG_REPEAT),
           B.range('Max width', 'maxW', 10, 100, 5, '%'),
           B.seg('Vertical align', 'valign', [{ value: 'top', label: 'Top' }, { value: 'middle', label: 'Middle' }, { value: 'bottom', label: 'Bottom' }]),
         ] : []),
@@ -1817,7 +1838,11 @@ export class EditorCore {
 
   themeFields() {
     const B = binder(() => this.state.doc.theme, (k, v) => this.setTheme(k, v), this);
+    const th = this.state.doc.theme;
     return decorate([
+      B.head('Message'),
+      B.text('Preview text', 'preheader', 'Shown next to the subject line in the inbox'),
+      B.sel('Reading direction', 'dir', [{ value: '', label: 'Left to right' }, { value: 'rtl', label: 'Right to left' }]),
       B.head('Canvas'),
       B.slider('Content area width', 'width', 280, 900, 5, 'px'),
       // The page section: everything outside the content column. Its colour
@@ -1831,6 +1856,14 @@ export class EditorCore {
       ]),
       B.head('Content area'),
       B.color('Content area background color', 'contentBg', { transparent: true, solid: '#ffffff' }),
+      B.btn(th.contentBgImage ? 'Change background image' : 'Add background image', () => this.openLibrary({ theme: true, key: 'contentBgImage' })),
+      ...(th.contentBgImage ? [
+        B.btn('Remove background image', () => this.setTheme('contentBgImage', '')),
+        B.sel('Image fit', 'contentBgSize', BG_FIT),
+        B.sel('Image position', 'contentBgPos', BG_POS),
+        B.sel('Image repeat', 'contentBgRepeat', BG_REPEAT),
+      ] : []),
+      B.text('Background image URL', 'contentBgImage', 'https://'),
       B.range('Corner radius', 'radius', 0, 48, 1, 'px'),
       B.range('Border thickness', 'borderW', 0, 12, 1, 'px'),
       B.sel('Drop shadow', 'shadow', [

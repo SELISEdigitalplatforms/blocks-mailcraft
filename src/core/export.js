@@ -87,6 +87,36 @@ export function msoHarden(html) {
       if (!/line-height:\s*[\d.]+px/.test(out)) return 'style="' + out + '"';
       return 'style="' + out + (out.trim().endsWith(';') ? '' : ';') + 'mso-line-height-rule:exactly;"';
     })
+    /*
+     * `mso-padding-alt` on the button cell. Word applies a cell's CSS padding
+     * inconsistently and ignores it on the anchor entirely, so the pill can
+     * shrink to bare text there; `mso-padding-alt` is the declaration it does
+     * honour, restating the same two values. Keyed on the exact shape the
+     * button renderer writes (block-body.js): a centred cell carrying a
+     * two-value padding AND a border-radius. Nothing else in the exporter
+     * produces that pair on a <td>.
+     */
+    .replace(/<td\b([^>]*)>/g, (m0, attrs) => {
+      // The whole tag, not just the style: the renderer writes align="center"
+      // AFTER the style attribute.
+      if (/mso-padding-alt/.test(attrs) || !/\balign="center"/.test(attrs) || !/\bborder-radius:/.test(attrs)) return m0;
+      const pm = attrs.match(/\bpadding:\s*(\d+(?:\.\d+)?px)\s+(\d+(?:\.\d+)?px)\s*;/);
+      if (!pm) return m0;
+      return '<td' + attrs.replace(/style="([^"]*)"/, (s0, css) => 'style="' + css + (css.trim().endsWith(';') ? '' : ';') + 'mso-padding-alt:' + pm[1] + ' ' + pm[2] + ';"') + '>';
+    })
+    /*
+     * `-ms-interpolation-mode:bicubic` on every image. Outlook's (and old
+     * IE's) default is nearest-neighbour, which turns a scaled photo into
+     * visible stair-steps; bicubic is the one switch that fixes it. Not a
+     * real CSS property, so CSSOM drops it on the canvas -- another string
+     * pass job, like the rest of this function.
+     */
+    .replace(/<img\b([^>]*)>/g, (m0, attrs) => {
+      if (/interpolation-mode/.test(attrs)) return m0;
+      return /style="/.test(attrs)
+        ? '<img' + attrs.replace(/style="([^"]*)"/, (s0, css) => 'style="' + css + (!css.trim() || css.trim().endsWith(';') ? '' : ';') + '-ms-interpolation-mode:bicubic;"') + '>'
+        : '<img' + attrs + ' style="-ms-interpolation-mode:bicubic;">';
+    })
     .replace(/<table\b([^>]*)>/g, (m0, attrs) => {
       if (/mso-table-lspace/.test(attrs)) return m0;
       const spacing = 'mso-table-lspace:0pt;mso-table-rspace:0pt;';
@@ -426,7 +456,36 @@ export function buildHtml(state, root, boxCss, opts) {
    */
   const ghostOpen = '<!--[if mso]><table role="presentation" width="' + t.width + '" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->';
   const ghostClose = '<!--[if mso]></td></tr></table><![endif]-->';
-  const shell = '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:' + t.width + 'px;background:' + (t.contentBg || 'transparent') + ';' + contentShape + '">\n' + rows + '\n    </table>';
+  /*
+   * The content column's own paint. A background image here follows exactly
+   * the rules a row's does (see `tdBg` above): separate longhands, never the
+   * shorthand and never a layered value, an unquoted url, and the same two
+   * values repeated as `background=`/`bgcolor=` attributes for anything that
+   * drops CSS wholesale.
+   *
+   * This is the content column and not the page for one reason: it is already
+   * a <table>, the one element every client paints a background on. A page
+   * background has to ride <body>, and Gmail discards the body element
+   * outright -- so a page-level image is simply absent there, while this one
+   * renders everywhere `background-image` renders at all.
+   *
+   * No VML: `v:rect` needs a pixel height, and the content column's height is
+   * the whole email's. Classic Outlook gets `contentBg` flat, which is the
+   * same deal it has always had here.
+   */
+  const contentBgUrl = t.contentBgImage ? cssUrl(t.contentBgImage) : '';
+  const contentColor = t.contentBg || 'transparent';
+  const contentPaint = contentBgUrl
+    ? 'background-color:' + contentColor + ';'
+      + 'background-image:url(' + attrEsc(contentBgUrl) + ');'
+      + 'background-size:' + (t.contentBgSize || 'cover') + ';'
+      + 'background-position:' + (t.contentBgPos || 'center') + ';'
+      + 'background-repeat:' + (t.contentBgRepeat || 'no-repeat') + ';'
+    : 'background:' + contentColor + ';';
+  const contentAttrs = contentBgUrl
+    ? ' background="' + attrEsc(contentBgUrl) + '"' + (contentColor === 'transparent' ? '' : ' bgcolor="' + contentColor + '"')
+    : '';
+  const shell = '<table role="presentation"' + contentAttrs + ' width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:' + t.width + 'px;' + contentPaint + contentShape + '">\n' + rows + '\n    </table>';
   /*
    * The one embedded stylesheet in the document, and the only place the
    * exporter is not inline-styled -- a media query cannot be expressed
@@ -516,6 +575,23 @@ export function buildHtml(state, root, boxCss, opts) {
       return '<a' + attrs + ' style="color:' + t.link + ';">';
     });
   };
+  /*
+   * The preview line. Hidden by every trick the clients between them need
+   * (display:none for most, mso-hide for Word, zero size/opacity for the ones
+   * that ignore display), and padded out with zero-width joiners so a client
+   * that shows ~90 characters does not run on into the body copy after a
+   * short preheader. Escaped: it is author text in a markup context.
+   */
+  const preText = String(t.preheader || '').trim();
+  const preheader = preText
+    ? '\n<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;visibility:hidden;">'
+      + preText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      + '&#847;&zwnj;&nbsp;'.repeat(40) + '</div>'
+    : '';
+  const docDir = t.dir === 'rtl' ? ' dir="rtl"' : '';
+  // `bgcolor` beside the CSS on both page wrappers, as the rows already carry:
+  // the attribute is what survives a client that drops the style attribute.
+  const pageAttr = pageBg && pageBg !== 'transparent' && !/^rgba\(/.test(pageBg) ? ' bgcolor="' + pageBg + '"' : '';
   const bodyStyle = 'margin:0;padding:0;background:' + pageBg + ';font-family:' + t.font.replace(/"/g, "'") + ';color:' + t.text + ';-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;text-size-adjust:100%;';
-  return msoHarden(stampLinks('<!doctype html>\n<html lang="en" xmlns:o="urn:schemas-microsoft-com:office:office"' + (usedVml ? ' xmlns:v="urn:schemas-microsoft-com:vml"' : '') + '>\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<meta name="color-scheme" content="light">\n<meta name="supported-color-schemes" content="light">\n<title>' + 'Email' + '</title>' + msoHead + stackCss + '\n</head>\n<body style="' + bodyStyle + '">\n<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:' + pageBg + ';">\n  <tr><td align="center" style="padding:' + pagePad + ';">\n    ' + ghostOpen + '\n    ' + shell + '\n    ' + ghostClose + '\n  </td></tr>\n</table>\n</body>\n</html>'));
+  return msoHarden(stampLinks('<!doctype html>\n<html lang="en"' + docDir + ' xmlns:o="urn:schemas-microsoft-com:office:office"' + (usedVml ? ' xmlns:v="urn:schemas-microsoft-com:vml"' : '') + '>\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<meta name="color-scheme" content="light">\n<meta name="supported-color-schemes" content="light">\n<title>' + 'Email' + '</title>' + msoHead + stackCss + '\n</head>\n<body' + pageAttr + ' style="' + bodyStyle + '">' + preheader + '\n<table role="presentation"' + pageAttr + ' width="100%" cellpadding="0" cellspacing="0" border="0" style="background:' + pageBg + ';">\n  <tr><td align="center" style="padding:' + pagePad + ';">\n    ' + ghostOpen + '\n    ' + shell + '\n    ' + ghostClose + '\n  </td></tr>\n</table>\n</body>\n</html>'));
 }
