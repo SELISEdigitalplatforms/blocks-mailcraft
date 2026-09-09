@@ -1578,7 +1578,7 @@ function applyFrame(rows, el) {
 function rowsFromContentTable(table) {
   const tableWidthPx = PX(table.getAttribute('width') || table.style.width || '0') || null;
   const trs = Array.from(table.querySelectorAll(':scope > tbody > tr, :scope > tr'));
-  return trs.map((tr) => {
+  const built = trs.map((tr) => {
     // A synthetic marker row minted by foldLogicWrappers: one dynamic-content
     // marker block, at the exact place the tag held in the source.
     const logicTag = tr.getAttribute('data-mc-logic');
@@ -1690,6 +1690,29 @@ function rowsFromContentTable(table) {
         if (pd && !pd.t && !pd.b && pd.l > 0 && pd.l === pd.r && pd.l <= 60) gapPx = pd.l * 2;
       }
     }
+    /*
+     * A nested SECTION: one cell whose only child is a multi-row table. Not a
+     * component (a button is one cell, a data table has <th>s, a social strip
+     * classifies as one block) and not layout scaffolding (that is one row,
+     * handled above) -- it is another band of rows, usually a hero or a card
+     * stack with a background image of its own. It used to reach the
+     * never-drop-content floor and import as ONE opaque html block: not a
+     * row, no background controls, nothing inside it editable. It is walked
+     * as rows instead, the section's own image applied once as a band
+     * (applyBgImage folds the runs) and the cell's paint, padding and frame
+     * carried onto the result -- the same composition as the td -> tr ->
+     * table branch in collectRows.
+     */
+    if (cells.length === 1 && !classifyButton(cells[0])) {
+      const section = onlyChild(cells[0], 'TABLE');
+      const secRows = section ? section.querySelectorAll(':scope > tbody > tr, :scope > tr') : [];
+      if (section && secRows.length >= 2 && !section.closest('form,svg')
+        && !section.querySelector(':scope > tbody > tr > th, :scope > tr > th') && !classifySocial(section)) {
+        const td = cells[0];
+        const inner = rowsFromContentTable(section);
+        if (inner.length) return applyBgImage(applyBgImage(applyFrame(applyPad(applyBg(inner, bgOf(td)), padOf(td)), td), td), section);
+      }
+    }
     const spans = cells.length === 1 ? [100] : spansFromCells(cells, tableWidthPx);
     const row = mkRow(spans);
     row.props.py = 0; row.props.px = 0; row.props.gap = gapPx;
@@ -1782,7 +1805,13 @@ function rowsFromContentTable(table) {
     if (radius) row.props.radius = radius;
     const shadow = (cellsUniform ? bgSource.style.boxShadow : '') || table.style.boxShadow || '';
     if (shadow && shadow !== 'none') row.props.shadow = shadow;
-    const bgiEl = (cellsUniform && bgImageOf(bgSource)) ? bgSource : (bgImageOf(table) ? table : null);
+    // A cell's own image is this row's. The TABLE's image is only this row's
+    // when the table IS one row; a multi-row table's image is the band's, and
+    // is applied once to all its rows after they exist (see the return below)
+    // -- stamping it here, row by row as they were built, is what put a fresh
+    // copy of the section photo on every row, each repainting it from its own
+    // top edge, and left nothing for the band merge to fold.
+    const bgiEl = (cellsUniform && bgImageOf(bgSource)) ? bgSource : (trs.length === 1 && bgImageOf(table) ? table : null);
     if (bgiEl) applyBgImage([row], bgiEl);
     // The table itself can carry section padding (Beefree writes
     // `padding-top: 60px` on `.row-content`) on top of the cell's own -- the
@@ -1832,7 +1861,11 @@ function rowsFromContentTable(table) {
       row.cols[i].blocks = blocksFromNodes(Array.from(contentEl.childNodes));
     });
     return row;
-  }).filter((r) => r && r.cols.some((c) => c.blocks.length));
+  }).flatMap((r) => (Array.isArray(r) ? r : [r])).filter((r) => r && r.cols.some((c) => c.blocks.length));
+  // The multi-row table's own image, once, as a band (applyBgImage folds the
+  // runs of foldable rows first). The content table never reaches this with
+  // an image: themeFromParsedDoc has already claimed and consumed it.
+  return trs.length > 1 && bgImageOf(table) ? applyBgImage(built, table) : built;
 }
 
 /**

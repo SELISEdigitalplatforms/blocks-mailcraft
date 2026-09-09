@@ -714,8 +714,6 @@ await it("an image wrapper's padding and a divider wrapper's spacing are the blo
   assert.equal(div.props.py, 3);
 });
 
-console.log(`\n${passed} passed, ${failed} failed.`);
-
 // One image, one band. A section background used to be stamped onto every
 // row the section walked into, so the recipient saw the photo re-drawn in
 // bands down the email.
@@ -758,6 +756,25 @@ await it("a foreign builder's dark rgba tint folds back to the Darken slider", a
   assert.equal(r.props.bgImage || d.theme.contentBgImage, 'https://cdn.example.com/h.jpg');
   if (r.props.bgImage) assert.equal(r.props.overlay, 50);
 });
+
+
+await it('a nested multi-row section walks as rows -- one band with its image, not one opaque html block', async () => {
+  const IMG = 'https://cdn.example.com/hero.jpg';
+  const P = (t) => `<tr><td style="padding:0 24px"><p style="margin:0">${t}</p></td></tr>`;
+  const nested = (rows) => `<html><body><table width="100%"><tr><td align="center"><table width="600"><tr><td style="padding:0"><table width="100%" style="background-image:url(${IMG});background-size:cover">${rows}</table></td></tr><tr><td><p style="margin:0">after the hero</p></td></tr></table></td></tr></table></body></html>`;
+  const three = htmlToDoc(nested(P('a') + P('b') + P('c')));
+  assert.equal(three.rows.length, 2, 'the hero band and the row after it');
+  assert.equal(three.rows[0].props.bgImage, IMG, 'the band carries the image');
+  assert.equal(three.rows[0].cols[0].blocks.length, 3, 'all three paragraphs are editable blocks inside it');
+  assert.equal(three.rows.flatMap((r) => r.cols.flatMap((c) => c.blocks)).some((b) => b.type === 'html'), false, 'nothing fell to the html floor');
+  const footer = `<tr><td style="background:rgba(255,255,255,0.86);border-top:1px solid #e2e8f0;padding:0"><table width="100%"><tr><td width="33%"><p style="margin:0">Need help?</p></td><td width="67%"><p style="margin:0">SELISE</p></td></tr></table></td></tr>`;
+  const six = htmlToDoc(nested(P('a') + P('b') + P('c') + P('d') + P('e') + footer));
+  const copies = six.rows.filter((r) => r.props.bgImage).length;
+  assert.ok(copies <= 2, 'five plain rows fold to one band; the two-column footer ends the run: ' + copies + ' copies');
+  assert.equal(six.rows[0].cols[0].blocks.length, 5);
+});
+
+console.log(`\n${passed} passed, ${failed} failed.`);
 
 closeDom();
 process.exit(failed ? 1 : 0);
