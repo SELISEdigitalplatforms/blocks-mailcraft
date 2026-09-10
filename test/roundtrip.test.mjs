@@ -483,6 +483,26 @@ await it('preview text and reading direction survive a reload, and the preheader
   el2.remove();
 });
 
+await it('the page background image, fit, position and repeat survive a reload and never land on a row', async () => {
+  const el2 = await mountEditor();
+  const doc = el2.getContent();
+  Object.assign(doc.theme, { bgImage: 'https://e.com/page.png', bgSize: 'auto', bgPos: 'top', bgRepeat: 'repeat' });
+  const r2 = mkRow([100]);
+  r2.cols[0].blocks = [blk('text', { html: 'body' })];
+  doc.rows = [r2];
+  el2.setContent(doc);
+  await settle(3);
+  el2.importHtml(el2.exportHtml());
+  await settle(3);
+  const got2 = el2.getContent();
+  assert.equal(got2.theme.bgImage, 'https://e.com/page.png');
+  assert.equal(got2.theme.bgSize, 'auto');
+  assert.equal(got2.theme.bgPos, 'top');
+  assert.equal(got2.theme.bgRepeat, 'repeat');
+  assert.equal(got2.rows.filter((r) => r.props.bgImage).length, 0, 'claimed at page level, stamped on no row');
+  el2.remove();
+});
+
 await it('theme.link paints exported links inline, and folds back to inherit on reload', async () => {
   const el2 = await mountEditor();
   const doc = el2.getContent();

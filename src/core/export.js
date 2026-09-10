@@ -304,9 +304,36 @@ export function buildHtml(state, root, boxCss, opts) {
     const mcr = markers && rp.layout && rp.layout !== 'columns'
       ? ' data-mcr="' + attrEsc(JSON.stringify({ layout: rp.layout, flexDir: rp.flexDir || 'row', justify: rp.justify || 'flex-start', alignItems: rp.alignItems || 'stretch', wrap: rp.wrap !== false, gridCols: rp.gridCols || 2, gap: rp.gap || 0, spans: r.cols.map((c) => c.span) })) + '"'
       : '';
+    /*
+     * Flex and grid rows ship as the div they are -- and Word, which knows
+     * neither, sees block children and stacks them. The ghost cells fix that
+     * without duplicating any content: each child is wrapped in an MSO-only
+     * <td>, so Word lays the same children out in a table row while every
+     * other client skips the conditional comments and gets the flex/grid.
+     * Grid breaks into a new ghost <tr> every `gridCols` children; a
+     * column-direction flex stacks (one child per ghost row), which is what
+     * it does everywhere else too. Comments are inert to the importer, so
+     * the round trip through `data-mcr` is unchanged.
+     */
+    const ghostCells = (children, widths, perRow) => {
+      let out = '<!--[if mso]><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><![endif]-->';
+      children.forEach((h, i) => {
+        if (i > 0 && i % perRow === 0) out += '<!--[if mso]></tr><tr><![endif]-->';
+        out += '<!--[if mso]><td width="' + widths[i] + '%" valign="top"><![endif]-->' + h + '<!--[if mso]></td><![endif]-->';
+      });
+      return out + '<!--[if mso]></tr></table><![endif]-->';
+    };
+    const gridN = Math.max(1, rp.gridCols || 2);
+    const stacksVertically = /column/.test(rp.flexDir || 'row');
+    const spanSum = r.cols.reduce((a, c) => a + (c.span || 0), 0) || 100;
     const cssBody = rp.layout === 'grid'
-      ? '<div' + mcr + stackWrap + ' style="display:grid;grid-template-columns:repeat(' + (rp.gridCols || 2) + ',minmax(0,1fr));gap:' + rp.gap + 'px">\n            ' + r.cols.map((c) => '<div>' + colInner(c) + '</div>').join('\n            ') + '\n          </div>'
-      : '<div' + mcr + stackWrap + ' style="display:flex;flex-direction:' + (rp.flexDir || 'row') + ';justify-content:' + (rp.justify || 'flex-start') + ';align-items:' + (rp.alignItems || 'stretch') + ';flex-wrap:' + (rp.wrap ? 'wrap' : 'nowrap') + ';gap:' + rp.gap + 'px">\n            ' + r.cols.map((c) => '<div style="flex:' + c.span + ' 1 auto;min-width:0">' + colInner(c) + '</div>').join('\n            ') + '\n          </div>';
+      ? '<div' + mcr + stackWrap + ' style="display:grid;grid-template-columns:repeat(' + gridN + ',minmax(0,1fr));gap:' + rp.gap + 'px">\n            '
+        + ghostCells(r.cols.map((c) => '<div>' + colInner(c) + '</div>'), r.cols.map(() => Math.floor(100 / gridN)), gridN)
+        + '\n          </div>'
+      : '<div' + mcr + stackWrap + ' style="display:flex;flex-direction:' + (rp.flexDir || 'row') + ';justify-content:' + (rp.justify || 'flex-start') + ';align-items:' + (rp.alignItems || 'stretch') + ';flex-wrap:' + (rp.wrap ? 'wrap' : 'nowrap') + ';gap:' + rp.gap + 'px">\n            '
+        + ghostCells(r.cols.map((c) => '<div style="flex:' + c.span + ' 1 auto;min-width:0">' + colInner(c) + '</div>'),
+          r.cols.map((c) => (stacksVertically ? 100 : Math.round(((c.span || 0) / spanSum) * 100))), stacksVertically ? 1 : r.cols.length)
+        + '\n          </div>';
     const body = rp.layout && rp.layout !== 'columns'
       ? cssBody
       // The `<tr>` is what becomes the flex container for two-up and reverse;
@@ -591,7 +618,22 @@ export function buildHtml(state, root, boxCss, opts) {
   const docDir = t.dir === 'rtl' ? ' dir="rtl"' : '';
   // `bgcolor` beside the CSS on both page wrappers, as the rows already carry:
   // the attribute is what survives a client that drops the style attribute.
-  const pageAttr = pageBg && pageBg !== 'transparent' && !/^rgba\(/.test(pageBg) ? ' bgcolor="' + pageBg + '"' : '';
-  const bodyStyle = 'margin:0;padding:0;background:' + pageBg + ';font-family:' + t.font.replace(/"/g, "'") + ';color:' + t.text + ';-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;text-size-adjust:100%;';
-  return msoHarden(stampLinks('<!doctype html>\n<html lang="en"' + docDir + ' xmlns:o="urn:schemas-microsoft-com:office:office"' + (usedVml ? ' xmlns:v="urn:schemas-microsoft-com:vml"' : '') + '>\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<meta name="color-scheme" content="light">\n<meta name="supported-color-schemes" content="light">\n<title>' + 'Email' + '</title>' + msoHead + stackCss + '\n</head>\n<body' + pageAttr + ' style="' + bodyStyle + '">' + preheader + '\n<table role="presentation"' + pageAttr + ' width="100%" cellpadding="0" cellspacing="0" border="0" style="background:' + pageBg + ';">\n  <tr><td align="center" style="padding:' + pagePad + ';">\n    ' + ghostOpen + '\n    ' + shell + '\n    ' + ghostClose + '\n  </td></tr>\n</table>\n</body>\n</html>'));
+  /*
+   * The page's paint, on <body> AND the full-width wrapper table. Same rules
+   * as every other background here: longhands, unquoted url, the two values
+   * repeated as attributes. The wrapper table is what makes an image render
+   * in Gmail, which discards the body element outright.
+   */
+  const pageBgUrl = t.bgImage ? cssUrl(t.bgImage) : '';
+  const pagePaint = pageBgUrl
+    ? 'background-color:' + pageBg + ';'
+      + 'background-image:url(' + attrEsc(pageBgUrl) + ');'
+      + 'background-size:' + (t.bgSize || 'cover') + ';'
+      + 'background-position:' + (t.bgPos || 'center') + ';'
+      + 'background-repeat:' + (t.bgRepeat || 'no-repeat') + ';'
+    : 'background:' + pageBg + ';';
+  const pageAttr = (pageBg && pageBg !== 'transparent' && !/^rgba\(/.test(pageBg) ? ' bgcolor="' + pageBg + '"' : '')
+    + (pageBgUrl ? ' background="' + attrEsc(pageBgUrl) + '"' : '');
+  const bodyStyle = 'margin:0;padding:0;' + pagePaint + 'font-family:' + t.font.replace(/"/g, "'") + ';color:' + t.text + ';-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;text-size-adjust:100%;';
+  return msoHarden(stampLinks('<!doctype html>\n<html lang="en"' + docDir + ' xmlns:o="urn:schemas-microsoft-com:office:office"' + (usedVml ? ' xmlns:v="urn:schemas-microsoft-com:vml"' : '') + '>\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<meta name="color-scheme" content="light">\n<meta name="supported-color-schemes" content="light">\n<title>' + 'Email' + '</title>' + msoHead + stackCss + '\n</head>\n<body' + pageAttr + ' style="' + bodyStyle + '">' + preheader + '\n<table role="presentation"' + pageAttr + ' width="100%" cellpadding="0" cellspacing="0" border="0" style="' + pagePaint + '">\n  <tr><td align="center" style="padding:' + pagePad + ';">\n    ' + ghostOpen + '\n    ' + shell + '\n    ' + ghostClose + '\n  </td></tr>\n</table>\n</body>\n</html>'));
 }

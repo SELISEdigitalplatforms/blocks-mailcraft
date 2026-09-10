@@ -1850,20 +1850,32 @@ export class EditorCore {
       // way to size it, the band around a template could only be seen (and
       // never adjusted) in a sent message.
       B.color('Page background color', 'bg', { transparent: true, solid: '#eef2f7' }),
+      B.btn(th.bgImage ? 'Change background image' : 'Add background image', () => this.openLibrary({ theme: true, key: 'bgImage' })),
+      ...(th.bgImage ? [
+        B.btn('Remove background image', () => this.setTheme('bgImage', '')),
+        B.sel('Image fit', 'bgSize', BG_FIT),
+        B.sel('Image position', 'bgPos', BG_POS),
+        B.sel('Image repeat', 'bgRepeat', BG_REPEAT),
+      ] : []),
+      B.text('Background image URL', 'bgImage', 'https://'),
       group('Space around content', [
         B.range('Top & bottom', 'padY', 0, 120, 2, 'px'),
         B.range('Sides', 'padX', 0, 120, 2, 'px'),
       ]),
       B.head('Content area'),
       B.color('Content area background color', 'contentBg', { transparent: true, solid: '#ffffff' }),
-      B.btn(th.contentBgImage ? 'Change background image' : 'Add background image', () => this.openLibrary({ theme: true, key: 'contentBgImage' })),
+      // ONE place to add a background image: the full-width page, above. A
+      // second "add" here read as a choice nobody could make sense of. The
+      // content column can still CARRY an image -- an imported template that
+      // painted its content table keeps it, faithfully -- so when one is
+      // present it is shown, adjustable and removable rather than becoming
+      // state the panel hides. Nothing offers to add one from here.
       ...(th.contentBgImage ? [
-        B.btn('Remove background image', () => this.setTheme('contentBgImage', '')),
+        B.btn('Remove content background image', () => this.setTheme('contentBgImage', '')),
         B.sel('Image fit', 'contentBgSize', BG_FIT),
         B.sel('Image position', 'contentBgPos', BG_POS),
         B.sel('Image repeat', 'contentBgRepeat', BG_REPEAT),
       ] : []),
-      B.text('Background image URL', 'contentBgImage', 'https://'),
       B.range('Corner radius', 'radius', 0, 48, 1, 'px'),
       B.range('Border thickness', 'borderW', 0, 12, 1, 'px'),
       B.sel('Drop shadow', 'shadow', [

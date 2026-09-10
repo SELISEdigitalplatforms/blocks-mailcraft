@@ -2112,6 +2112,27 @@ function themeFromParsedDoc(doc) {
     if (outer) bg = bgOf(outer) || (outer.querySelector('td') ? bgOf(outer.querySelector('td')) : '');
   }
   if (bg) theme.bg = bg;
+  // The page's background IMAGE: on the body, or on the outermost wrapper
+  // when that wrapper is full-width (a lone fixed-width table is the content
+  // column, and its image belongs to the content read below, not here).
+  // Claimed means consumed, so the row walk never stamps it onto rows.
+  {
+    const outer = body.querySelector('table');
+    const outerW = outer ? String(outer.getAttribute('width') || (outer.style && outer.style.width) || '') : '';
+    const outerFull = outer && (outerW === '100%' || (!outerW && !PX(outerW)));
+    const host = bgImageOf(body) ? body : (outerFull && bgImageOf(outer) ? outer : null);
+    if (host) {
+      theme.bgImage = bgImageOf(host);
+      if (host.style && host.style.backgroundSize) theme.bgSize = host.style.backgroundSize;
+      if (host.style && host.style.backgroundPosition) theme.bgPos = host.style.backgroundPosition;
+      if (host.style && host.style.backgroundRepeat) theme.bgRepeat = host.style.backgroundRepeat;
+      [body, outer].forEach((n) => {
+        if (!n) return;
+        if (n.style) { n.style.backgroundImage = ''; n.style.backgroundSize = ''; n.style.backgroundPosition = ''; n.style.backgroundRepeat = ''; }
+        if (n.removeAttribute) n.removeAttribute('background');
+      });
+    }
+  }
   const widthCounts = {};
   body.querySelectorAll('table').forEach((tb) => {
     const px = fixedWidthOf(tb);

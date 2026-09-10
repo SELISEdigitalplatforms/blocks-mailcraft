@@ -231,6 +231,15 @@ export function renderDoc(core, live) {
   const padX = Number(theme.padX) || 0;
   const page = el('div', {
     background: theme.bg || 'transparent',
+    // The page image, only when there is one: the longhands are added AFTER
+    // the shorthand so they override it, and are absent otherwise so a
+    // document with no image paints exactly as it always did.
+    ...(theme.bgImage ? {
+      backgroundImage: 'url("' + cssUrl(theme.bgImage) + '")',
+      backgroundSize: theme.bgSize || 'cover',
+      backgroundPosition: theme.bgPos || 'center',
+      backgroundRepeat: theme.bgRepeat || 'no-repeat',
+    } : {}),
     padding: padY + 'px ' + padX + 'px',
     boxSizing: 'border-box', maxWidth: '100%', display: 'flex', justifyContent: 'center',
     transition: 'background 0.2s, padding 0.22s cubic-bezier(0.22,0.61,0.36,1)',

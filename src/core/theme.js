@@ -27,4 +27,10 @@
  * the UI locale, but a German-speaking author building an Arabic mailing (or
  * the reverse) must not have the email flip with the menus.
  */
-export const THEME = () => ({ preheader: '', dir: '', bg: '#eef2f7', contentBg: '#ffffff', contentBgImage: '', contentBgSize: 'cover', contentBgPos: 'center', contentBgRepeat: 'no-repeat', width: 620, padY: 0, padX: 0, radius: 0, borderW: 0, borderStyle: 'solid', borderColor: '#e2e2e5', shadow: '', font: '"Helvetica Neue", Helvetica, Arial, sans-serif', text: '#172033', link: '#0065b3' });
+/*
+ * `bgImage` paints the full-width page behind everything. It rides the
+ * full-width wrapper <table> and <body> both: Gmail discards the body element,
+ * so the table is what makes it render there. Same fit/position/repeat
+ * vocabulary as a row and the content area.
+ */
+export const THEME = () => ({ preheader: '', dir: '', bg: '#eef2f7', bgImage: '', bgSize: 'cover', bgPos: 'center', bgRepeat: 'no-repeat', contentBg: '#ffffff', contentBgImage: '', contentBgSize: 'cover', contentBgPos: 'center', contentBgRepeat: 'no-repeat', width: 620, padY: 0, padX: 0, radius: 0, borderW: 0, borderStyle: 'solid', borderColor: '#e2e2e5', shadow: '', font: '"Helvetica Neue", Helvetica, Arial, sans-serif', text: '#172033', link: '#0065b3' });

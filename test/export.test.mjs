@@ -235,6 +235,37 @@ await it('msoHarden gives every image bicubic interpolation for Word', async () 
   assert.equal((once.match(/interpolation-mode/g) || []).length, 1, 'idempotent');
 });
 
+await it('a page background image rides the body AND the full-width wrapper table, as longhands plus attributes', async () => {
+  const doc = docOf([]);
+  doc.theme = { ...THEME, bgImage: 'https://cdn.example.com/page.png', bgSize: 'auto', bgPos: 'top', bgRepeat: 'repeat' };
+  const html = render(doc);
+  const paint = 'background-color:#ece8df;background-image:url(https://cdn.example.com/page.png);background-size:auto;background-position:top;background-repeat:repeat;';
+  assert.match(html, new RegExp('<body bgcolor="#ece8df" background="https://cdn\\.example\\.com/page\\.png" style="margin:0;padding:0;' + paint.replace(/[.()]/g, '\\$&')));
+  // msoHarden appends mso-table-lspace/rspace to every <table> style, so the
+  // paint is asserted as a prefix of the attribute, not the whole of it.
+  assert.match(html, new RegExp('<table role="presentation" bgcolor="#ece8df" background="https://cdn\\.example\\.com/page\\.png" width="100%"[^>]*style="' + paint.replace(/[.()]/g, '\\$&')));
+  assert.equal(/background:[^;]*url\(/.test(html), false, 'longhands only');
+});
+
+await it('flex and grid rows get MSO ghost cells so Word lays the children side by side', async () => {
+  const flex = docOf([], { layout: 'flex', flexDir: 'row', gap: 12 });
+  const row = flex.rows[0];
+  row.cols = [{ id: 'a', span: 50, blocks: [] }, { id: 'b', span: 50, blocks: [] }];
+  const h1 = render(flex);
+  assert.equal((h1.match(/<!--\[if mso\]><td width="50%" valign="top"><!\[endif\]-->/g) || []).length, 2);
+  assert.match(h1, /<!--\[if mso\]><table role="presentation" width="100%"[^>]*><tr><!\[endif\]-->/);
+  assert.match(h1, /<!--\[if mso\]><\/tr><\/table><!\[endif\]-->/);
+  assert.equal(/<!--\[if mso\]><\/tr><tr>/.test(h1), false, 'one ghost row for a row-direction flex');
+  const grid = docOf([], { layout: 'grid', gridCols: 3, gap: 12 });
+  grid.rows[0].cols = [1, 2, 3, 4].map((i) => ({ id: 'g' + i, span: 25, blocks: [] }));
+  const h2 = render(grid);
+  assert.equal((h2.match(/<!--\[if mso\]><td width="33%" valign="top"><!\[endif\]-->/g) || []).length, 4);
+  assert.equal((h2.match(/<!--\[if mso\]><\/tr><tr><!\[endif\]-->/g) || []).length, 1, 'a new ghost row after every gridCols children');
+  const col = docOf([], { layout: 'flex', flexDir: 'column' });
+  col.rows[0].cols = [{ id: 'x', span: 50, blocks: [] }, { id: 'y', span: 50, blocks: [] }];
+  assert.equal((render(col).match(/<!--\[if mso\]><\/tr><tr><!\[endif\]-->/g) || []).length, 1, 'a column-direction flex stacks in Word too');
+});
+
 await it('the VML namespace ships only when a row actually emitted VML', async () => {
   const withBg = render(docOf([], { bgImage: 'https://cdn.example.com/hero.png' }));
   assert.match(withBg, /<html lang="en" xmlns:o="[^"]*" xmlns:v="urn:schemas-microsoft-com:vml">/);
