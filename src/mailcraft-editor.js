@@ -2421,7 +2421,15 @@ export class MailCraftEditor extends ElementBase {
     // grid -- for a transparent page, which is exactly what a client with no
     // page colour of its own shows behind the email.
     const pageBg = s.doc.theme.bg || '';
+    const th = s.doc.theme;
     this.previewBody.style.background = /^(transparent|none)$/i.test(pageBg.trim()) ? '' : pageBg;
+    // The page background image, the same way the export paints it on the
+    // body and the wrapper table (render/canvas.js does the same for the
+    // editor's own page).
+    this.previewBody.style.backgroundImage = th.bgImage ? 'url("' + cssUrl(th.bgImage) + '")' : '';
+    this.previewBody.style.backgroundSize = th.bgImage ? (th.bgSize || 'cover') : '';
+    this.previewBody.style.backgroundPosition = th.bgImage ? (th.bgPos || 'center') : '';
+    this.previewBody.style.backgroundRepeat = th.bgImage ? (th.bgRepeat || 'no-repeat') : '';
     // Rebuild the sheet only when what it renders from actually changed.
     // renderPreviewModal runs on *every* render pass, and rebuilding the
     // whole email document each time made the open preview visibly rough:

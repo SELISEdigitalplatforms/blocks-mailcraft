@@ -714,6 +714,67 @@ await it("an image wrapper's padding and a divider wrapper's spacing are the blo
   assert.equal(div.props.py, 3);
 });
 
+// One image, one band. A section background used to be stamped onto every
+// row the section walked into, so the recipient saw the photo re-drawn in
+// bands down the email.
+await it('a background image on the content table becomes the document background, not six row copies', async () => {
+  const IMG = 'https://cdn.example.com/hero.jpg';
+  const P = (t) => `<tr><td style="padding:0 24px"><p style="margin:0">${t}</p></td></tr>`;
+  const footer = `<tr><td style="background:rgba(255,255,255,0.86);border-top:1px solid #e2e8f0;padding:0"><table width="100%"><tr><td width="33%"><p style="margin:0">Need help?</p></td><td width="67%"><p style="margin:0">SELISE</p></td></tr></table></td></tr>`;
+  const html = `<html><body><table width="100%"><tr><td align="center"><table width="600" style="background-image:url(${IMG});background-size:cover">${P('a')}${P('b')}${P('c')}${P('d')}${P('e')}${footer}</table></td></tr></table></body></html>`;
+  const d = htmlToDoc(html);
+  assert.equal(d.theme.contentBgImage, IMG, 'claimed once, at document level');
+  assert.equal(d.rows.filter((r) => r.props.bgImage).length, 0, 'and stamped onto no row');
+  assert.equal(d.rows.length, 6, 'every row still imports');
+});
+
+await it('a VML-only background (no CSS, no attribute) is still read', async () => {
+  const IMG = 'https://cdn.example.com/word-only.jpg';
+  const html = `<html><body><table width="100%"><tr><td align="center"><table width="600"><tr><td bgcolor="#7bceeb"><!--[if gte mso 9]><v:rect fill="true" stroke="false" style="width:600px;height:400px;"><v:fill type="frame" src="${IMG}" color="#7bceeb"/><v:textbox inset="0,0,0,0"><![endif]--><div><p style="margin:0">Hero copy</p></div><!--[if gte mso 9]></v:textbox></v:rect><![endif]--></td></tr></table></td></tr></table></body></html>`;
+  const d = htmlToDoc(html);
+  const withImg = d.rows.find((r) => r.props.bgImage) || { props: {} };
+  assert.equal(withImg.props.bgImage || d.theme.contentBgImage, IMG);
+});
+
+await it('a 1x1 tracking pixel passes through as raw html, never a visible image block', async () => {
+  const html = `<html><body><table width="600"><tr><td><img src="https://track/o.gif" width="1" height="1" alt="" style="display:block"><p style="margin:0">Hi</p></td></tr></table></body></html>`;
+  const blocks = htmlToDoc(html).rows.flatMap((r) => r.cols.flatMap((c) => c.blocks));
+  assert.equal(blocks.some((b) => b.type === 'image'), false);
+  assert.ok(blocks.some((b) => b.type === 'html' && /track\/o\.gif/.test(b.props.code)), 'the pixel survives, invisibly');
+});
+
+await it('a protocol-relative image src gets its scheme', async () => {
+  const html = `<html><body><table width="600"><tr><td><img src="//cdn.example.com/p.png" width="200" alt="P"></td></tr></table></body></html>`;
+  const img = htmlToDoc(html).rows.flatMap((r) => r.cols.flatMap((c) => c.blocks)).find((b) => b.type === 'image');
+  assert.equal(img.props.src, 'https://cdn.example.com/p.png');
+});
+
+await it("a foreign builder's dark rgba tint folds back to the Darken slider", async () => {
+  const html = `<html><body><table width="600"><tr><td style="background-image:linear-gradient(rgba(0,0,0,0.5),rgba(0,0,0,0.5)),url(https://cdn.example.com/h.jpg);background-size:cover"><p style="margin:0">Hero</p></td></tr></table></body></html>`;
+  const d = htmlToDoc(html);
+  const r = d.rows.find((x) => x.props.bgImage) || { props: {} };
+  assert.equal(r.props.bgImage || d.theme.contentBgImage, 'https://cdn.example.com/h.jpg');
+  if (r.props.bgImage) assert.equal(r.props.overlay, 50);
+});
+
+
+await it('a nested multi-row section walks as rows -- one band with its image, not one opaque html block', async () => {
+  const IMG = 'https://cdn.example.com/hero.jpg';
+  const P = (t) => `<tr><td style="padding:0 24px"><p style="margin:0">${t}</p></td></tr>`;
+  const nested = (rows) => `<html><body><table width="100%"><tr><td align="center"><table width="600"><tr><td style="padding:0"><table width="100%" style="background-image:url(${IMG});background-size:cover">${rows}</table></td></tr><tr><td><p style="margin:0">after the hero</p></td></tr></table></td></tr></table></body></html>`;
+  const three = htmlToDoc(nested(P('a') + P('b') + P('c')));
+  assert.equal(three.rows.length, 2, 'the hero band and the row after it');
+  assert.equal(three.rows[0].props.bgImage, IMG, 'the band carries the image');
+  assert.equal(three.rows[0].cols[0].blocks.length, 3, 'all three paragraphs are editable blocks inside it');
+  assert.equal(three.rows.flatMap((r) => r.cols.flatMap((c) => c.blocks)).some((b) => b.type === 'html'), false, 'nothing fell to the html floor');
+  const footer = `<tr><td style="background:rgba(255,255,255,0.86);border-top:1px solid #e2e8f0;padding:0"><table width="100%"><tr><td width="33%"><p style="margin:0">Need help?</p></td><td width="67%"><p style="margin:0">SELISE</p></td></tr></table></td></tr>`;
+  const six = htmlToDoc(nested(P('a') + P('b') + P('c') + P('d') + P('e') + footer));
+  const copies = six.rows.filter((r) => r.props.bgImage).length;
+  assert.ok(copies <= 2, 'five plain rows fold to one band; the two-column footer ends the run: ' + copies + ' copies');
+  assert.equal(six.rows[0].cols[0].blocks.length, 5);
+});
+
 console.log(`\n${passed} passed, ${failed} failed.`);
+
 closeDom();
 process.exit(failed ? 1 : 0);

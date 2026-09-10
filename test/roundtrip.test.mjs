@@ -439,6 +439,70 @@ await it("mobileCols 'keep' survives via the inert mc-keep class", async () => {
   el2.remove();
 });
 
+await it('the content area background image, fit, position and repeat survive a reload', async () => {
+  const el2 = await mountEditor();
+  const doc = el2.getContent();
+  Object.assign(doc.theme, { contentBg: '#fffdf8', contentBgImage: 'https://e.com/paper.png', contentBgSize: 'contain', contentBgPos: 'top', contentBgRepeat: 'repeat' });
+  const r2 = mkRow([100]);
+  r2.cols[0].blocks = [blk('text', { html: 'body' })];
+  doc.rows = [r2];
+  el2.setContent(doc);
+  await settle(3);
+  const out = el2.exportHtml();
+  el2.importHtml(out);
+  await settle(3);
+  const t2 = el2.getContent().theme;
+  assert.equal(t2.contentBgImage, 'https://e.com/paper.png');
+  assert.equal(t2.contentBgSize, 'contain');
+  assert.equal(t2.contentBgPos, 'top');
+  assert.equal(t2.contentBgRepeat, 'repeat');
+  assert.equal(t2.contentBg, '#fffdf8', 'the colour underneath survives alongside the image');
+  // Deliberately no byte-convergence assertion here. A single-row document of
+  // this shape loses its row padding on reload (20/24 comes back 0/10) with
+  // or without a content background image -- a pre-existing defect, verified
+  // identical at HEAD, tracked separately. Asserting convergence here would
+  // fail for a reason that has nothing to do with this feature.
+  el2.remove();
+});
+
+await it('preview text and reading direction survive a reload, and the preheader is not re-imported as a row', async () => {
+  const el2 = await mountEditor();
+  const doc = el2.getContent();
+  Object.assign(doc.theme, { preheader: 'Spring sale ends Sunday', dir: 'rtl' });
+  const r2 = mkRow([100]);
+  r2.cols[0].blocks = [blk('text', { html: 'body' })];
+  doc.rows = [r2];
+  el2.setContent(doc);
+  await settle(3);
+  el2.importHtml(el2.exportHtml());
+  await settle(3);
+  const got2 = el2.getContent();
+  assert.equal(got2.theme.preheader, 'Spring sale ends Sunday');
+  assert.equal(got2.theme.dir, 'rtl');
+  assert.equal(got2.rows.length, 1, 'the hidden preheader div did not become a content row');
+  el2.remove();
+});
+
+await it('the page background image, fit, position and repeat survive a reload and never land on a row', async () => {
+  const el2 = await mountEditor();
+  const doc = el2.getContent();
+  Object.assign(doc.theme, { bgImage: 'https://e.com/page.png', bgSize: 'auto', bgPos: 'top', bgRepeat: 'repeat' });
+  const r2 = mkRow([100]);
+  r2.cols[0].blocks = [blk('text', { html: 'body' })];
+  doc.rows = [r2];
+  el2.setContent(doc);
+  await settle(3);
+  el2.importHtml(el2.exportHtml());
+  await settle(3);
+  const got2 = el2.getContent();
+  assert.equal(got2.theme.bgImage, 'https://e.com/page.png');
+  assert.equal(got2.theme.bgSize, 'auto');
+  assert.equal(got2.theme.bgPos, 'top');
+  assert.equal(got2.theme.bgRepeat, 'repeat');
+  assert.equal(got2.rows.filter((r) => r.props.bgImage).length, 0, 'claimed at page level, stamped on no row');
+  el2.remove();
+});
+
 await it('theme.link paints exported links inline, and folds back to inherit on reload', async () => {
   const el2 = await mountEditor();
   const doc = el2.getContent();

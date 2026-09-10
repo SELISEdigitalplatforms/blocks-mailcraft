@@ -148,15 +148,129 @@ function bgImageOf(el) {
     const m = ((st.backgroundImage || '') + ' ' + (st.background || '')).match(/url\(["']?([^"')]+)["']?\)/);
     if (m) return m[1];
   }
+  // CSSOM is the first read, not the only one. A declaration the parser could
+  // not fully digest -- the `center / cover` slash syntax under some engines,
+  // a vendor-prefixed layer, anything malformed -- comes back as an empty
+  // property, and the url with it. The attribute text still has it.
+  const raw = el.getAttribute ? (el.getAttribute('style') || '') : '';
+  const rm = raw.match(/background(?:-image)?\s*:[^;]*?url\(\s*["']?([^"')]+?)["']?\s*\)/i);
+  if (rm) return rm[1];
   return (el.getAttribute && el.getAttribute('background')) || '';
 }
 
-/** The exporter's own overlay idiom, read back: a section image ships as `linear-gradient(rgba(20,22,24,a),rgba(20,22,24,a)),url(...)` (core/export.js), and the alpha is the row's `overlay` percentage. Only that exact neutral-dark signature is folded back -- a foreign gradient says nothing about MailCraft's tint and stays out of the model, exactly as before. Without this the tint silently vanished on every save/reload while the photo survived. */
+/**
+ * The tint box a section image now ships behind: the painted element's only
+ * child, a `<div>` whose background is the exporter's own neutral-dark rgba
+ * (core/export.js). Recognized by that exact signature and nothing else, so a
+ * foreign wrapper that happens to be a single div is left alone -- and by CSS
+ * rather than by a marker attribute, so it survives `exportHtml({markers:false})`.
+ *
+ * It is scaffolding, not content: the walk descends through it, and the row
+ * padding it carries is the row's (the exporter moved it off the cell so the
+ * tint covers the whole band, not just the content area).
+ */
+function tintOf(el) {
+  if (!el || !el.children || el.children.length !== 1) return null;
+  const kid = el.children[0];
+  if (!kid || kid.tagName !== 'DIV' || !kid.style) return null;
+  const m = String(kid.style.backgroundColor || kid.style.background || '')
+    .match(/^rgba\(\s*20,\s*22,\s*24,\s*(0?\.\d+|1|0)\s*\)$/);
+  if (!m) return null;
+  return { el: kid, pct: Math.round(parseFloat(m[1]) * 100) };
+}
+
+/**
+ * The exporter's overlay idiom, read back: the alpha of the neutral-dark tint
+ * over a section image is the row's `overlay` percentage. Only that exact
+ * signature is folded back -- a foreign gradient says nothing about
+ * MailCraft's tint and stays out of the model. Without this the tint silently
+ * vanished on every save/reload while the photo survived.
+ *
+ * One shape is read here, the layered `linear-gradient(...),url(...)` that the
+ * exporter shipped before the Outlook fix. Current exports carry the tint as
+ * its own box instead, and `unwrapTints` has already rewritten those into this
+ * shape by the time any of this runs -- so both eras arrive here identical.
+ */
 function overlayOf(el) {
-  const st = el.style;
+  const st = el && el.style;
   if (!st) return 0;
-  const m = ((st.backgroundImage || '') + ' ' + (st.background || '')).match(/linear-gradient\(rgba\(20,\s*22,\s*24,\s*(0?\.\d+|1|0)\s*\)/);
-  return m ? Math.round(parseFloat(m[1]) * 100) : 0;
+  const decl = (st.backgroundImage || '') + ' ' + (st.background || '');
+  const m = decl.match(/linear-gradient\(rgba\(20,\s*22,\s*24,\s*(0?\.\d+|1|0)\s*\)/);
+  if (m) return Math.round(parseFloat(m[1]) * 100);
+  // A foreign tint: two identical dark rgba stops over the photo, which is
+  // how every other builder writes "darken this image". The alpha maps to the
+  // Darken slider exactly, and a dark stop is what the slider means -- a light
+  // or coloured wash is a different effect and still stays out of the model
+  // rather than being misread as a darkening.
+  const f = decl.match(/linear-gradient\(\s*rgba\((\d+),\s*(\d+),\s*(\d+),\s*(0?\.\d+|1|0)\)\s*,\s*rgba\((\d+),\s*(\d+),\s*(\d+),\s*(0?\.\d+|1|0)\)\s*\)/);
+  if (f && f[1] === f[5] && f[2] === f[6] && f[3] === f[7] && f[4] === f[8]) {
+    const lum = (0.299 * +f[1] + 0.587 * +f[2] + 0.114 * +f[3]) / 255;
+    if (lum < 0.35) return Math.round(parseFloat(f[4]) * 100);
+  }
+  return 0;
+}
+
+/**
+ * Normalises the current export's tint box back into the legacy layered
+ * background, in the parsed DOM, before anything walks it.
+ *
+ * The exporter can no longer put the tint in the `background-image` (see
+ * core/export.js: outlook.com drops a layered value whole), so it ships the
+ * photo on the cell and the tint on a `<div>` inside it, which also carries
+ * the row padding so the tint covers the padded band rather than just the
+ * content. Left alone, that div reads as content: the walker took its rgba
+ * for the row's own background colour and the row padding vanished with it.
+ *
+ * Rewriting it here rather than teaching the walker about it keeps the change
+ * to one pre-pass -- every downstream path (bgOf, paddingOf, overlayOf, the
+ * column-wrapper and band-merge heuristics) then sees the shape it has always
+ * seen. Guarded on the host actually carrying a background image, so an
+ * unrelated div that happens to be this exact rgba is left alone.
+ */
+/**
+ * The image an Outlook-first template carries ONLY inside its VML. Builders
+ * that target Word write the photo as `<v:fill src="...">` (or `<v:image>`)
+ * inside an `<!--[if gte mso 9]>` conditional, plus a `background=` attribute
+ * if you are lucky -- and nothing else. Comments are inert to the row walk
+ * (correctly: they are Word's, not ours), so without this the image existed
+ * only for Outlook and vanished for everyone the moment the template was
+ * imported. Applied only where nothing else already declares an image on the
+ * comment's host, so a CSS/attribute background always wins.
+ */
+function readVmlBackgrounds(doc) {
+  const walker = doc.createTreeWalker(doc.body, 128 /* NodeFilter.SHOW_COMMENT */);
+  const hits = [];
+  for (let c = walker.nextNode(); c; c = walker.nextNode()) {
+    const text = String(c.nodeValue || '');
+    if (!/<v:(?:fill|image)\b/i.test(text)) continue;
+    const m = text.match(/<v:(?:fill|image)\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/i);
+    if (m && c.parentElement) hits.push({ host: c.parentElement, url: m[1] });
+  }
+  hits.forEach(({ host, url }) => {
+    if (bgImageOf(host)) return;
+    if (!host.style) return;
+    host.style.backgroundImage = 'url("' + url + '")';
+    if (!host.style.backgroundSize) host.style.backgroundSize = 'cover';
+    if (!host.style.backgroundPosition) host.style.backgroundPosition = 'center';
+    if (!host.style.backgroundRepeat) host.style.backgroundRepeat = 'no-repeat';
+  });
+}
+
+function unwrapTints(doc) {
+  Array.from(doc.body.querySelectorAll('*')).forEach((host) => {
+    const url = bgImageOf(host);
+    if (!url) return;
+    const tint = tintOf(host);
+    if (!tint) return;
+    const a = tint.pct / 100;
+    host.style.backgroundImage = 'linear-gradient(rgba(20,22,24,' + a + '),rgba(20,22,24,' + a + ')),url("' + url + '")';
+    const st = tint.el.style;
+    const pad = st.padding
+      || [st.paddingTop, st.paddingRight, st.paddingBottom, st.paddingLeft].filter(Boolean).join(' ');
+    if (pad) host.style.padding = pad;
+    while (tint.el.firstChild) host.insertBefore(tint.el.firstChild, tint.el);
+    tint.el.remove();
+  });
 }
 
 /** Carries a wrapper's background image (hero photo sections) onto the rows it produced, mirroring applyBg -- fit/position/repeat come along when declared. */
@@ -165,6 +279,20 @@ function applyBgImage(rows, el) {
   if (!url) return rows;
   const st = el.style || {};
   const ov = overlayOf(el);
+  /*
+   * ONE image, ONE band. This is the only place a wrapper's background is
+   * carried onto the rows beneath it, so it is also the only place that can
+   * stop the same image being stamped onto every one of them -- which is what
+   * happened: a hero section that walked into six rows got six copies, each
+   * repainting the photo from its own top edge, and the recipient saw the
+   * image tiled down the email in bands. `mergeBandRows` was meant to fold
+   * such sections first, but it only wrapped two of the four paths into
+   * here, and gave up entirely if any single row differed. Runs of
+   * foldable rows are merged here instead, on every path; a row that cannot
+   * fold (two columns, its own frame) simply ends the run and starts a new
+   * one, so a footer no longer costs the five rows above it their band.
+   */
+  rows = mergeBandRuns(rows);
   rows.forEach((r) => {
     if (r.props.bgImage) return;
     r.props.bgImage = url;
@@ -189,17 +317,19 @@ function applyBgImage(rows, el) {
  * frame or image on a row is a real band boundary) are merged, so everything
  * that isn't the hero shape walks exactly as before.
  */
-function mergeBandRows(rows, el) {
-  if (rows.length < 2 || !bgImageOf(el)) return rows;
-  const bg0 = rows[0].props.bg || '';
-  const plain = rows.every((r) => r.cols.length === 1
-    && !r.props.bgImage && !r.props.border && !r.props.radius && !r.props.shadow
-    && (r.props.bg || '') === bg0);
-  if (!plain) return rows;
+/** A row that can dissolve into a band: one column, no paint or frame of its own. Its padding moves onto its blocks when merged. */
+function foldable(r) {
+  return r.cols.length === 1 && !r.props.bgImage && !r.props.border && !r.props.radius && !r.props.shadow;
+}
+
+/** Folds one run of foldable rows (same `bg`) into a single row, moving each row's padding onto its blocks -- the same convention as the block-table unwrap in `blocksFromNodes`. */
+function foldRun(run) {
+  if (run.length < 2) return run;
+  const bg0 = run[0].props.bg || '';
   const merged = mkRow([100]);
   merged.props.py = 0; merged.props.px = 0; merged.props.gap = 0;
   if (bg0) merged.props.bg = bg0;
-  merged.cols[0].blocks = rows.reduce((acc, r) => {
+  merged.cols[0].blocks = run.reduce((acc, r) => {
     const padded = r.props.py || r.props.px || r.props.pt !== undefined;
     r.cols[0].blocks.forEach((b) => {
       if (padded && b.type !== 'button' && 'py' in b.props) {
@@ -210,7 +340,27 @@ function mergeBandRows(rows, el) {
     });
     return acc;
   }, []);
-  return merged.cols[0].blocks.length ? [merged] : rows;
+  return merged.cols[0].blocks.length ? [merged] : run;
+}
+
+/** Merges every run of consecutive foldable rows sharing a background colour; anything else passes through in place and ends the run. */
+function mergeBandRuns(rows) {
+  if (rows.length < 2) return rows;
+  const out = [];
+  let run = [];
+  const flush = () => { if (run.length) out.push(...foldRun(run)); run = []; };
+  rows.forEach((r) => {
+    if (foldable(r) && (!run.length || (run[0].props.bg || '') === (r.props.bg || ''))) { run.push(r); return; }
+    flush();
+    if (foldable(r)) run.push(r); else out.push(r);
+  });
+  flush();
+  return out;
+}
+
+function mergeBandRows(rows, el) {
+  if (rows.length < 2 || !bgImageOf(el)) return rows;
+  return mergeBandRuns(rows);
 }
 
 /** Padding read from the longhands, which are populated by the `padding` shorthand too -- but not vice versa: builders that write `padding-top/-left/...` individually (Beefree et al.) read back an empty `style.padding`, which is how every one of their cells imported with zero padding. Carries the exact per-side values plus the averaged py/px pair for consumers that only have a pair to store. */
@@ -281,6 +431,18 @@ function classifyImage(el) {
     }
   }
   if (!img) return null;
+  /*
+   * A 1x1 is a tracking pixel or a spacer gif, never a picture. Classified as
+   * an image block it became a visible 2%-wide slab in the editor (and was
+   * unrepresentable there: the Width slider starts at 5%). It passes through
+   * as raw HTML instead, so the open-tracking survives the round trip and the
+   * canvas shows nothing for it -- exactly what it was in the source.
+   */
+  const attrW = parseInt(img.getAttribute('width'), 10);
+  const attrH = parseInt(img.getAttribute('height'), 10);
+  const cssW = PX(img.style.width); const cssH = PX(img.style.height);
+  const tiny = (v) => v > 0 && v <= 1;
+  if ((tiny(attrW) || tiny(cssW)) && (tiny(attrH) || tiny(cssH))) return blk('html', { code: img.outerHTML });
   // A pixel size wins over a percent one wherever either appears: builders
   // routinely write `width:100%` on the img and put the real constraint on a
   // `width` attribute or a wrapper's `max-width` (`<div style="max-width:88px">
@@ -299,8 +461,22 @@ function classifyImage(el) {
   ];
   const pxHint = pxCandidates.find((v) => v && !isPct(v) && PX(v));
   const pctHint = [a && a.style ? a.style.width : '', img.style.width].find((v) => isPct(v) && PX(v));
+  /*
+   * A MEANINGFUL percentage outranks the pixel hint; a 100% one does not.
+   *
+   * The rule above exists for the builder idiom `<div style="max-width:88px">
+   * <img style="width:100%" width="88">`, where the percentage says nothing
+   * and the real constraint is the px. But `width:100%` is exactly what makes
+   * that percentage meaningless -- any other value is a width someone chose,
+   * and since the exporter now also writes a px `width` attribute for Word
+   * (block-body.js), letting px win unconditionally meant every image came
+   * back a few percent off and no template was a save fixed point any more.
+   */
+  const pctFirst = pctHint && PX(pctHint) !== 100 ? pctHint : '';
   let width = 100;
-  if (pxHint) {
+  if (pctFirst) {
+    width = PX(pctFirst);
+  } else if (pxHint) {
     // Convert to % of the nearest fixed-width ancestor.
     const colPx = ancestorPxWidth(img) || 600;
     width = Math.max(2, Math.min(100, Math.round((PX(pxHint) / colPx) * 100)));
@@ -308,7 +484,10 @@ function classifyImage(el) {
     width = PX(pctHint);
   }
   const over = {
-    src: img.getAttribute('src') || '',
+    // `//cdn/x.png` is a relative URL to a mail client (there is no page
+    // origin to resolve it against), so it gets the scheme the same way a
+    // link does (sanitize.js linkHref).
+    src: String(img.getAttribute('src') || '').replace(/^\/\//, 'https://'),
     alt: img.getAttribute('alt') || '',
     href,
     width,
@@ -1399,7 +1578,7 @@ function applyFrame(rows, el) {
 function rowsFromContentTable(table) {
   const tableWidthPx = PX(table.getAttribute('width') || table.style.width || '0') || null;
   const trs = Array.from(table.querySelectorAll(':scope > tbody > tr, :scope > tr'));
-  return trs.map((tr) => {
+  const built = trs.map((tr) => {
     // A synthetic marker row minted by foldLogicWrappers: one dynamic-content
     // marker block, at the exact place the tag held in the source.
     const logicTag = tr.getAttribute('data-mc-logic');
@@ -1511,6 +1690,29 @@ function rowsFromContentTable(table) {
         if (pd && !pd.t && !pd.b && pd.l > 0 && pd.l === pd.r && pd.l <= 60) gapPx = pd.l * 2;
       }
     }
+    /*
+     * A nested SECTION: one cell whose only child is a multi-row table. Not a
+     * component (a button is one cell, a data table has <th>s, a social strip
+     * classifies as one block) and not layout scaffolding (that is one row,
+     * handled above) -- it is another band of rows, usually a hero or a card
+     * stack with a background image of its own. It used to reach the
+     * never-drop-content floor and import as ONE opaque html block: not a
+     * row, no background controls, nothing inside it editable. It is walked
+     * as rows instead, the section's own image applied once as a band
+     * (applyBgImage folds the runs) and the cell's paint, padding and frame
+     * carried onto the result -- the same composition as the td -> tr ->
+     * table branch in collectRows.
+     */
+    if (cells.length === 1 && !classifyButton(cells[0])) {
+      const section = onlyChild(cells[0], 'TABLE');
+      const secRows = section ? section.querySelectorAll(':scope > tbody > tr, :scope > tr') : [];
+      if (section && secRows.length >= 2 && !section.closest('form,svg')
+        && !section.querySelector(':scope > tbody > tr > th, :scope > tr > th') && !classifySocial(section)) {
+        const td = cells[0];
+        const inner = rowsFromContentTable(section);
+        if (inner.length) return applyBgImage(applyBgImage(applyFrame(applyPad(applyBg(inner, bgOf(td)), padOf(td)), td), td), section);
+      }
+    }
     const spans = cells.length === 1 ? [100] : spansFromCells(cells, tableWidthPx);
     const row = mkRow(spans);
     row.props.py = 0; row.props.px = 0; row.props.gap = gapPx;
@@ -1603,7 +1805,13 @@ function rowsFromContentTable(table) {
     if (radius) row.props.radius = radius;
     const shadow = (cellsUniform ? bgSource.style.boxShadow : '') || table.style.boxShadow || '';
     if (shadow && shadow !== 'none') row.props.shadow = shadow;
-    const bgiEl = (cellsUniform && bgImageOf(bgSource)) ? bgSource : (bgImageOf(table) ? table : null);
+    // A cell's own image is this row's. The TABLE's image is only this row's
+    // when the table IS one row; a multi-row table's image is the band's, and
+    // is applied once to all its rows after they exist (see the return below)
+    // -- stamping it here, row by row as they were built, is what put a fresh
+    // copy of the section photo on every row, each repainting it from its own
+    // top edge, and left nothing for the band merge to fold.
+    const bgiEl = (cellsUniform && bgImageOf(bgSource)) ? bgSource : (trs.length === 1 && bgImageOf(table) ? table : null);
     if (bgiEl) applyBgImage([row], bgiEl);
     // The table itself can carry section padding (Beefree writes
     // `padding-top: 60px` on `.row-content`) on top of the cell's own -- the
@@ -1653,7 +1861,11 @@ function rowsFromContentTable(table) {
       row.cols[i].blocks = blocksFromNodes(Array.from(contentEl.childNodes));
     });
     return row;
-  }).filter((r) => r && r.cols.some((c) => c.blocks.length));
+  }).flatMap((r) => (Array.isArray(r) ? r : [r])).filter((r) => r && r.cols.some((c) => c.blocks.length));
+  // The multi-row table's own image, once, as a band (applyBgImage folds the
+  // runs of foldable rows first). The content table never reaches this with
+  // an image: themeFromParsedDoc has already claimed and consumed it.
+  return trs.length > 1 && bgImageOf(table) ? applyBgImage(built, table) : built;
 }
 
 /**
@@ -1883,12 +2095,44 @@ function partialFrame(st) {
 function themeFromParsedDoc(doc) {
   const theme = {};
   const body = doc.body;
+  // Reading direction and preview line, both document-level. The preheader
+  // div is removed once read -- left in place it walked as a text row of
+  // invisible copy, and re-exported as a second preheader on every save.
+  if (doc.documentElement && doc.documentElement.getAttribute('dir') === 'rtl') theme.dir = 'rtl';
+  const pre = Array.from(body.children).find((n) => n.tagName === 'DIV' && n.style && n.style.display === 'none'
+    && (/mso-hide/i.test(n.getAttribute('style') || '') || PX(n.style.maxHeight) === 0 || n.style.fontSize === '1px'));
+  if (pre) {
+    const text = String(pre.textContent || '').replace(/[\u034f\u200c\u00a0]+$/g, '').trim();
+    if (text) theme.preheader = text;
+    pre.remove();
+  }
   let bg = hexOf((body.style && (body.style.backgroundColor || body.style.background)) || body.getAttribute('bgcolor') || '');
   if (!bg) {
     const outer = body.querySelector('table');
     if (outer) bg = bgOf(outer) || (outer.querySelector('td') ? bgOf(outer.querySelector('td')) : '');
   }
   if (bg) theme.bg = bg;
+  // The page's background IMAGE: on the body, or on the outermost wrapper
+  // when that wrapper is full-width (a lone fixed-width table is the content
+  // column, and its image belongs to the content read below, not here).
+  // Claimed means consumed, so the row walk never stamps it onto rows.
+  {
+    const outer = body.querySelector('table');
+    const outerW = outer ? String(outer.getAttribute('width') || (outer.style && outer.style.width) || '') : '';
+    const outerFull = outer && (outerW === '100%' || (!outerW && !PX(outerW)));
+    const host = bgImageOf(body) ? body : (outerFull && bgImageOf(outer) ? outer : null);
+    if (host) {
+      theme.bgImage = bgImageOf(host);
+      if (host.style && host.style.backgroundSize) theme.bgSize = host.style.backgroundSize;
+      if (host.style && host.style.backgroundPosition) theme.bgPos = host.style.backgroundPosition;
+      if (host.style && host.style.backgroundRepeat) theme.bgRepeat = host.style.backgroundRepeat;
+      [body, outer].forEach((n) => {
+        if (!n) return;
+        if (n.style) { n.style.backgroundImage = ''; n.style.backgroundSize = ''; n.style.backgroundPosition = ''; n.style.backgroundRepeat = ''; }
+        if (n.removeAttribute) n.removeAttribute('background');
+      });
+    }
+  }
   const widthCounts = {};
   body.querySelectorAll('table').forEach((tb) => {
     const px = fixedWidthOf(tb);
@@ -1917,6 +2161,36 @@ function themeFromParsedDoc(doc) {
       // whose content table declares nothing keeps the white default.
       const cbg = bgOf(content);
       if (cbg) theme.contentBg = cbg;
+      // The content column's background image, read back the same way a row's
+      // is -- CSS url() or the `background` attribute, plus whichever of
+      // fit/position/repeat the source actually declared.
+      const cbgi = bgImageOf(content);
+      if (cbgi) {
+        theme.contentBgImage = cbgi;
+        if (content.style && content.style.backgroundSize) theme.contentBgSize = content.style.backgroundSize;
+        if (content.style && content.style.backgroundPosition) theme.contentBgPos = content.style.backgroundPosition;
+        if (content.style && content.style.backgroundRepeat) theme.contentBgRepeat = content.style.backgroundRepeat;
+        // Claimed means consumed, as below. Left on the node, `applyBgImage`
+        // in the row pass reads the very same image off the content table and
+        // stamps a copy onto every row it produces -- so one reload turned a
+        // document-level background into a per-row one, and (because a row
+        // with an image emits VML) changed the exported bytes on a document
+        // nobody had edited.
+        if (content.style) {
+          content.style.backgroundImage = '';
+          content.style.backgroundSize = '';
+          content.style.backgroundPosition = '';
+          content.style.backgroundRepeat = '';
+        }
+        // `bgcolor` goes with it: the exporter writes the pair together, and
+        // the colour has already been claimed as `contentBg` just above --
+        // left behind, the row walker reads the attribute and repaints it as
+        // a row background on every reload.
+        if (content.removeAttribute) {
+          content.removeAttribute('background');
+          content.removeAttribute('bgcolor');
+        }
+      }
       const r = PX(content.style && content.style.borderRadius);
       if (r > 0) theme.radius = r;
       // The content column's full border, written by the exporter as a
@@ -2113,6 +2387,10 @@ export function htmlToDoc(src) {
   // (never-inlined exports, hand-written emails) classify like inlined ones.
   // Best-effort: a pathological stylesheet must never block the import.
   try { inlineStylesheets(doc); } catch { /* proceed with inline styles only */ }
+  // Then fold the tint box back into a layered background, so the walk below
+  // sees one shape for section images regardless of which exporter wrote them.
+  try { readVmlBackgrounds(doc); } catch { /* VML is a bonus read, never a blocker */ }
+  try { unwrapTints(doc); } catch { /* an odd tree is not worth failing the import over */ }
   // Theme first: themeFromParsedDoc consumes the styles it claims off the
   // scaffold nodes, and the row walker must see the cleaned DOM.
   const theme = themeFromParsedDoc(doc);

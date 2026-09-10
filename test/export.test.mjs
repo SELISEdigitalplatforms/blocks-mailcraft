@@ -100,9 +100,178 @@ await it('raw html and css blocks pass through untouched', async () => {
   assert.match(html, /<style data-mc="css"[^>]*>\.x \{ color: red \}<\/style>/);
 });
 
-await it('a row background image is emitted as a css url', async () => {
+// The New Outlook regression, pinned. outlook.com's sanitiser -- which is
+// what both New Outlook for Windows and Outlook on the web run -- drops a
+// `background-image` whose value it cannot fully parse instead of salvaging
+// the layers it understands. The old emission opened the value with
+// `linear-gradient(...)`, so a tinted hero lost its photo in every Outlook
+// that is not Word, while a plain <img> in the same email rendered fine.
+await it('a row background image is one unlayered longhand, never a gradient list', async () => {
+  const html = render(docOf([], { bgImage: 'https://cdn.example.com/hero.png', overlay: 40 }));
+  const decl = html.match(/background-image:[^;]*/)[0];
+  assert.equal(decl, 'background-image:url(https://cdn.example.com/hero.png)');
+  assert.equal(/linear-gradient/.test(decl), false, 'the tint must not ride the background-image');
+  assert.match(html, /background-size:cover;background-position:center;background-repeat:no-repeat;/);
+  assert.equal(/background:[^;]*url\(/.test(html), false, 'longhands only, never the shorthand');
+});
+
+// Unquoted on purpose: cssUrl percent-encodes quotes, parens, spaces and
+// backslashes, so there is nothing left for a bare url(...) to trip over --
+// and one less thing for a sanitiser to re-serialise wrongly.
+await it('the background url is unquoted, and ampersands are entity-escaped', async () => {
+  const html = render(docOf([], { bgImage: 'https://cdn.example.com/h.png?a=1&b=2' }));
+  assert.match(html, /background-image:url\(https:\/\/cdn\.example\.com\/h\.png\?a=1&amp;b=2\)/);
+  assert.equal(html.includes('&quot;'), false, 'no quote entities left inside url()');
+});
+
+// Belt to the CSS braces: a client (or a sanitiser) that drops the style
+// attribute wholesale still has the image and the colour as HTML attributes,
+// and the importer already reads `background` back.
+await it('a row background image repeats as background= and bgcolor= attributes', async () => {
   const html = render(docOf([], { bgImage: 'https://cdn.example.com/hero.png' }));
-  assert.match(html, /background-image:url\(&quot;https:\/\/cdn\.example\.com\/hero\.png&quot;\)/);
+  assert.match(html, /<td background="https:\/\/cdn\.example\.com\/hero\.png" bgcolor="#fffdf8"/);
+});
+
+await it('a transparent row paints no bgcolor attribute', async () => {
+  const doc = docOf([], { bgImage: 'https://cdn.example.com/hero.png', bg: 'transparent' });
+  const html = render(doc);
+  assert.equal(/bgcolor="transparent"/.test(html), false, 'an attribute cannot express transparent');
+});
+
+// The tint, displaced from the background-image, becomes its own box -- and
+// takes the row padding with it, because the band a reader sees is the padded
+// box and a tint sized to the content alone leaves an untinted ring.
+await it('a row overlay ships as its own rgba box carrying the row padding', async () => {
+  const html = render(docOf([], { bgImage: 'https://cdn.example.com/hero.png', overlay: 40, py: 56, px: 36 }));
+  assert.match(html, /<div style="background-color:rgba\(20,22,24,0\.4\);padding:56px 36px 56px 36px;">/);
+  assert.match(html, /<td [^>]*style="padding:0;background-color:/, 'the cell gives its padding up to the tint');
+});
+
+await it('a row with an image but no overlay keeps its padding on the cell', async () => {
+  const html = render(docOf([], { bgImage: 'https://cdn.example.com/hero.png', py: 56, px: 36 }));
+  assert.match(html, /<td [^>]*style="padding:56px 36px 56px 36px;background-color:/);
+  assert.equal(/rgba\(20,22,24/.test(html), false, 'no tint box when there is no overlay');
+});
+
+// Classic Outlook (the Word engine) has never read a CSS background. New
+// Outlook skips conditional comments entirely, so none of this reaches the
+// client the fix above was written for -- it is the other half of the same
+// feature, and it is free to carry.
+await it('a row background image ships a VML rect for the Word engine', async () => {
+  const html = render(docOf([], { bgImage: 'https://cdn.example.com/hero.png' }));
+  assert.match(html, /<!--\[if gte mso 9\]><v:rect fill="true" stroke="false" style="width:620px;height:\d+px;">/);
+  assert.match(html, /<v:fill type="frame" src="https:\/\/cdn\.example\.com\/hero\.png" color="#fffdf8" \/>/);
+  // The height is an estimate; mso-fit-shape-to-text makes it a floor rather
+  // than a clip, so Word grows the shape to whatever the content needs.
+  assert.match(html, /<v:textbox inset="0,0,0,0" style="mso-fit-shape-to-text:true">/);
+  assert.match(html, /<!--\[if gte mso 9\]><\/v:textbox><\/v:rect><!\[endif\]-->/);
+});
+
+// The content column carries a background image at document level. It is the
+// content column and not the page because the column is already a <table> --
+// the one element every client paints a background on -- whereas a page
+// background has to ride <body>, which Gmail discards outright.
+await it('a content-area background image is longhands plus attributes, like a row', async () => {
+  // A fresh theme object, never a mutation of the shared THEME -- `docOf`
+  // hands out the same reference to every test, so assigning onto it leaks
+  // into every case that runs afterwards.
+  const doc = docOf([]);
+  doc.theme = { ...THEME, contentBg: '#fffdf8', contentBgImage: 'https://cdn.example.com/paper.png', contentBgSize: 'contain', contentBgPos: 'top', contentBgRepeat: 'repeat' };
+  const html = render(doc);
+  assert.match(html, /<table role="presentation" background="https:\/\/cdn\.example\.com\/paper\.png" bgcolor="#fffdf8"/);
+  assert.match(html, /background-color:#fffdf8;background-image:url\(https:\/\/cdn\.example\.com\/paper\.png\);background-size:contain;background-position:top;background-repeat:repeat;/);
+  assert.equal(/background:[^;]*url\(/.test(html), false, 'longhands only, never the shorthand');
+  assert.equal(/linear-gradient/.test(html), false);
+});
+
+await it('a content area with no image keeps the plain background shorthand', async () => {
+  const html = render(docOf([]));
+  assert.match(html, /max-width:620px;background:#fffdf8;/, 'unchanged when no image is set');
+  assert.equal(/<table role="presentation" background=/.test(html), false, 'no stray attribute');
+});
+
+await it('a transparent content area paints no bgcolor attribute', async () => {
+  const doc = docOf([]);
+  doc.theme = { ...THEME, contentBg: 'transparent', contentBgImage: 'https://cdn.example.com/p.png' };
+  const html = render(doc);
+  assert.equal(/bgcolor="transparent"/.test(html), false);
+  assert.match(html, /background="https:\/\/cdn\.example\.com\/p\.png"/);
+});
+
+await it('a preheader ships hidden at the top of the body, escaped and padded', async () => {
+  const doc = docOf([]);
+  doc.theme = { ...THEME, preheader: 'Your order <shipped> & more' };
+  const html = render(doc);
+  assert.match(html, /<body[^>]*>\n<div style="display:none;font-size:1px;[^"]*mso-hide:all;[^"]*">Your order &lt;shipped&gt; &amp; more(?:&#847;&zwnj;&nbsp;){40}<\/div>/);
+  assert.equal(/<div style="display:none/.test(render(docOf([]))), false, 'none when no preview text is set');
+});
+
+await it('the document direction is the theme\'s, never the UI locale\'s', async () => {
+  const doc = docOf([]);
+  doc.theme = { ...THEME, dir: 'rtl' };
+  assert.match(render(doc), /<html lang="en" dir="rtl"/);
+  assert.equal(/\sdir="/.test(render(docOf([]))), false);
+});
+
+await it('the page wrappers carry bgcolor beside the CSS, but never for transparent or rgba', async () => {
+  assert.match(render(docOf([])), /<body bgcolor="#ece8df"/);
+  assert.match(render(docOf([])), /<table role="presentation" bgcolor="#ece8df" width="100%"/);
+  const doc = docOf([]);
+  doc.theme = { ...THEME, bg: 'transparent' };
+  assert.equal(/bgcolor="transparent"/.test(render(doc)), false);
+});
+
+await it('msoHarden gives the button cell an mso-padding-alt matching its padding', async () => {
+  const cell = '<table role="presentation"><tr><td style="background:#0065b3;border-radius:8px;padding:13px 26px;text-align:center;" align="center"><a href="#">Go</a></td></tr></table>';
+  assert.match(msoHarden(cell), /padding:13px 26px;text-align:center;mso-padding-alt:13px 26px;/);
+  const plain = '<td style="padding:13px 26px;" align="center">x</td>';
+  assert.equal(/mso-padding-alt/.test(msoHarden(plain)), false, 'only the button shape: radius + centred');
+});
+
+await it('msoHarden gives every image bicubic interpolation for Word', async () => {
+  assert.match(msoHarden('<img style="width:60%;" src="a.png">'), /style="width:60%;-ms-interpolation-mode:bicubic;"/);
+  assert.match(msoHarden('<img src="a.png">'), /<img src="a.png" style="-ms-interpolation-mode:bicubic;">/);
+  const once = msoHarden(msoHarden('<img style="width:60%;" src="a.png">'));
+  assert.equal((once.match(/interpolation-mode/g) || []).length, 1, 'idempotent');
+});
+
+await it('a page background image rides the body AND the full-width wrapper table, as longhands plus attributes', async () => {
+  const doc = docOf([]);
+  doc.theme = { ...THEME, bgImage: 'https://cdn.example.com/page.png', bgSize: 'auto', bgPos: 'top', bgRepeat: 'repeat' };
+  const html = render(doc);
+  const paint = 'background-color:#ece8df;background-image:url(https://cdn.example.com/page.png);background-size:auto;background-position:top;background-repeat:repeat;';
+  assert.match(html, new RegExp('<body bgcolor="#ece8df" background="https://cdn\\.example\\.com/page\\.png" style="margin:0;padding:0;' + paint.replace(/[.()]/g, '\\$&')));
+  // msoHarden appends mso-table-lspace/rspace to every <table> style, so the
+  // paint is asserted as a prefix of the attribute, not the whole of it.
+  assert.match(html, new RegExp('<table role="presentation" bgcolor="#ece8df" background="https://cdn\\.example\\.com/page\\.png" width="100%"[^>]*style="' + paint.replace(/[.()]/g, '\\$&')));
+  assert.equal(/background:[^;]*url\(/.test(html), false, 'longhands only');
+});
+
+await it('flex and grid rows get MSO ghost cells so Word lays the children side by side', async () => {
+  const flex = docOf([], { layout: 'flex', flexDir: 'row', gap: 12 });
+  const row = flex.rows[0];
+  row.cols = [{ id: 'a', span: 50, blocks: [] }, { id: 'b', span: 50, blocks: [] }];
+  const h1 = render(flex);
+  assert.equal((h1.match(/<!--\[if mso\]><td width="50%" valign="top"><!\[endif\]-->/g) || []).length, 2);
+  assert.match(h1, /<!--\[if mso\]><table role="presentation" width="100%"[^>]*><tr><!\[endif\]-->/);
+  assert.match(h1, /<!--\[if mso\]><\/tr><\/table><!\[endif\]-->/);
+  assert.equal(/<!--\[if mso\]><\/tr><tr>/.test(h1), false, 'one ghost row for a row-direction flex');
+  const grid = docOf([], { layout: 'grid', gridCols: 3, gap: 12 });
+  grid.rows[0].cols = [1, 2, 3, 4].map((i) => ({ id: 'g' + i, span: 25, blocks: [] }));
+  const h2 = render(grid);
+  assert.equal((h2.match(/<!--\[if mso\]><td width="33%" valign="top"><!\[endif\]-->/g) || []).length, 4);
+  assert.equal((h2.match(/<!--\[if mso\]><\/tr><tr><!\[endif\]-->/g) || []).length, 1, 'a new ghost row after every gridCols children');
+  const col = docOf([], { layout: 'flex', flexDir: 'column' });
+  col.rows[0].cols = [{ id: 'x', span: 50, blocks: [] }, { id: 'y', span: 50, blocks: [] }];
+  assert.equal((render(col).match(/<!--\[if mso\]><\/tr><tr><!\[endif\]-->/g) || []).length, 1, 'a column-direction flex stacks in Word too');
+});
+
+await it('the VML namespace ships only when a row actually emitted VML', async () => {
+  const withBg = render(docOf([], { bgImage: 'https://cdn.example.com/hero.png' }));
+  assert.match(withBg, /<html lang="en" xmlns:o="[^"]*" xmlns:v="urn:schemas-microsoft-com:vml">/);
+  const without = render(docOf([]));
+  assert.equal(/xmlns:v/.test(without), false, 'a namespace for markup that never appears is noise');
+  assert.equal(/v:rect/.test(without), false);
 });
 
 // The regression this file was written for: the background URL is interpolated
