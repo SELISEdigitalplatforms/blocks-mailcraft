@@ -223,6 +223,8 @@ export const EN = {
   'toast.imageReplaced': 'Image replaced',
   'toast.imageAdded': 'Image added to canvas',
   'toast.htmlCopied': 'HTML copied to clipboard',
+  'toast.exportImageOne': '1 image will not display when sent — placeholder or data:/cid: source',
+  'toast.exportImageMany': '{count} images will not display when sent — placeholder or data:/cid: sources',
   'toast.templateLoaded': '{name} loaded',
   'toast.snippetDefaultLabel': 'Snippet',
   'toast.snippetInserted': '{name} inserted',

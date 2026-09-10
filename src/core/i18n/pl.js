@@ -170,6 +170,8 @@ export const PL = {
   'toast.imageReplaced': 'Zastąpiono obraz',
   'toast.imageAdded': 'Dodano obraz do płótna',
   'toast.htmlCopied': 'Skopiowano HTML do schowka',
+  'toast.exportImageOne': '1 obraz nie wyświetli się po wysłaniu — źródło zastępcze lub data:/cid:',
+  'toast.exportImageMany': '{count} obrazów nie wyświetli się po wysłaniu — źródła zastępcze lub data:/cid:',
   'toast.templateLoaded': 'Wczytano {name}',
   'toast.snippetDefaultLabel': 'Fragment',
   'toast.snippetInserted': 'Wstawiono {name}',

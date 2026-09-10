@@ -170,6 +170,8 @@ export const RU = {
   'toast.imageReplaced': 'Изображение заменено',
   'toast.imageAdded': 'Изображение добавлено на холст',
   'toast.htmlCopied': 'HTML скопирован в буфер обмена',
+  'toast.exportImageOne': '1 изображение не отобразится при отправке — заполнитель или источник data:/cid:',
+  'toast.exportImageMany': '{count} изображений не отобразятся при отправке — заполнители или источники data:/cid:',
   'toast.templateLoaded': '{name} загружен',
   'toast.snippetDefaultLabel': 'Фрагмент',
   'toast.snippetInserted': '{name} вставлен',

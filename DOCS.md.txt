@@ -736,6 +736,8 @@ The complete catalog of UI strings that `.messages` accepts: every key the edito
 | `toast.assetDeleted` | {name} deleted |
 | `toast.buttonAdded` | Button added |
 | `toast.duplicated` | Duplicated |
+| `toast.exportImageMany` | {count} images will not display when sent — placeholder or data:/cid: sources |
+| `toast.exportImageOne` | 1 image will not display when sent — placeholder or data:/cid: source |
 | `toast.fileUploadedMany` | {count} files uploaded |
 | `toast.fileUploadedOne` | 1 file uploaded |
 | `toast.headingAdded` | Heading added |

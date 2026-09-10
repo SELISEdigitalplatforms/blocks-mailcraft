@@ -136,22 +136,70 @@ export function blockBody(b, theme, live, ctx, colPx) {
        * the recipient saw nothing at all. The wrapper keeps its 0; the image
        * carries type of its own for the blocked state.
        */
-      const pxW = Math.max(1, Math.round(((Number(colPx) || Number(t.width) || 620)) * ((Number(p.width) || 100) / 100)));
+      /*
+       * Two ways to size an image, and the second one is why a logo used to
+       * drift.
+       *
+       * The default is a PERCENTAGE of the column -- responsive, and the
+       * right answer for a hero. But a percentage cannot express "88px", and
+       * an import that met one had to round it into the nearest whole
+       * percent (88 of 600 -> 15% -> 93px). Every save re-derived the
+       * percent from the new pixel width, so the logo crept a little wider
+       * each time and never landed back on 88.
+       *
+       * `wUnit: 'px'` with `wpx` pins the real number instead: the CSS width,
+       * the Word `width` attribute and the read-back all carry the same
+       * integer, so the value is a fixed point. `max-width:100%` (plus the
+       * stylesheet's own `img` rule in the sent mail) keeps a pinned image
+       * from holding a narrow phone column open.
+       */
+      const fixed = p.wUnit === 'px' && Number(p.wpx) > 0;
+      const pxW = fixed
+        ? Math.max(1, Math.round(Number(p.wpx)))
+        : Math.max(1, Math.round(((Number(colPx) || Number(t.width) || 620)) * ((Number(p.width) || 100) / 100)));
+      const cssW = fixed ? pxW + 'px' : (Number(p.width) || 100) + '%';
+      /*
+       * `height` as an attribute, derived from the source's own aspect ratio
+       * rather than invented: with images blocked (Outlook's default, and
+       * Gmail's for an unknown sender) a width-only image collapses to a
+       * one-line strip and the layout below it jumps when the image loads.
+       * A width AND a height reserve the real box. The CSS `height:auto`
+       * still wins in every client that reads CSS, so a client that scales
+       * the image down keeps its proportions -- the attribute is only the
+       * floor Word and a blocked-image placeholder read.
+       *
+       * Absent unless the ratio is known (an import that carried both
+       * dimensions, or a library asset), so no image gains a guessed height.
+       */
+      const ratio = Number(p.ratio) > 0 ? Number(p.ratio) : 0;
+      const hAttr = ratio ? String(Math.max(1, Math.round(pxW * ratio))) : undefined;
+      // Retina and responsive sources ride through untouched. Apple Mail and
+      // iOS pick from `srcset`; every other client ignores both attributes
+      // and uses `src`, which is why `src` stays the 1x fallback.
+      const srcAttrs = {
+        srcset: p.srcset || undefined,
+        sizes: p.srcset && p.sizes ? p.sizes : undefined,
+        title: p.title || undefined,
+      };
       const altType = { fontSize: '13px', lineHeight: '1.4', fontFamily: t.font, color: t.text };
       if (imgHref) {
         // The % width must live on the anchor, not the img: a percentage on a
         // child of a shrink-to-fit inline-block resolves against the image's
         // own intrinsic size (i.e. not at all), which rendered every linked
         // logo/icon at full intrinsic width no matter what `width` said.
-        const a = el('a', { display: 'inline-block', width: p.width + '%' }, { href: imgHref });
+        // `max-width` only in pixel mode: a percentage anchor is already
+        // capped by its container, and adding the declaration unconditionally
+        // would rewrite the markup of every linked image that never asked for
+        // this feature.
+        const a = el('a', { display: 'inline-block', width: cssW, ...(fixed ? { maxWidth: '100%' } : {}) }, { href: imgHref });
         // Same guard as every other anchor the canvas draws: without it a
         // click on a linked logo navigates the host application away from the
         // editor, taking the uncommitted document with it.
         a.addEventListener('click', (e) => e.preventDefault());
-        a.appendChild(el('img', { width: '100%', height: 'auto', borderRadius: p.radius + 'px', display: 'block', border: '0', ...altType }, { src: p.src, alt: p.alt, width: String(pxW), border: '0' }));
+        a.appendChild(el('img', { width: '100%', height: 'auto', borderRadius: p.radius + 'px', display: 'block', border: '0', ...altType }, { src: p.src, alt: p.alt, width: String(pxW), height: hAttr, border: '0', ...srcAttrs }));
         wrap.appendChild(a);
       } else {
-        wrap.appendChild(el('img', { width: p.width + '%', height: 'auto', maxWidth: '100%', borderRadius: p.radius + 'px', display: 'inline-block', border: '0', ...altType }, { src: p.src, alt: p.alt, width: String(pxW), border: '0' }));
+        wrap.appendChild(el('img', { width: cssW, height: 'auto', maxWidth: '100%', borderRadius: p.radius + 'px', display: 'inline-block', border: '0', ...altType }, { src: p.src, alt: p.alt, width: String(pxW), height: hAttr, border: '0', ...srcAttrs }));
       }
       return wrap;
     }

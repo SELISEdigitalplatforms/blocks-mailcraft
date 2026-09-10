@@ -170,6 +170,8 @@ export const NL = {
   'toast.imageReplaced': 'Afbeelding vervangen',
   'toast.imageAdded': 'Afbeelding toegevoegd aan canvas',
   'toast.htmlCopied': 'HTML gekopieerd naar klembord',
+  'toast.exportImageOne': '1 afbeelding wordt bij verzending niet weergegeven — tijdelijke aanduiding of data:/cid:-bron',
+  'toast.exportImageMany': '{count} afbeeldingen worden bij verzending niet weergegeven — tijdelijke aanduidingen of data:/cid:-bronnen',
   'toast.templateLoaded': '{name} geladen',
   'toast.snippetDefaultLabel': 'Fragment',
   'toast.snippetInserted': '{name} ingevoegd',

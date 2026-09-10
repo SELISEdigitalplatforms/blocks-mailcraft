@@ -170,6 +170,8 @@ export const CS = {
   'toast.imageReplaced': 'Obrázek nahrazen',
   'toast.imageAdded': 'Obrázek přidán na plátno',
   'toast.htmlCopied': 'HTML zkopírováno do schránky',
+  'toast.exportImageOne': '1 obrázek se po odeslání nezobrazí — zástupný nebo data:/cid: zdroj',
+  'toast.exportImageMany': '{count} obrázků se po odeslání nezobrazí — zástupné nebo data:/cid: zdroje',
   'toast.templateLoaded': '{name} načteno',
   'toast.snippetDefaultLabel': 'Úryvek',
   'toast.snippetInserted': '{name} vloženo',

@@ -170,6 +170,8 @@ export const DE = {
   'toast.imageReplaced': 'Bild ersetzt',
   'toast.imageAdded': 'Bild zur Canvas hinzugefügt',
   'toast.htmlCopied': 'HTML in die Zwischenablage kopiert',
+  'toast.exportImageOne': '1 Bild wird beim Versand nicht angezeigt — Platzhalter oder data:/cid:-Quelle',
+  'toast.exportImageMany': '{count} Bilder werden beim Versand nicht angezeigt — Platzhalter- oder data:/cid:-Quellen',
   'toast.templateLoaded': '{name} geladen',
   'toast.snippetDefaultLabel': 'Snippet',
   'toast.snippetInserted': '{name} eingefügt',

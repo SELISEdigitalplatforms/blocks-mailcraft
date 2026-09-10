@@ -170,6 +170,8 @@ export const HR = {
   'toast.imageReplaced': 'Slika zamijenjena',
   'toast.imageAdded': 'Slika dodana na platno',
   'toast.htmlCopied': 'HTML kopiran u međuspremnik',
+  'toast.exportImageOne': '1 slika neće biti prikazana pri slanju — rezervirano mjesto ili data:/cid: izvor',
+  'toast.exportImageMany': '{count} slika neće biti prikazano pri slanju — rezervirana mjesta ili data:/cid: izvori',
   'toast.templateLoaded': '{name} učitano',
   'toast.snippetDefaultLabel': 'Isječak',
   'toast.snippetInserted': '{name} umetnuto',

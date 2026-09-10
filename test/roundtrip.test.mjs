@@ -54,6 +54,11 @@ function probeDoc(base) {
   rows.push(row(
     blk('image', { src: 'https://e.com/i.png', alt: 'Alt probe', width: 47, align: 'right', href: 'https://e.com/l', radius: 3, py: 7, px: 5 }),
     { bgImage: 'https://e.com/bg.jpg', overlay: 40, bgSize: 'contain', bgPos: 'left top', bgRepeat: 'repeat' }));
+  // The second image is the pixel-sized one: a logo pinned in px rather than
+  // as a share of the column, with the retina sources, tooltip and aspect
+  // ratio that used to be dropped on import.
+  rows.push(row(
+    blk('image', { src: 'https://e.com/logo.png', alt: 'Logo probe', width: 15, wUnit: 'px', wpx: 88, ratio: 0.3636, srcset: 'https://e.com/logo.png 1x, https://e.com/logo@2x.png 2x', sizes: '88px', title: 'Tooltip probe', align: 'left', radius: 0, py: 0, px: 0 })));
   rows.push(row(blk('button', { label: 'Probe CTA', href: 'https://e.com/b', bg: '#22aa55', color: '#111111', radius: 21, py: 9, px: 33, align: 'center', size: 19, borderW: 2, borderStyle: 'dashed', borderColor: '#ff0000', fontFamily: 'Verdana, Geneva, sans-serif' })));
   rows.push(row(blk('divider', { thickness: 3, lineStyle: 'dotted', color: '#aa00aa', width: 55, py: 3 })));
   rows.push(row(blk('spacer', { height: 77 })));
@@ -77,6 +82,15 @@ function probeDoc(base) {
     blk('text', { html: 'Panel probe', py: 18, px: 24, bBg: '#eff6fc', bBorder: 2, bStyle: 'dashed', bLine: '#cfe3f5', bRadius: 8 }),
     blk('text', { html: 'after the panel' }),
   ]));
+  // A photo behind ONE column, with its own fit, position and tint -- the
+  // row-level image cannot express this, and before it existed the column
+  // came back unpainted on every reload.
+  const twoBg = mkRow([50, 50]);
+  twoBg.props.gap = 20;
+  twoBg.cols[0].blocks = [blk('text', { html: 'over the photo' })];
+  twoBg.cols[1].blocks = [blk('text', { html: 'plain neighbour' })];
+  Object.assign(twoBg.cols[0], { bg: '#101820', bgImage: 'https://e.com/col.jpg', bgSize: 'contain', bgPos: 'left top', overlay: 35, padY: 14, padX: 10 });
+  rows.push(twoBg);
   const two = mkRow([40, 60]);
   Object.assign(two.props, { gap: 28, valign: 'middle', mobileCols: 2, mobileOrder: 'reverse' });
   two.cols[0].blocks = [blk('text', { html: 'left col' })];
@@ -140,6 +154,20 @@ await it('image: src, alt, link, width (on the anchor!), align, radius, py/px', 
   assert.equal(b.props.radius, 3);
   assert.equal(b.props.py, 7);
   assert.equal(b.props.px, 5);
+});
+
+await it('image: a pixel width stays the exact pixel width, with srcset, sizes, title and the height that reserves its box', async () => {
+  const b = one('image', 1);
+  assert.equal(b.props.src, 'https://e.com/logo.png');
+  assert.equal(b.props.wUnit, 'px', 'still pinned, not folded back into a percentage');
+  assert.equal(b.props.wpx, 88, 'the exact number the author set -- no drift through a rounded %');
+  assert.equal(b.props.srcset, 'https://e.com/logo.png 1x, https://e.com/logo@2x.png 2x');
+  assert.equal(b.props.sizes, '88px');
+  assert.equal(b.props.title, 'Tooltip probe');
+  // 88 x 0.3636 = 32, and 32/88 is the ratio that comes back.
+  assert.ok(Math.abs(b.props.ratio - 0.3636) < 0.005, 'aspect ratio survives, got ' + b.props.ratio);
+  assert.match(html1, /<img[^>]+width="88"[^>]+height="32"/, 'both attributes ship, so a blocked image still holds its box');
+  assert.match(html1, /srcset="https:\/\/e\.com\/logo\.png 1x, https:\/\/e\.com\/logo@2x\.png 2x"/);
 });
 
 await it('button: label, href, colors as hex, radius, pill padding, size, outline, font', async () => {
@@ -321,6 +349,18 @@ await it('columns: spans, background, radius, inner padding, border -- through e
   assert.equal(r.props.valign, 'middle');
 });
 
+await it('columns: a per-column background image with its fit, position and darken survives a reload', async () => {
+  const r = got.rows.find((x) => x.cols.length === 2 && x.cols[0].bgImage);
+  assert.ok(r, 'the column kept its image');
+  assert.equal(r.cols[0].bgImage, 'https://e.com/col.jpg');
+  assert.equal(r.cols[0].bgSize, 'contain');
+  assert.equal(r.cols[0].bgPos, 'left top');
+  assert.equal(r.cols[0].overlay, 35, 'the tint folds back off its own rgba box');
+  assert.match(r.cols[0].bg, /^#101820$/i, 'the colour underneath comes with it');
+  assert.equal(r.cols[0].padY, 14);
+  assert.equal(r.cols[1].bgImage, undefined, 'and it stays on the column that asked for it');
+});
+
 await it('row: explicit mobile modes (two-up, reverse) come back off their classes', async () => {
   const r = got.rows[got.rows.length - 1].props;
   assert.equal(String(r.mobileCols), '2');
@@ -420,6 +460,36 @@ await it('flex and grid rows keep their layout through the data-mcr marker', asy
   assert.deepEqual(rows2[0].cols.map((c) => c.span), [30, 70], 'spans survive, no collapse to one column');
   assert.equal(rows2[1].props.layout, 'grid');
   assert.equal(rows2[1].props.gridCols, 3);
+  el2.remove();
+});
+
+await it('a flex row that is the ONLY row keeps its layout, spans and column paint on reload', async () => {
+  // With two or more rows the content table is never a passthrough, so this
+  // only ever failed on a single-row document -- which is exactly the shape
+  // a host storing one section at a time saves.
+  const el2 = await mountEditor();
+  const doc = el2.getContent();
+  const solo = mkRow([30, 70]);
+  Object.assign(solo.props, { layout: 'flex', flexDir: 'row', gap: 14 });
+  solo.cols[0].blocks = [blk('text', { html: 'solo a' })];
+  solo.cols[1].blocks = [blk('text', { html: 'solo b' })];
+  Object.assign(solo.cols[0], { bg: '#ffeedd', padY: 12, padX: 10, bgImage: 'https://e.com/card.jpg' });
+  doc.rows = [solo];
+  el2.setContent(doc);
+  await settle(3);
+  const first = el2.exportHtml();
+  el2.importHtml(first);
+  await settle(3);
+  const back = el2.getContent().rows;
+  assert.equal(back.length, 1, 'one row, not one row per column');
+  assert.equal(back[0].props.layout, 'flex', 'the layout survived the passthrough check');
+  assert.deepEqual(back[0].cols.map((c) => c.span), [30, 70]);
+  assert.match(back[0].cols[0].bg, /^#ffeedd$/i);
+  assert.equal(back[0].cols[0].bgImage, 'https://e.com/card.jpg');
+  assert.equal(back[0].cols[0].padY, 12);
+  el2.setContent(el2.getContent());
+  await settle(3);
+  assert.equal(el2.exportHtml(), first, 'and it is a fixed point');
   el2.remove();
 });
 

@@ -170,6 +170,8 @@ export const RO = {
   'toast.imageReplaced': 'Imagine înlocuită',
   'toast.imageAdded': 'Imagine adăugată pe canvas',
   'toast.htmlCopied': 'HTML copiat în clipboard',
+  'toast.exportImageOne': '1 imagine nu va fi afișată la trimitere — sursă substituent sau data:/cid:',
+  'toast.exportImageMany': '{count} imagini nu vor fi afișate la trimitere — surse substituent sau data:/cid:',
   'toast.templateLoaded': '{name} încărcat',
   'toast.snippetDefaultLabel': 'Fragment',
   'toast.snippetInserted': '{name} inserat',

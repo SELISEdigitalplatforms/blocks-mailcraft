@@ -192,6 +192,8 @@ export const BN = {
   'toast.imageReplaced': 'ইমেজ প্রতিস্থাপিত হয়েছে',
   'toast.imageAdded': 'ক্যানভাসে ইমেজ যোগ হয়েছে',
   'toast.htmlCopied': 'HTML ক্লিপবোর্ডে কপি হয়েছে',
+  'toast.exportImageOne': '১টি ছবি পাঠানোর পর দেখা যাবে না — প্লেসহোল্ডার বা data:/cid: উৎস',
+  'toast.exportImageMany': '{count}টি ছবি পাঠানোর পর দেখা যাবে না — প্লেসহোল্ডার বা data:/cid: উৎস',
   'toast.templateLoaded': '{name} লোড হয়েছে',
   'toast.snippetDefaultLabel': 'স্নিপেট',
   'toast.snippetInserted': '{name} বসানো হয়েছে',

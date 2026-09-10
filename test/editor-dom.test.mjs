@@ -393,6 +393,36 @@ await it('an imported font stack stays selectable in the Font controls', async (
   assert.equal(known.options.filter((o) => /Tahoma/.test(o.value)).length, 1, 'the shipped Tahoma option is the only one');
 });
 
+await it('an image panel warns about a source that will not render, and switches between percent and pixel widths in one undo step', async () => {
+  const el = await mountEditor();
+  el.core.insertBlock('image', null, 0, 0);
+  await settle(2);
+  const img = allBlocks(el).find((b) => b.type === 'image');
+  assert.ok(img, 'the image block landed');
+  el.core.select('block', img.id);
+  await settle(2);
+  // A fresh image carries the built-in placeholder, which is an SVG data URI
+  // -- exactly what Gmail and Outlook refuse to render.
+  const warn = el.core.fields().find((f) => f.kind === 'note');
+  assert.ok(warn, 'the placeholder is called out: ' + el.core.fields().map((f) => f.kind).join(','));
+  assert.match(warn.label, /Placeholder/);
+  // Percent by default, and the unit control is offered.
+  assert.ok(el.core.fields().find((f) => f.label === 'Width' && f.unit === '%'), 'percent width by default');
+  const unit = el.core.fields().find((f) => f.label === 'Width unit');
+  assert.ok(unit, 'the unit control is there');
+  unit.options[1].onClick();
+  await settle(2);
+  const pinned = allBlocks(el).find((b) => b.type === 'image');
+  assert.equal(pinned.props.wUnit, 'px');
+  assert.ok(pinned.props.wpx > 0, 'switching seeds the size it already had, so nothing jumps: ' + pinned.props.wpx);
+  assert.ok(el.core.fields().find((f) => f.label === 'Width' && f.unit === 'px'), 'and the slider is in pixels now');
+  // Both props moved together, so one undo puts the whole switch back.
+  el.core.undo();
+  await settle(2);
+  const back = allBlocks(el).find((b) => b.type === 'image');
+  assert.notEqual(back.props.wUnit, 'px', 'one undo, not two');
+});
+
 await it('the code modal round-trips the document through html', async () => {
   const el = await mountEditor();
   el.importHtml(EMAIL);

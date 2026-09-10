@@ -170,6 +170,8 @@ export const FI = {
   'toast.imageReplaced': 'Kuva korvattu',
   'toast.imageAdded': 'Kuva lisätty kankaalle',
   'toast.htmlCopied': 'HTML kopioitu leikepöydälle',
+  'toast.exportImageOne': '1 kuva ei näy lähetetyssä viestissä — paikkamerkki- tai data:/cid:-lähde',
+  'toast.exportImageMany': '{count} kuvaa ei näy lähetetyssä viestissä — paikkamerkki- tai data:/cid:-lähteet',
   'toast.templateLoaded': '{name} ladattu',
   'toast.snippetDefaultLabel': 'Katkelma',
   'toast.snippetInserted': '{name} lisätty',

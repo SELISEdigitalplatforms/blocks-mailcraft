@@ -2,6 +2,15 @@
 export function binder(getProps, set, core) {
   return {
     head: (label) => ({ kind: 'head', label }),
+    /*
+     * A read-only line of prose in the panel, for something the editor knows
+     * about the current selection that no control can express -- a `cid:`
+     * source that cannot resolve outside a sent message, a placeholder that
+     * would ship as a placeholder. It carries no key and writes nothing, so
+     * it never enters an undo step; `tone` picks the accent ('warn' is the
+     * only one used today, 'info' reads as plain muted text).
+     */
+    note: (text, tone) => ({ kind: 'note', label: String(text || ''), tone: tone === 'info' ? 'info' : 'warn' }),
     // `suggestions` (optional array of strings) renders as a datalist on the
     // input: the user picks one of the host's values or types any other.
     text: (label, key, ph, suggestions) => ({ kind: 'text', label, value: getProps()[key] ?? '', placeholder: ph || '', suggestions: Array.isArray(suggestions) && suggestions.length ? suggestions : null, onChange: (v) => set(key, v) }),
@@ -126,6 +135,7 @@ export function decorate(list) {
     const d = Object.assign({}, f, {
       key: i,
       isHead: f.kind === 'head', isArea: f.kind === 'area', isBtn: f.kind === 'btn', isSeg: f.kind === 'seg',
+      isNote: f.kind === 'note',
       isRange: f.kind === 'range', isToggle: f.kind === 'toggle', isSocial: f.kind === 'social', isTableGrid: f.kind === 'tablegrid', isRichLinks: f.kind === 'richLinks',
       isRangeGroup: f.kind === 'rangeGroup', isSlider: f.kind === 'slider',
       isRow: ['text', 'num', 'color', 'select'].indexOf(f.kind) > -1,

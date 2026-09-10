@@ -247,6 +247,18 @@ await it('a page background image rides the body AND the full-width wrapper tabl
   assert.equal(/background:[^;]*url\(/.test(html), false, 'longhands only');
 });
 
+await it('a page background image ships a v:background for Word -- frame for cover, tile for repeat, none without an image', async () => {
+  const cover = docOf([]);
+  cover.theme = { ...THEME, bgImage: 'https://cdn.example.com/page.png' };
+  const h1 = render(cover);
+  assert.match(h1, /<body[^>]*>\n<!--\[if gte mso 9\]><v:background fill="true"><v:fill type="frame" src="https:\/\/cdn\.example\.com\/page\.png" color="#ece8df" \/><\/v:background><!\[endif\]-->/);
+  assert.match(h1, /xmlns:v="urn:schemas-microsoft-com:vml"/, 'the namespace follows the markup');
+  const tiled = docOf([]);
+  tiled.theme = { ...THEME, bgImage: 'https://cdn.example.com/page.png', bgRepeat: 'repeat' };
+  assert.match(render(tiled), /<v:fill type="tile"/);
+  assert.equal(/v:background/.test(render(docOf([]))), false);
+});
+
 await it('flex and grid rows get MSO ghost cells so Word lays the children side by side', async () => {
   const flex = docOf([], { layout: 'flex', flexDir: 'row', gap: 12 });
   const row = flex.rows[0];
@@ -528,6 +540,75 @@ await it('a row that opted out of stacking keeps its columns side by side', asyn
   const html = buildHtml({ doc: { theme: THEME, rows: [row] } }, stubRoot({}), boxCss);
   assert.equal(/class="mc-col"/.test(html), false, 'the choice is honoured, not ignored as it once was');
   assert.equal(/@media[^}]*mc-col/.test(html), false, 'and the rule it would have needed is not shipped either');
+});
+
+await it('a column carries its own background image -- longhands on the wrapper div, VML for Word, and never on the gutter-padded cell', async () => {
+  const row = mkRow([50, 50], [mk('text')]);
+  row.props.gap = 24;
+  row.cols[1].bgImage = 'https://cdn.example.com/side.jpg';
+  row.cols[1].bg = '#102030';
+  row.cols[1].bgSize = 'contain';
+  row.cols[1].bgPos = 'left top';
+  row.cols[1].padY = 20;
+  row.cols[1].padX = 16;
+  const html = buildHtml({ doc: { theme: THEME, rows: [row] } }, stubRoot({}), boxCss);
+  assert.match(html, /background-color:#102030;background-image:url\(https:\/\/cdn\.example\.com\/side\.jpg\);background-size:contain;background-position:left top;background-repeat:no-repeat;/, 'longhands, never the shorthand -- outlook.com drops what it cannot fully parse');
+  assert.equal(/background:[^;"]*url\(/.test(html), false, 'and no shorthand form anywhere');
+  assert.match(html, /<v:rect fill="true" stroke="false" style="width:262px;/, 'Word gets the photo at the column width (620 less the row padding, halved, less the gutter), not the content width');
+  assert.match(html, /<v:fill type="frame" src="https:\/\/cdn\.example\.com\/side\.jpg" color="#102030" \/>/);
+  assert.match(html, /xmlns:v="urn:schemas-microsoft-com:vml"/, 'the namespace follows the markup');
+  // The cell also carries the gutter, so painting it would run the photo
+  // under the gap between the two columns.
+  assert.equal(/<td[^>]*background="/.test(html), false, 'the image stays off the <td>');
+  assert.equal(/<td[^>]*bgcolor="/.test(html), false);
+});
+
+await it('a column tint is its own rgba box, and the padding moves onto it', async () => {
+  const row = mkRow([50, 50], [mk('text')]);
+  row.cols[0].bgImage = 'https://cdn.example.com/a.jpg';
+  row.cols[0].overlay = 45;
+  row.cols[0].padY = 18;
+  row.cols[0].padX = 12;
+  const html = buildHtml({ doc: { theme: THEME, rows: [row] } }, stubRoot({}), boxCss);
+  assert.match(html, /background-color:rgba\(20,22,24,0\.45\);padding:18px 12px;/, 'the tint covers the padded box, not just the content');
+  assert.match(html, /border-radius:0px;padding:0px 0px"/, 'so the painted element gives its padding up');
+  assert.equal(/linear-gradient/.test(html), false, 'never a layered value -- that is what New Outlook drops');
+});
+
+await it('a column image inside a row that already has one skips the VML rather than nesting shapes', async () => {
+  const row = mkRow([50, 50], [mk('text')]);
+  row.props.bgImage = 'https://cdn.example.com/row.jpg';
+  row.cols[0].bgImage = 'https://cdn.example.com/col.jpg';
+  const html = buildHtml({ doc: { theme: THEME, rows: [row] } }, stubRoot({}), boxCss);
+  assert.match(html, /background-image:url\(https:\/\/cdn\.example\.com\/col\.jpg\)/, 'every CSS client still paints both');
+  assert.equal(/src="https:\/\/cdn\.example\.com\/col\.jpg"/.test(html), false, 'but Word gets only the row shape, never one inside another');
+  assert.match(html, /<v:fill type="frame" src="https:\/\/cdn\.example\.com\/row\.jpg"/);
+});
+
+await it('a flex or grid row carries its column paint too -- the canvas draws it for every layout, so the export must ship it for every layout', async () => {
+  for (const layout of ['flex', 'grid']) {
+    const row = mkRow([50, 50], [mk('text')]);
+    Object.assign(row.props, { layout, gridCols: 2 });
+    Object.assign(row.cols[0], { bg: '#ffeedd', radius: 8, padY: 12, padX: 10, border: 2, lineColor: '#334455', bgImage: 'https://cdn.example.com/card.jpg' });
+    const html = buildHtml({ doc: { theme: THEME, rows: [row] } }, stubRoot({}), boxCss);
+    assert.match(html, /background-color:#ffeedd/, layout + ': background');
+    assert.match(html, /background-image:url\(https:\/\/cdn\.example\.com\/card\.jpg\)/, layout + ': image');
+    assert.match(html, /border:2px solid #334455/, layout + ': border');
+    assert.match(html, /border-radius:8px;padding:12px 10px/, layout + ': radius and padding');
+    // No VML here: a grid column is an equal fraction and a flex column can
+    // wrap, so neither has the fixed pixel width `v:rect` demands.
+    assert.equal(/v:rect/.test(html), false, layout + ': CSS only');
+  }
+});
+
+await it('a column with no image emits exactly the markup it always did', async () => {
+  const row = mkRow([50, 50], [mk('text')]);
+  row.cols[0].bg = '#ffeedd';
+  row.cols[0].padY = 10;
+  row.cols[0].padX = 8;
+  const html = buildHtml({ doc: { theme: THEME, rows: [row] } }, stubRoot({}), boxCss);
+  assert.match(html, /<div style="background:#ffeedd;border-radius:0px;padding:10px 8px">/, 'the colour-only shorthand shape is untouched');
+  assert.equal(/v:rect/.test(html), false);
 });
 
 /*

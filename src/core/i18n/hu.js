@@ -170,6 +170,8 @@ export const HU = {
   'toast.imageReplaced': 'Kép kicserélve',
   'toast.imageAdded': 'Kép hozzáadva a rajzvászonhoz',
   'toast.htmlCopied': 'HTML a vágólapra másolva',
+  'toast.exportImageOne': '1 kép nem jelenik meg az elküldött levélben — helyőrző vagy data:/cid: forrás',
+  'toast.exportImageMany': '{count} kép nem jelenik meg az elküldött levélben — helyőrző vagy data:/cid: források',
   'toast.templateLoaded': '{name} betöltve',
   'toast.snippetDefaultLabel': 'Részlet',
   'toast.snippetInserted': '{name} beszúrva',

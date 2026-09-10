@@ -170,6 +170,8 @@ export const LT = {
   'toast.imageReplaced': 'Vaizdas pakeistas',
   'toast.imageAdded': 'Vaizdas pridėtas į drobę',
   'toast.htmlCopied': 'HTML nukopijuotas į iškarpinę',
+  'toast.exportImageOne': '1 paveikslėlis nebus rodomas išsiuntus — vietos rezervavimo arba data:/cid: šaltinis',
+  'toast.exportImageMany': '{count} paveikslėliai nebus rodomi išsiuntus — vietos rezervavimo arba data:/cid: šaltiniai',
   'toast.templateLoaded': '{name} įkeltas',
   'toast.snippetDefaultLabel': 'Iškarpa',
   'toast.snippetInserted': '{name} įterptas',

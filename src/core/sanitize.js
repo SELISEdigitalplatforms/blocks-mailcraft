@@ -102,7 +102,10 @@ export const cleanImportHtml = (html, dropProps, keepProps) => {
       });
       Array.from(el.attributes).forEach((at) => {
         const keep = (el.tagName === 'A' && ['href', 'target', 'rel'].indexOf(at.name) > -1)
-          || (el.tagName === 'IMG' && ['src', 'alt', 'width', 'height'].indexOf(at.name) > -1);
+          // `srcset`/`sizes` are the retina sources and `title` the tooltip:
+          // dropped, a template imported for a copy edit came back out
+          // having quietly lost its 2x artwork.
+          || (el.tagName === 'IMG' && ['src', 'alt', 'width', 'height', 'srcset', 'sizes', 'title'].indexOf(at.name) > -1);
         if (!keep) el.removeAttribute(at.name);
       });
       if (kept.length) el.setAttribute('style', kept.join(';'));

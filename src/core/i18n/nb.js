@@ -170,6 +170,8 @@ export const NB = {
   'toast.imageReplaced': 'Bilde erstattet',
   'toast.imageAdded': 'Bilde lagt til på lerretet',
   'toast.htmlCopied': 'HTML kopiert til utklippstavlen',
+  'toast.exportImageOne': '1 bilde vises ikke når e-posten sendes — plassholder eller data:/cid:-kilde',
+  'toast.exportImageMany': '{count} bilder vises ikke når e-posten sendes — plassholder- eller data:/cid:-kilder',
   'toast.templateLoaded': '{name} lastet inn',
   'toast.snippetDefaultLabel': 'Utdrag',
   'toast.snippetInserted': '{name} satt inn',

@@ -170,6 +170,8 @@ export const SL = {
   'toast.imageReplaced': 'Slika zamenjana',
   'toast.imageAdded': 'Slika dodana na platno',
   'toast.htmlCopied': 'HTML kopiran v odložišče',
+  'toast.exportImageOne': '1 slika ob pošiljanju ne bo prikazana — ograda ali vir data:/cid:',
+  'toast.exportImageMany': '{count} slik ob pošiljanju ne bo prikazanih — ograde ali viri data:/cid:',
   'toast.templateLoaded': '{name} naloženo',
   'toast.snippetDefaultLabel': 'Odlomek',
   'toast.snippetInserted': '{name} vstavljeno',

@@ -287,15 +287,84 @@ export function buildHtml(state, root, boxCss, opts) {
       if (b.type === 'condition' || b.type === 'loop') return logic.emit.get(b.id) || '';
       return '<div' + marker(b) + visClass(b.props) + ' style="' + boxCss(b.props) + '">' + grab(b.id) + '</div>';
     }).filter(Boolean).join('\n            ') || '&nbsp;';
-    const cells = r.cols.map((c) => {
+    /*
+     * A COLUMN's own background image -- the photo behind one half of a
+     * two-up row, which until now only the whole row could carry.
+     *
+     * Everything the row's image does (longhands not the shorthand, a solid
+     * rgba tint rather than a gradient layer, VML for Word) it does here for
+     * the same reasons, spelled out at the row's `bgUrl` below. What differs
+     * is where it lands: the painted element is the wrapper <div>, never the
+     * <td>, because the cell also carries the gutter padding and an image on
+     * it would run under the gap between the columns. That also rules out
+     * the `background=`/`bgcolor=` attribute pair -- those exist only on the
+     * cell -- so a column image is CSS plus VML, exactly like the row's
+     * `boxed` branch.
+     */
+    const colPadPx = (c) => (c.padY || 0) + 'px ' + (c.padX || 0) + 'px';
+    /** The column's own pixel width, for `v:rect` (which has no percentages). Content width less the row's side padding, split by span, less the gutter this cell gives up. */
+    const colPxOf = (c) => {
+      const padL = rp.pl ?? rp.px ?? 0;
+      const padR = rp.pr ?? rp.px ?? 0;
+      const innerPx = Math.max(20, (Number(t.width) || 620) - padL - padR);
+      return Math.max(20, Math.round(innerPx * ((c.span || 100) / 100)) - (rp.gap || 0));
+    };
+    /*
+     * One column's content inside its own paint.
+     *
+     * Used by all three layouts. The table path passes `allowVml` because a
+     * `<td>`'s pixel width is well defined there; a grid column is an equal
+     * fraction and a flex column can wrap, so neither offers the fixed
+     * number `v:rect` demands and both stay CSS-only -- Word still gets the
+     * ghost-cell table those layouts already emit.
+     *
+     * Before this was shared, the flex and grid branches called `colInner`
+     * raw: the canvas painted a column's background, border, radius and
+     * padding (render/canvas.js builds the same `host` wrapper for every
+     * layout) and the export dropped all four, so a two-card flex row was
+     * designed as cards and arrived as plain text.
+     */
+    const colPainted = (c, allowVml) => {
       // Column-level styling (bg/radius/inner padding) renders as a wrapper
       // <div> inside the cell so the gutter padding stays unpainted --
       // mirrors render/canvas.js's `host` wrapper.
-      const inner = (c.bg || c.border || c.radius || c.padY || c.padX)
-        ? '<div style="background:' + (c.bg || 'transparent') + ';' + (c.border ? 'border:' + c.border + 'px ' + (c.borderStyle || 'solid') + ' ' + (c.lineColor || '#e2e2e5') + ';' : '') + 'border-radius:' + (c.radius || 0) + 'px;padding:' + (c.padY || 0) + 'px ' + (c.padX || 0) + 'px">\n            ' + colInner(c) + '\n            </div>'
+      const cUrl = c.bgImage ? cssUrl(c.bgImage) : '';
+      const cPaint = cUrl
+        ? 'background-color:' + (c.bg || 'transparent') + ';'
+          + 'background-image:url(' + attrEsc(cUrl) + ');'
+          + 'background-size:' + (c.bgSize || 'cover') + ';'
+          + 'background-position:' + (c.bgPos || 'center') + ';'
+          + 'background-repeat:' + (c.bgRepeat || 'no-repeat') + ';'
+        : 'background:' + (c.bg || 'transparent') + ';';
+      const cOv = cUrl && c.overlay ? c.overlay / 100 : 0;
+      // The tint carries the padding for the same reason the row's does: the
+      // band a reader sees is the padded box, so a tint sized to the content
+      // would leave an untinted ring of bare photo around it.
+      const cBody = cOv
+        ? '<div style="background-color:rgba(20,22,24,' + cOv + ');padding:' + colPadPx(c) + ';">\n            ' + colInner(c) + '\n            </div>'
         : colInner(c);
-      return '<td' + (plan.cell ? ' class="' + plan.cell + '"' : '') + ' width="' + c.span + '%" valign="' + rp.valign + '" style="padding:0 ' + Math.round(rp.gap / 2) + 'px;">\n            ' + inner + '\n          </td>';
-    }).join('\n          ');
+      /*
+       * Word gets the column photo through VML -- but only where the ROW is
+       * not already painting one. Nesting a `v:rect` inside another shape's
+       * `v:textbox` is where Word's layout stops being predictable, and a
+       * row image plus a column image is a design that has already decided
+       * which one it wants on top. Every other client renders both.
+       */
+      let cPainted = cBody;
+      if (cUrl && allowVml && !rp.bgImage) {
+        usedVml = true;
+        const h = Math.max(120, (c.padY || 0) * 2 + Math.max(1, c.blocks.length) * 90);
+        cPainted = '<!--[if gte mso 9]><v:rect fill="true" stroke="false" style="width:' + colPxOf(c) + 'px;height:' + h + 'px;">'
+          + '<v:fill type="frame" src="' + attrEsc(cUrl) + '" color="' + (c.bg || '#ffffff') + '" />'
+          + '<v:textbox inset="0,0,0,0" style="mso-fit-shape-to-text:true"><![endif]-->'
+          + '\n            ' + cBody
+          + '\n            <!--[if gte mso 9]></v:textbox></v:rect><![endif]-->';
+      }
+      return (c.bg || c.bgImage || c.border || c.radius || c.padY || c.padX)
+        ? '<div style="' + cPaint + (c.border ? 'border:' + c.border + 'px ' + (c.borderStyle || 'solid') + ' ' + (c.lineColor || '#e2e2e5') + ';' : '') + 'border-radius:' + (c.radius || 0) + 'px;padding:' + (cOv ? '0px 0px' : colPadPx(c)) + '">\n            ' + cPainted + '\n            </div>'
+        : colInner(c);
+    };
+    const cells = r.cols.map((c) => '<td' + (plan.cell ? ' class="' + plan.cell + '"' : '') + ' width="' + c.span + '%" valign="' + rp.valign + '" style="padding:0 ' + Math.round(rp.gap / 2) + 'px;">\n            ' + colPainted(c, true) + '\n          </td>').join('\n          ');
     // The CSS-layout rows reach the same behaviour through their wrapper: one
     // class on the flex/grid container, so the markup stays exactly as it was
     // for every wide client.
@@ -328,10 +397,10 @@ export function buildHtml(state, root, boxCss, opts) {
     const spanSum = r.cols.reduce((a, c) => a + (c.span || 0), 0) || 100;
     const cssBody = rp.layout === 'grid'
       ? '<div' + mcr + stackWrap + ' style="display:grid;grid-template-columns:repeat(' + gridN + ',minmax(0,1fr));gap:' + rp.gap + 'px">\n            '
-        + ghostCells(r.cols.map((c) => '<div>' + colInner(c) + '</div>'), r.cols.map(() => Math.floor(100 / gridN)), gridN)
+        + ghostCells(r.cols.map((c) => '<div>' + colPainted(c, false) + '</div>'), r.cols.map(() => Math.floor(100 / gridN)), gridN)
         + '\n          </div>'
       : '<div' + mcr + stackWrap + ' style="display:flex;flex-direction:' + (rp.flexDir || 'row') + ';justify-content:' + (rp.justify || 'flex-start') + ';align-items:' + (rp.alignItems || 'stretch') + ';flex-wrap:' + (rp.wrap ? 'wrap' : 'nowrap') + ';gap:' + rp.gap + 'px">\n            '
-        + ghostCells(r.cols.map((c) => '<div style="flex:' + c.span + ' 1 auto;min-width:0">' + colInner(c) + '</div>'),
+        + ghostCells(r.cols.map((c) => '<div style="flex:' + c.span + ' 1 auto;min-width:0">' + colPainted(c, false) + '</div>'),
           r.cols.map((c) => (stacksVertically ? 100 : Math.round(((c.span || 0) / spanSum) * 100))), stacksVertically ? 1 : r.cols.length)
         + '\n          </div>';
     const body = rp.layout && rp.layout !== 'columns'
@@ -634,6 +703,21 @@ export function buildHtml(state, root, boxCss, opts) {
     : 'background:' + pageBg + ';';
   const pageAttr = (pageBg && pageBg !== 'transparent' && !/^rgba\(/.test(pageBg) ? ' bgcolor="' + pageBg + '"' : '')
     + (pageBgUrl ? ' background="' + attrEsc(pageBgUrl) + '"' : '');
+  /*
+   * The page image for Word, which reads neither the attribute nor the CSS.
+   * `v:background` is Word's own element for exactly this, and unlike the
+   * `v:rect` a row needs it takes NO dimensions -- it fills the page -- so
+   * there is no height to estimate. `frame` scales one copy to the page
+   * (the CSS `cover`); `tile` repeats it. First thing in the body, where
+   * Word expects it; every other client skips the conditional.
+   */
+  let pageVml = '';
+  if (pageBgUrl) {
+    usedVml = true;
+    const tile = (t.bgRepeat || 'no-repeat') !== 'no-repeat';
+    pageVml = '\n<!--[if gte mso 9]><v:background fill="true"><v:fill type="' + (tile ? 'tile' : 'frame') + '" src="' + attrEsc(pageBgUrl) + '"'
+      + (pageBg && pageBg !== 'transparent' && !/^rgba\(/.test(pageBg) ? ' color="' + pageBg + '"' : '') + ' /></v:background><![endif]-->';
+  }
   const bodyStyle = 'margin:0;padding:0;' + pagePaint + 'font-family:' + t.font.replace(/"/g, "'") + ';color:' + t.text + ';-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;text-size-adjust:100%;';
-  return msoHarden(stampLinks('<!doctype html>\n<html lang="en"' + docDir + ' xmlns:o="urn:schemas-microsoft-com:office:office"' + (usedVml ? ' xmlns:v="urn:schemas-microsoft-com:vml"' : '') + '>\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<meta name="color-scheme" content="light">\n<meta name="supported-color-schemes" content="light">\n<title>' + 'Email' + '</title>' + msoHead + stackCss + '\n</head>\n<body' + pageAttr + ' style="' + bodyStyle + '">' + preheader + '\n<table role="presentation"' + pageAttr + ' width="100%" cellpadding="0" cellspacing="0" border="0" style="' + pagePaint + '">\n  <tr><td align="center" style="padding:' + pagePad + ';">\n    ' + ghostOpen + '\n    ' + shell + '\n    ' + ghostClose + '\n  </td></tr>\n</table>\n</body>\n</html>'));
+  return msoHarden(stampLinks('<!doctype html>\n<html lang="en"' + docDir + ' xmlns:o="urn:schemas-microsoft-com:office:office"' + (usedVml ? ' xmlns:v="urn:schemas-microsoft-com:vml"' : '') + '>\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<meta name="color-scheme" content="light">\n<meta name="supported-color-schemes" content="light">\n<title>' + 'Email' + '</title>' + msoHead + stackCss + '\n</head>\n<body' + pageAttr + ' style="' + bodyStyle + '">' + pageVml + preheader + '\n<table role="presentation"' + pageAttr + ' width="100%" cellpadding="0" cellspacing="0" border="0" style="' + pagePaint + '">\n  <tr><td align="center" style="padding:' + pagePad + ';">\n    ' + ghostOpen + '\n    ' + shell + '\n    ' + ghostClose + '\n  </td></tr>\n</table>\n</body>\n</html>'));
 }

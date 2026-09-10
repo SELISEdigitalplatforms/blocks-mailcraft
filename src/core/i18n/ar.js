@@ -193,6 +193,8 @@ export const AR = {
   'toast.imageReplaced': 'تم استبدال الصورة',
   'toast.imageAdded': 'تمت إضافة الصورة إلى اللوحة',
   'toast.htmlCopied': 'تم نسخ HTML إلى الحافظة',
+  'toast.exportImageOne': 'صورة واحدة لن تظهر عند الإرسال — عنصر نائب أو مصدر data:/cid:',
+  'toast.exportImageMany': '{count} صور لن تظهر عند الإرسال — عناصر نائبة أو مصادر data:/cid:',
   'toast.templateLoaded': 'تم تحميل {name}',
   'toast.snippetDefaultLabel': 'مقتطف',
   'toast.snippetInserted': 'تم إدراج {name}',

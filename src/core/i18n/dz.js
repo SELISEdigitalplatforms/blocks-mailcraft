@@ -195,6 +195,8 @@ export const DZ = {
   'toast.imageReplaced': 'གཟུགས་བརྙན་ཚབ་བཙུགས་བྱུང',
   'toast.imageAdded': 'ཐིག་ཁྲམ་ལུ་གཟུགས་བརྙན་ཁ་སྣོན་བྱུང',
   'toast.htmlCopied': 'HTML ཀ་ལིཔ་བོརཌ་ལུ་འདྲ་བཤུས་བྱུང',
+  'toast.exportImageOne': 'པར་ ༡ གཏང་བའི་སྐབས་ མི་སྟོན། — ཚབ་མའི་ ཡང་ན་ data:/cid: འབྱུང་ཁུངས།',
+  'toast.exportImageMany': 'པར་ {count} གཏང་བའི་སྐབས་ མི་སྟོན། — ཚབ་མའི་ ཡང་ན་ data:/cid: འབྱུང་ཁུངས།',
   'toast.templateLoaded': '{name} འདྲེན་སྤྱོད་བྱུང',
   'toast.snippetDefaultLabel': 'ཡིག་ཐིག',
   'toast.snippetInserted': '{name} བཙུགས་བྱུང',

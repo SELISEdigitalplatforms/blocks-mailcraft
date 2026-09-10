@@ -67,6 +67,41 @@ await it('an image becomes an image block with its dimensions and link', async (
   assert.equal(b.props.href, 'https://example.com');
 });
 
+await it('an image sized in pixels keeps the pixels, and its retina sources, tooltip and aspect ratio come with it', async () => {
+  const b = firstOf(email('<tr><td><img src="https://cdn.test/logo.png" width="88" height="32" alt="Logo" title="Acme" srcset="https://cdn.test/logo.png 1x, https://cdn.test/logo@2x.png 2x" sizes="88px"></td></tr>'), 'image');
+  assert.ok(b);
+  assert.equal(b.props.wUnit, 'px', 'the source said 88, not "about 15% of the column"');
+  assert.equal(b.props.wpx, 88);
+  assert.ok(b.props.width > 0 && b.props.width <= 100, 'the percentage stays as the responsive fallback');
+  assert.equal(b.props.srcset, 'https://cdn.test/logo.png 1x, https://cdn.test/logo@2x.png 2x');
+  assert.equal(b.props.sizes, '88px');
+  assert.equal(b.props.title, 'Acme');
+  assert.equal(b.props.ratio, 0.3636, '32/88, for the height that reserves the box');
+});
+
+await it('a full-width image stays a percentage -- a px width attribute beside width:100% is the Word floor, not a pin', async () => {
+  const fluid = firstOf(email('<tr><td><img src="https://cdn.test/hero.png" style="width:100%;height:auto;max-width:100%" width="600" alt="Hero"></td></tr>'), 'image');
+  assert.equal(fluid.props.wUnit, undefined, 'this exporter\'s own full-width shape must not freeze at 600px');
+  assert.equal(fluid.props.width, 100);
+  // Same from the other end: a pixel width that already fills the column.
+  const wide = firstOf(email('<tr><td><img src="https://cdn.test/hero.png" width="600" alt="Hero"></td></tr>'), 'image');
+  assert.equal(wide.props.wUnit, undefined);
+});
+
+await it('a column background image is read onto the column, not the row', async () => {
+  const html = email('<tr>'
+    + '<td width="50%" background="https://cdn.test/side.jpg" style="background-image:url(https://cdn.test/side.jpg);background-size:contain;background-position:left top"><p style="margin:0">over the photo</p></td>'
+    + '<td width="50%" style="background:#ffffff"><p style="margin:0">plain neighbour</p></td>'
+    + '</tr>');
+  const r = rowsOf(html).find((x) => x.cols.length === 2);
+  assert.ok(r, 'two columns survived');
+  assert.equal(r.cols[0].bgImage, 'https://cdn.test/side.jpg');
+  assert.equal(r.cols[0].bgSize, 'contain');
+  assert.equal(r.cols[0].bgPos, 'left top');
+  assert.equal(r.cols[1].bgImage, undefined, 'the neighbour stays clean');
+  assert.ok(!r.props.bgImage, 'and it is not promoted to the whole section');
+});
+
 await it('a padded anchor becomes a button, not a text link', async () => {
   const b = firstOf(email('<tr><td><a href="https://example.com" style="background-color:#0065b3;color:#ffffff;padding:14px 28px;display:inline-block;border-radius:6px">Shop</a></td></tr>'), 'button');
   assert.ok(b, 'classified as a button');

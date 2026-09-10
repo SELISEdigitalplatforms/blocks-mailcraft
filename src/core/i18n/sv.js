@@ -170,6 +170,8 @@ export const SV = {
   'toast.imageReplaced': 'Bild ersatt',
   'toast.imageAdded': 'Bild tillagd på canvasen',
   'toast.htmlCopied': 'HTML kopierad till urklipp',
+  'toast.exportImageOne': '1 bild visas inte när mejlet skickas — platshållare eller data:/cid:-källa',
+  'toast.exportImageMany': '{count} bilder visas inte när mejlet skickas — platshållar- eller data:/cid:-källor',
   'toast.templateLoaded': '{name} inläst',
   'toast.snippetDefaultLabel': 'Snutt',
   'toast.snippetInserted': '{name} infogad',

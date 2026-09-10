@@ -170,6 +170,8 @@ export const FR = {
   'toast.imageReplaced': 'Image remplacée',
   'toast.imageAdded': 'Image ajoutée au canevas',
   'toast.htmlCopied': 'HTML copié dans le presse-papiers',
+  'toast.exportImageOne': '1 image ne s’affichera pas à l’envoi — source d’espace réservé ou data:/cid:',
+  'toast.exportImageMany': '{count} images ne s’afficheront pas à l’envoi — sources d’espace réservé ou data:/cid:',
   'toast.templateLoaded': '{name} chargé',
   'toast.snippetDefaultLabel': 'Extrait',
   'toast.snippetInserted': '{name} inséré',

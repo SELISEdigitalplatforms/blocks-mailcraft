@@ -170,6 +170,8 @@ export const DA = {
   'toast.imageReplaced': 'Billede erstattet',
   'toast.imageAdded': 'Billede tilføjet til lærredet',
   'toast.htmlCopied': 'HTML kopieret til udklipsholder',
+  'toast.exportImageOne': '1 billede vises ikke, når mailen sendes — pladsholder eller data:/cid:-kilde',
+  'toast.exportImageMany': '{count} billeder vises ikke, når mailen sendes — pladsholder- eller data:/cid:-kilder',
   'toast.templateLoaded': '{name} indlæst',
   'toast.snippetDefaultLabel': 'Uddrag',
   'toast.snippetInserted': '{name} indsat',

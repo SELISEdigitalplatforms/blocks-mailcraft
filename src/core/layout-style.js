@@ -93,6 +93,31 @@ export function rowBg(p) {
   };
 }
 
+/**
+ * A column's paint for the canvas, the counterpart of `rowBg` one level in.
+ *
+ * Unpainted or colour-only columns keep the single `background` shorthand
+ * they have always drawn with, so nothing about an existing document's DOM
+ * changes. Only a column that actually carries an image switches to the
+ * longhands -- with the tint as a gradient layer, which is safe here because
+ * the canvas is a browser, not an email client (the exporter writes the same
+ * tint as its own rgba box instead; core/export.js says why).
+ */
+export function colBg(c) {
+  if (!c.bgImage) return { background: c.bg || 'transparent' };
+  const ov = (c.overlay || 0) / 100;
+  const layers = [];
+  if (ov) layers.push('linear-gradient(rgba(20,22,24,' + ov + '),rgba(20,22,24,' + ov + '))');
+  layers.push('url("' + cssUrl(c.bgImage) + '")');
+  return {
+    backgroundColor: c.bg || 'transparent',
+    backgroundImage: layers.join(','),
+    backgroundSize: c.bgSize || 'cover',
+    backgroundPosition: c.bgPos || 'center',
+    backgroundRepeat: c.bgRepeat || 'no-repeat',
+  };
+}
+
 export function colsWrap(p) {
   const gap = p.gap || 0;
   if (p.layout === 'grid') return { display: 'grid', gridTemplateColumns: 'repeat(' + (p.gridCols || 2) + ', minmax(0, 1fr))', gap: gap + 'px' };

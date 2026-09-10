@@ -170,6 +170,8 @@ export const ET = {
   'toast.imageReplaced': 'Pilt asendatud',
   'toast.imageAdded': 'Pilt lisatud lõuendile',
   'toast.htmlCopied': 'HTML kopeeritud lõikelauale',
+  'toast.exportImageOne': '1 pilti ei kuvata saatmisel — kohatäite või data:/cid: allikas',
+  'toast.exportImageMany': '{count} pilti ei kuvata saatmisel — kohatäite või data:/cid: allikad',
   'toast.templateLoaded': '{name} laaditud',
   'toast.snippetDefaultLabel': 'Katke',
   'toast.snippetInserted': '{name} lisatud',

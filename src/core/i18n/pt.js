@@ -170,6 +170,8 @@ export const PT = {
   'toast.imageReplaced': 'Imagem substituída',
   'toast.imageAdded': 'Imagem adicionada à tela',
   'toast.htmlCopied': 'HTML copiado para a área de transferência',
+  'toast.exportImageOne': '1 imagem não será exibida ao enviar — origem de marcador de posição ou data:/cid:',
+  'toast.exportImageMany': '{count} imagens não serão exibidas ao enviar — origens de marcador de posição ou data:/cid:',
   'toast.templateLoaded': '{name} carregado',
   'toast.snippetDefaultLabel': 'Trecho',
   'toast.snippetInserted': '{name} inserido',

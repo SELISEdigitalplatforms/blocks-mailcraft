@@ -170,6 +170,8 @@ export const LV = {
   'toast.imageReplaced': 'Attēls aizstāts',
   'toast.imageAdded': 'Attēls pievienots audeklam',
   'toast.htmlCopied': 'HTML nokopēts starpliktuvē',
+  'toast.exportImageOne': '1 attēls netiks rādīts pēc nosūtīšanas — vietturis vai data:/cid: avots',
+  'toast.exportImageMany': '{count} attēli netiks rādīti pēc nosūtīšanas — vietturi vai data:/cid: avoti',
   'toast.templateLoaded': '{name} ielādēts',
   'toast.snippetDefaultLabel': 'Fragments',
   'toast.snippetInserted': '{name} ievietots',

@@ -170,6 +170,8 @@ export const ES = {
   'toast.imageReplaced': 'Imagen reemplazada',
   'toast.imageAdded': 'Imagen añadida al lienzo',
   'toast.htmlCopied': 'HTML copiado al portapapeles',
+  'toast.exportImageOne': '1 imagen no se mostrará al enviarse — origen de marcador de posición o data:/cid:',
+  'toast.exportImageMany': '{count} imágenes no se mostrarán al enviarse — orígenes de marcador de posición o data:/cid:',
   'toast.templateLoaded': '{name} cargado',
   'toast.snippetDefaultLabel': 'Fragmento',
   'toast.snippetInserted': '{name} insertado',

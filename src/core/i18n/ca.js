@@ -170,6 +170,8 @@ export const CA = {
   'toast.imageReplaced': 'Imatge substituïda',
   'toast.imageAdded': 'Imatge afegida al llenç',
   'toast.htmlCopied': 'HTML copiat al porta-retalls',
+  'toast.exportImageOne': '1 imatge no es mostrarà en enviar-se — origen de marcador de posició o data:/cid:',
+  'toast.exportImageMany': '{count} imatges no es mostraran en enviar-se — orígens de marcador de posició o data:/cid:',
   'toast.templateLoaded': '{name} carregat',
   'toast.snippetDefaultLabel': 'Fragment',
   'toast.snippetInserted': '{name} inserit',

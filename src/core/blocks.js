@@ -289,7 +289,7 @@ export function normalizeDoc(input) {
           // rebuilding the column without them silently stripped a card
           // column's paint on every loadDoc/loadTemplate, before export ever
           // saw it.
-          ['bg', 'radius', 'padY', 'padX', 'border', 'borderStyle', 'lineColor'].forEach((k) => {
+          ['bg', 'bgImage', 'bgSize', 'bgPos', 'bgRepeat', 'overlay', 'radius', 'padY', 'padX', 'border', 'borderStyle', 'lineColor'].forEach((k) => {
             if (c[k] !== undefined && c[k] !== '' && c[k] !== 0) col[k] = c[k];
           });
           return col;

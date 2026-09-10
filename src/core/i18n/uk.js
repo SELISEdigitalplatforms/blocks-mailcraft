@@ -170,6 +170,8 @@ export const UK = {
   'toast.imageReplaced': 'Зображення замінено',
   'toast.imageAdded': 'Зображення додано на полотно',
   'toast.htmlCopied': 'HTML скопійовано в буфер обміну',
+  'toast.exportImageOne': '1 зображення не відображатиметься після надсилання — заповнювач або джерело data:/cid:',
+  'toast.exportImageMany': '{count} зображень не відображатимуться після надсилання — заповнювачі або джерела data:/cid:',
   'toast.templateLoaded': '{name} завантажено',
   'toast.snippetDefaultLabel': 'Фрагмент',
   'toast.snippetInserted': '{name} вставлено',

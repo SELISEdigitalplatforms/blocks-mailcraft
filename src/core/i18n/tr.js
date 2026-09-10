@@ -170,6 +170,8 @@ export const TR = {
   'toast.imageReplaced': 'Görsel değiştirildi',
   'toast.imageAdded': 'Görsel tuvale eklendi',
   'toast.htmlCopied': 'HTML panoya kopyalandı',
+  'toast.exportImageOne': '1 görsel gönderildiğinde görüntülenmeyecek — yer tutucu veya data:/cid: kaynağı',
+  'toast.exportImageMany': '{count} görsel gönderildiğinde görüntülenmeyecek — yer tutucu veya data:/cid: kaynakları',
   'toast.templateLoaded': '{name} yüklendi',
   'toast.snippetDefaultLabel': 'Snippet',
   'toast.snippetInserted': '{name} eklendi',

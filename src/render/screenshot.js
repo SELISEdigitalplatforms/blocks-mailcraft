@@ -97,11 +97,22 @@ async function inlineExternalImages(root) {
     ));
   });
   root.querySelectorAll('[style]').forEach((el) => {
-    const m = (el.style.backgroundImage || '').match(/url\(["']?(?!data:)([^"')]+)["']?\)/);
+    /*
+     * Only the `url(...)` layer is rewritten, never the whole declaration.
+     * A tinted section paints `linear-gradient(rgba(20,22,24,α),…),url(…)`
+     * (core/layout-style.js), and replacing the property wholesale dropped
+     * the gradient -- so every darkened hero came out of the screenshot
+     * lighter than the canvas it was captured from. A fetch that fails
+     * leaves a transparent pixel in the layer's place rather than `none`,
+     * which would be invalid inside a layer list and would take the tint
+     * down with it a second way.
+     */
+    const decl = el.style.backgroundImage || '';
+    const m = decl.match(/url\(["']?(?!data:)([^"')]+)["']?\)/);
     if (!m) return;
     jobs.push(toDataUri(m[1]).then(
-      (uri) => { el.style.backgroundImage = 'url("' + uri + '")'; },
-      () => { el.style.backgroundImage = 'none'; },
+      (uri) => { el.style.backgroundImage = decl.replace(m[0], 'url("' + uri + '")'); },
+      () => { el.style.backgroundImage = decl.replace(m[0], 'url("' + BLANK_PIXEL + '")'); },
     ));
   });
   // The legacy `background` attribute -- what an imported Outlook-first

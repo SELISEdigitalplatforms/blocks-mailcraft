@@ -170,6 +170,8 @@ export const BG = {
   'toast.imageReplaced': 'Изображението е заменено',
   'toast.imageAdded': 'Изображението е добавено към платното',
   'toast.htmlCopied': 'HTML е копиран в клипборда',
+  'toast.exportImageOne': '1 изображение няма да се показва при изпращане — заместващ или data:/cid: източник',
+  'toast.exportImageMany': '{count} изображения няма да се показват при изпращане — заместващи или data:/cid: източници',
   'toast.templateLoaded': '{name} е зареден',
   'toast.snippetDefaultLabel': 'Откъс',
   'toast.snippetInserted': '{name} е вмъкнат',

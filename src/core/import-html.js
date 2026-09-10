@@ -256,6 +256,30 @@ function readVmlBackgrounds(doc) {
   });
 }
 
+/**
+ * A column's background image, read off whichever element carries it -- the
+ * `<td>` itself in a foreign template, or the styled wrapper `<div>` this
+ * exporter writes inside it. Mirrors what `applyBgImage` does for a row, one
+ * level in, and writes nothing when the element has no image, so a
+ * colour-only column is untouched.
+ *
+ * The tint and the VML-only variants need no special case here: `unwrapTints`
+ * and `readVmlBackgrounds` have already normalised both into a plain layered
+ * background on this element by the time the column walk runs.
+ */
+function applyColBgImage(col, el) {
+  if (!col || !el) return;
+  const url = bgImageOf(el);
+  if (!url || col.bgImage) return;
+  const st = el.style || {};
+  col.bgImage = url;
+  const ov = overlayOf(el);
+  if (ov) col.overlay = ov;
+  if (st.backgroundSize) col.bgSize = st.backgroundSize;
+  if (st.backgroundPosition) col.bgPos = st.backgroundPosition;
+  if (st.backgroundRepeat) col.bgRepeat = st.backgroundRepeat;
+}
+
 function unwrapTints(doc) {
   Array.from(doc.body.querySelectorAll('*')).forEach((host) => {
     const url = bgImageOf(host);
@@ -483,6 +507,39 @@ function classifyImage(el) {
   } else if (pctHint) {
     width = PX(pctHint);
   }
+  /*
+   * A PIXEL width, kept as pixels.
+   *
+   * The percentage above is still computed -- it stays the responsive
+   * fallback and what the Width slider shows -- but a source that said
+   * `width="88"` and nothing else meant 88, and rounding that into 15% of a
+   * 600px column both lost 5px and made the value drift on every save (15%
+   * of the next column width is not 88). `wpx` pins the number the source
+   * actually gave; render/block-body.js writes it straight back out, so the
+   * document is a fixed point.
+   *
+   * Only when the source expressed NO percentage at all. `width:100%` on the
+   * image with a `width` attribute beside it is this exporter's own
+   * full-width shape (the attribute is the floor Word reads, not a pin), and
+   * reading that as a pixel width would freeze every responsive hero at the
+   * column width it happened to be exported from. The same guard, from the
+   * other end: a pixel hint that already fills the column is full-width, so
+   * it stays a percentage too.
+   */
+  const colPxForPin = ancestorPxWidth(img) || 600;
+  const pinPx = !pctHint && pxHint && PX(pxHint) > 0 && PX(pxHint) < colPxForPin * 0.98
+    ? Math.round(PX(pxHint))
+    : 0;
+  /*
+   * The source's aspect ratio, so the export can reserve the image's box
+   * with a `height` attribute (block-body.js explains why that matters with
+   * images blocked). Taken only where the source gave both dimensions --
+   * never derived from one of them -- and rounded, so it stays a short
+   * number in the saved JSON and a stable one across reloads.
+   */
+  const ratioW = attrW > 1 ? attrW : (cssW > 1 ? cssW : 0);
+  const ratioH = attrH > 1 ? attrH : (cssH > 1 ? cssH : 0);
+  const ratio = ratioW && ratioH ? Math.round((ratioH / ratioW) * 10000) / 10000 : 0;
   const over = {
     // `//cdn/x.png` is a relative URL to a mail client (there is no page
     // origin to resolve it against), so it gets the scheme the same way a
@@ -496,6 +553,22 @@ function classifyImage(el) {
     // the corners of every imported image that had none.
     radius: PX(img.style.borderRadius) || 0,
   };
+  if (pinPx) { over.wUnit = 'px'; over.wpx = pinPx; }
+  if (ratio) over.ratio = ratio;
+  /*
+   * Retina sources and the tooltip, previously dropped on the floor: a
+   * template imported for a copy edit came back out having lost its 2x
+   * artwork. `sizes` only rides along with a `srcset` -- on its own it
+   * describes nothing.
+   */
+  const srcset = String(img.getAttribute('srcset') || '').trim();
+  if (srcset) {
+    over.srcset = srcset;
+    const sizes = String(img.getAttribute('sizes') || '').trim();
+    if (sizes) over.sizes = sizes;
+  }
+  const title = String(img.getAttribute('title') || '').trim();
+  if (title) over.title = title;
   // The block's own spacing lives on the wrapper the exporter writes
   // (`padding: py px`); unread, it reset to 0/0 on every save.
   if (el !== img && el.style) {
@@ -1416,7 +1489,20 @@ function isPassthroughTable(tb) {
   // rowsFromContentTable mints from it.
   if (trs[0].getAttribute('data-mc-logic')) return false;
   const cells = Array.from(trs[0].children).filter((c) => c.tagName === 'TD' || c.tagName === 'TH');
-  return cells.length === 1;
+  if (cells.length !== 1) return false;
+  /*
+   * The same rule as the logic marker above, one level in. A flex/grid row
+   * IS a row, and it is a div -- the exporter stamps its settings on that
+   * div as `data-mcr`. Passing the cell through walks the div as ordinary
+   * content, so each column div became a row of its own: a document whose
+   * ONLY row was a flex or grid row reloaded as N stacked one-column rows
+   * with the layout, the spans and any column paint gone. With two or more
+   * rows the content table was never a passthrough, so the bug needed a
+   * single-row document to show itself.
+   */
+  const lone = onlyChild(cells[0], 'DIV');
+  if (lone && lone.getAttribute && lone.getAttribute('data-mcr')) return false;
+  return true;
 }
 
 /** CSSOM hands colors back as `rgb(r, g, b)` even when the source (and the
@@ -1783,6 +1869,7 @@ function rowsFromContentTable(table) {
       cells.forEach((cell, i) => {
         const col = row.cols[i]; if (!col) return;
         const cbg = bgOf(cell); if (cbg) col.bg = cbg;
+        applyColBgImage(col, cell);
         const crad = radiusOf(cell.style); if (crad) col.radius = crad;
         const cframe = borderSidesOf(cell.style);
         if (cframe.width) {
@@ -1839,10 +1926,15 @@ function rowsFromContentTable(table) {
       // its children, or the whole card collapses into one opaque text blob.
       let contentEl = cell;
       const lone = onlyChild(cell, 'DIV');
-      if (lone && (bgOf(lone) || radiusOf(lone.style) || borderSidesOf(lone.style).width) && !classifyNode(lone)) {
+      if (lone && (bgOf(lone) || bgImageOf(lone) || radiusOf(lone.style) || borderSidesOf(lone.style).width) && !classifyNode(lone)) {
         const col = row.cols[i];
         if (col) {
           const cbg = bgOf(lone); if (cbg && !col.bg) col.bg = cbg;
+          // The column's own photo ships on this same wrapper (core/export.js
+          // writes the paint, the border, the radius and the padding
+          // together), so it is read back from here too -- otherwise a
+          // two-up row with a photo in one column lost it on every reload.
+          applyColBgImage(col, lone);
           const crad = radiusOf(lone.style); if (crad && !col.radius) col.radius = crad;
           // The column's own border ships on this same wrapper (core/export.js
           // writes bg, border, radius and padding together); reading everything

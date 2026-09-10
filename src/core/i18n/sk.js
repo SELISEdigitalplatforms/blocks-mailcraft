@@ -170,6 +170,8 @@ export const SK = {
   'toast.imageReplaced': 'Obrázok nahradený',
   'toast.imageAdded': 'Obrázok pridaný na plátno',
   'toast.htmlCopied': 'HTML skopírované do schránky',
+  'toast.exportImageOne': '1 obrázok sa po odoslaní nezobrazí — zástupný alebo data:/cid: zdroj',
+  'toast.exportImageMany': '{count} obrázkov sa po odoslaní nezobrazí — zástupné alebo data:/cid: zdroje',
   'toast.templateLoaded': '{name} načítané',
   'toast.snippetDefaultLabel': 'Úryvok',
   'toast.snippetInserted': '{name} vložené',

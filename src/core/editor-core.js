@@ -218,6 +218,47 @@ export const AI_TONES = [
 /** Every goal string, flattened -- the order the `<select>` presents them in. */
 export const AI_GOAL_VALUES = AI_GOALS.flatMap((g) => g.items);
 
+
+/**
+ * What the editor knows about an image source that no control can express.
+ *
+ * All three of these render fine on the canvas and then arrive broken -- or
+ * as an empty box -- in a real inbox, which is exactly the failure nobody
+ * catches before sending: the built-in placeholder is an SVG data URI, and
+ * Gmail and Outlook block data URIs outright; a `cid:` source only resolves
+ * inside a sent message that actually carries the attachment.
+ */
+export function imageSourceNotes(src) {
+  const s = String(src || '');
+  if (/^cid:/i.test(s)) return ['Attached image (cid:). It cannot resolve in the editor or a preview -- only in a sent message that carries the attachment.'];
+  if (!/^data:/i.test(s)) return [];
+  /*
+   * The built-in placeholder, told apart from any other SVG data URI by the
+   * hatched pattern `core/placeholder.js` draws and nothing else does -- the
+   * demo templates ship real illustrations as data URIs too, and calling
+   * those "a placeholder" would be simply untrue. Both still warn: the
+   * reason differs, the outcome in Gmail and Outlook does not.
+   */
+  if (/pattern%20id%3D%22s%22/.test(s)) return ['Placeholder, not artwork. Gmail and Outlook block data: images, so this ships as an empty box -- replace it from the library before sending.'];
+  return ['A data: image is blocked by Gmail and Outlook and inflates the message. Upload the file and use its URL instead.'];
+}
+
+/** Every image source in the document that `imageSourceNotes` objects to -- block artwork and the three background-image slots alike, since a placeholder behind a row ships just as silently as one in an image block. */
+export function unsendableSources(doc) {
+  const out = [];
+  const check = (v) => { if (imageSourceNotes(v).length) out.push(String(v)); };
+  const t = (doc && doc.theme) || {};
+  check(t.bgImage); check(t.contentBgImage);
+  ((doc && doc.rows) || []).forEach((r) => {
+    check(r.props && r.props.bgImage);
+    (r.cols || []).forEach((c) => {
+      check(c.bgImage);
+      (c.blocks || []).forEach((b) => check(b.props && b.props.src));
+    });
+  });
+  return out;
+}
+
 export class EditorCore {
   constructor({ variables, aiProvider, iconProvider, messages, storageProvider, storageLimits } = {}) {
     this.variablesRaw = variables ?? null;
@@ -899,6 +940,24 @@ export class EditorCore {
     if (rewrote) this.editStale = id;
   }
 
+  /**
+   * Several props of one block in ONE undo step.
+   *
+   * `setProp` twice is two entries in the history, so a control that has to
+   * move a pair together -- switching an image's width to pixels seeds the
+   * pixel value at the same moment -- would otherwise need two Ctrl-Z to put
+   * back. No rich-content sync here: this is for plain value props, not the
+   * `html`/`size` pair `setProp` guards.
+   */
+  setProps(id, patch) {
+    this.commit((doc) => {
+      const f = this.find(doc, id);
+      const target = f.block ? f.block.props : (f.row ? f.row.props : null);
+      if (!target) return;
+      Object.assign(target, patch);
+    });
+  }
+
   setTheme(key, val) { this.commit((doc) => { doc.theme[key] = val; }); }
 
   /** Column-level styling (`bg`, `radius`, `padY`, `padX` on a col object -- all optional, absent means unstyled). What lets one section hold differently-colored card columns, which row-level props can't express. */
@@ -1436,8 +1495,22 @@ export class EditorCore {
     const t = this.state.assetTarget;
     if (t) {
       // `{ theme: true, key }` targets the document's own paint (the content
-      // area's background image); everything else is a block or row id.
+      // area's background image); `{ id, ci, key }` one column of a row;
+      // everything else is a block or row id.
       if (t.theme) this.setTheme(t.key, a.url);
+      else if (t.ci !== undefined) this.setColProp(t.id, t.ci, t.key || 'bgImage', a.url);
+      // Artwork picked from the library knows its own dimensions, so the
+      // aspect ratio comes with it -- that is what lets the export write a
+      // `height` beside the `width` and reserve the image's box while the
+      // recipient still has images blocked (render/block-body.js). Both
+      // props in one undo step, and only for an image block's own source.
+      // Guarded on the block actually BEING an image: a video block's
+      // thumbnail picker uses the same `src` key, and a ratio there is a
+      // prop nothing reads -- which the video's `data-mcp` marker would then
+      // carry into every export.
+      else if ((t.key || 'src') === 'src' && a.w > 0 && a.ht > 0 && (this.find(this.state.doc, t.id || t).block || {}).type === 'image') {
+        this.setProps(t.id || t, { src: a.url, ratio: Math.round((a.ht / a.w) * 10000) / 10000 });
+      }
       else this.setProp(t.id || t, t.key || 'src', a.url);
       this.setState({ libraryOpen: false, assetTarget: null });
       this.flash(this.t('toast.imageReplaced'));
@@ -1460,6 +1533,16 @@ export class EditorCore {
 
   openExport = () => {
     this.setState({ exportOpen: true, exportCode: this.buildHtml(), copied: false, libraryOpen: false, aiOpen: false, codeOpen: false });
+    /*
+     * The preflight, at the one moment it can still change the outcome: the
+     * author is about to take the HTML out of the editor. A placeholder or a
+     * data:/cid: source renders perfectly on the canvas and arrives as an
+     * empty box in the inbox, which is precisely why it ships unnoticed --
+     * nothing in the editor ever said so. Named here, not blocked: a `cid:`
+     * source is legitimate for a host that attaches the file at send time.
+     */
+    const bad = unsendableSources(this.state.doc);
+    if (bad.length) this.flash(bad.length === 1 ? this.t('toast.exportImageOne') : this.t('toast.exportImageMany', { count: bad.length }));
   };
 
   copyExport = () => {
@@ -1606,7 +1689,55 @@ export class EditorCore {
             ? [{ kind: 'richLinks', label: 'Links', html: b.props.html || '', onChange: (v) => this.setProp(b.id, 'html', v) }]
             : [],
           [B.area('Text', 'html'), B.sel('Font', 'fontFamily', this.fontOptions(true, b.props.fontFamily)), B.range('Text size', 'size', ...SIZE_SPAN.text, 1, 'px'), B.range('Line spacing', 'lh', 0.8, 3, 0.05, ''), B.seg('Align', 'align', ALIGN), B.sel('Text weight', 'weight', [{ value: '400', label: 'Regular' }, { value: '500', label: 'Medium' }, { value: '700', label: 'Bold' }]), B.color('Text color', 'color')], padF));
-        case 'image': return decorate(base.concat([B.btn('Choose from library', () => this.openLibrary({ id: b.id, key: 'src' })), B.text('Alt text', 'alt', 'Describe the image'), B.text('Link URL', 'href', 'https://'), B.range('Width', 'width', 5, 100, 1, '%'), B.seg('Align', 'align', ALIGN), B.range('Rounded corners', 'radius', 0, 200, 1, 'px')], padF));
+        case 'image': {
+          /*
+           * Width in PERCENT or in PIXELS.
+           *
+           * Percent is the default and the right answer for a hero -- it
+           * follows the column on every screen. It cannot say "88px",
+           * though, and forcing a logo through it both rounded the size
+           * (88 of 620 is 14.2%) and let it drift: the next save re-derived
+           * the percentage from the rounded pixels. Pixels pin the number
+           * exactly, and `max-width:100%` in the sent mail keeps a pinned
+           * image from holding a phone column open.
+           *
+           * Switching to pixels seeds the current on-canvas size, so the
+           * image does not jump at the moment of the switch -- and both
+           * props move in ONE undo step (`setProps`).
+           */
+          const colSpan = Number((this.find(this.state.doc, b.id).col || {}).span) || 100;
+          const colPx = Math.max(20, Math.round((Number(this.state.doc.theme.width) || 620) * (colSpan / 100)));
+          const pinned = b.props.wUnit === 'px';
+          const unitSeg = {
+            kind: 'seg',
+            label: 'Width unit',
+            options: [{ value: 'pct', label: 'Percent' }, { value: 'px', label: 'Pixels' }].map((o) => {
+              const on = (o.value === 'px') === pinned;
+              return {
+                label: o.label,
+                bg: on ? 'var(--ed-accent)' : 'transparent',
+                fg: on ? 'var(--ed-accent-ink)' : 'var(--ed-muted)',
+                onClick: () => {
+                  if (o.value === 'px') {
+                    this.setProps(b.id, { wUnit: 'px', wpx: Number(b.props.wpx) > 0 ? Number(b.props.wpx) : Math.max(1, Math.round(colPx * ((Number(b.props.width) || 100) / 100))) });
+                  } else {
+                    // The percentage the pinned size currently amounts to,
+                    // so the image does not jump back either.
+                    this.setProps(b.id, { wUnit: 'pct', width: Math.max(5, Math.min(100, Math.round(((Number(b.props.wpx) || colPx) / colPx) * 100))) });
+                  }
+                },
+              };
+            }),
+          };
+          return decorate(base.concat(
+            [B.btn('Choose from library', () => this.openLibrary({ id: b.id, key: 'src' }))],
+            imageSourceNotes(b.props.src).map((n) => B.note(n)),
+            [B.text('Alt text', 'alt', 'Describe the image'), B.text('Link URL', 'href', 'https://'), unitSeg],
+            [pinned ? B.range('Width', 'wpx', 8, Math.max(200, colPx), 1, 'px') : B.range('Width', 'width', 5, 100, 1, '%')],
+            [B.seg('Align', 'align', ALIGN), B.range('Rounded corners', 'radius', 0, 200, 1, 'px')],
+            padF,
+          ));
+        }
         case 'button': return decorate(base.concat([B.text('Label', 'label'), B.text('Link URL', 'href', 'https://'), B.color('Button color', 'bg'), B.color('Text color', 'color'), B.sel('Font', 'fontFamily', this.fontOptions(true, b.props.fontFamily)), B.range('Text size', 'size', 8, 48, 1, 'px'), B.range('Rounded corners', 'radius', 0, 60, 1, 'px'), B.range('Outline thickness', 'borderW', 0, 6, 1, 'px')].concat(b.props.borderW ? [B.sel('Outline style', 'borderStyle', BORDER_STYLES), B.color('Outline color', 'borderColor')] : []).concat([B.range('Button height', 'py', 0, 60, 1, 'px'), B.range('Button width', 'px', 0, 120, 2, 'px'), B.seg('Align', 'align', ALIGN), B.tog('Full width', 'full')])));
         case 'divider': return decorate(base.concat([B.range('Thickness', 'thickness', 1, 20, 1, 'px'), B.sel('Line style', 'lineStyle', BORDER_STYLES), B.range('Width', 'width', 5, 100, 5, '%'), B.color('Color', 'color'), B.range('Space above & below', 'py', 0, 160, 2, 'px')]));
         case 'spacer': return decorate(base.concat([B.range('Height', 'height', 0, 400, 2, 'px')]));
@@ -1727,6 +1858,19 @@ export class EditorCore {
           return acc.concat([
             B.head('Column ' + (ci + 1)),
             CB.color('Background color', 'bg'),
+            // A photo behind ONE column of a row -- the two-up "image beside
+            // copy" band that until now could only be built by putting the
+            // image in the column as a block, where it could not sit behind
+            // the text. Same three controls the section background offers,
+            // in the same order, so the two read as one feature at two
+            // scales.
+            CB.btn(c.bgImage ? 'Change background image' : 'Add background image', () => this.openLibrary({ id: r.id, ci, key: 'bgImage' })),
+            ...(c.bgImage ? [
+              CB.btn('Remove background image', () => this.setColProp(r.id, ci, 'bgImage', '')),
+              CB.sel('Image fit', 'bgSize', BG_FIT),
+              CB.sel('Image position', 'bgPos', BG_POS),
+              CB.range('Darken image', 'overlay', 0, 100, 1, '%'),
+            ] : []),
             CB.range('Border thickness', 'border', 0, 20, 1, 'px'),
             ...(c.border ? [CB.sel('Border style', 'borderStyle', BORDER_STYLES), CB.color('Border color', 'lineColor')] : []),
             CB.range('Rounded corners', 'radius', 0, 100, 1, 'px'),

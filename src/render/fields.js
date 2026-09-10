@@ -447,6 +447,25 @@ export function renderField(f) {
     return wrap;
   }
 
+  /*
+   * A note is prose, not a control: no label row, no focus key, nothing to
+   * commit. It sits in the flow where the panel put it, tinted by tone --
+   * amber for a warning the author should act on before sending, muted for
+   * an aside. The left rule rather than a filled panel keeps it from reading
+   * as a field the user failed to fill in.
+   */
+  if (f.isNote) {
+    const warn = f.tone !== 'info';
+    wrap.appendChild(el('div', {
+      fontFamily: 'var(--ed-font)', fontSize: '11px', lineHeight: '1.5',
+      color: warn ? 'var(--ed-text)' : 'var(--ed-muted)',
+      background: warn ? 'rgba(214,141,32,0.10)' : 'var(--ed-panel-2)',
+      borderLeft: '2px solid ' + (warn ? 'rgba(214,141,32,0.85)' : 'var(--ed-line)'),
+      padding: '7px 9px', boxSizing: 'border-box',
+    }, { text: f.label, class: 'mc-field-note', role: warn ? 'status' : undefined }));
+    return wrap;
+  }
+
   // No isHead branch: heads never reach renderField -- renderFieldCards
   // consumes them as card kickers. A field list rendered without the card
   // grouper would drop its headings, which is the loud failure we want.

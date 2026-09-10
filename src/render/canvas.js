@@ -1,5 +1,5 @@
 import { DEF } from '../core/blocks.js';
-import { boxStyle, rowBg, rowPad, colsWrap, colStyle } from '../core/layout-style.js';
+import { boxStyle, rowBg, rowPad, colsWrap, colStyle, colBg } from '../core/layout-style.js';
 import { scopeCss, cssUrl } from '../core/sanitize.js';
 import { cellsOf } from '../core/parse.js';
 import { icon } from '../core/icons.js';
@@ -408,9 +408,9 @@ export function renderDoc(core, live) {
       // background must stop at the column's visual edge, not bleed across
       // the gutter. `host` is also what the drag listeners and
       // `indexFromPoint` must use -- the block slots are its children.
-      const styled = c.bg || c.border || c.radius || c.padY || c.padX;
+      const styled = c.bg || c.bgImage || c.border || c.radius || c.padY || c.padX;
       const host = styled
-        ? el('div', { background: c.bg || 'transparent', border: c.border ? c.border + 'px ' + (c.borderStyle || 'solid') + ' ' + (c.lineColor || '#e2e2e5') : '0', borderRadius: (c.radius || 0) + 'px', padding: (c.padY || 0) + 'px ' + (c.padX || 0) + 'px', height: '100%', boxSizing: 'border-box' })
+        ? el('div', { ...colBg(c), border: c.border ? c.border + 'px ' + (c.borderStyle || 'solid') + ' ' + (c.lineColor || '#e2e2e5') : '0', borderRadius: (c.radius || 0) + 'px', padding: (c.padY || 0) + 'px ' + (c.padX || 0) + 'px', height: '100%', boxSizing: 'border-box' })
         : colEl;
       if (live) {
         host.addEventListener('dragover', (e) => {

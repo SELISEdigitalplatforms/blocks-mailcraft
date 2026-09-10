@@ -170,6 +170,8 @@ export const EL = {
   'toast.imageReplaced': 'Η εικόνα αντικαταστάθηκε',
   'toast.imageAdded': 'Η εικόνα προστέθηκε στον καμβά',
   'toast.htmlCopied': 'Το HTML αντιγράφηκε στο πρόχειρο',
+  'toast.exportImageOne': '1 εικόνα δεν θα εμφανιστεί κατά την αποστολή — προσωρινή πηγή ή πηγή data:/cid:',
+  'toast.exportImageMany': '{count} εικόνες δεν θα εμφανιστούν κατά την αποστολή — προσωρινές πηγές ή πηγές data:/cid:',
   'toast.templateLoaded': 'Το {name} φορτώθηκε',
   'toast.snippetDefaultLabel': 'Απόσπασμα',
   'toast.snippetInserted': 'Το {name} εισήχθη',

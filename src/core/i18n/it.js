@@ -170,6 +170,8 @@ export const IT = {
   'toast.imageReplaced': 'Immagine sostituita',
   'toast.imageAdded': 'Immagine aggiunta al canvas',
   'toast.htmlCopied': 'HTML copiato negli appunti',
+  'toast.exportImageOne': '1 immagine non verrà visualizzata all’invio — origine segnaposto o data:/cid:',
+  'toast.exportImageMany': '{count} immagini non verranno visualizzate all’invio — origini segnaposto o data:/cid:',
   'toast.templateLoaded': '{name} caricato',
   'toast.snippetDefaultLabel': 'Snippet',
   'toast.snippetInserted': '{name} inserito',
