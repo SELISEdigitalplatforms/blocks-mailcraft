@@ -13,7 +13,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Public+Sans:wght@400;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<!-- The same self-hosted faces the site uses (assets/fonts/, OFL). Not
+     fetched from a font CDN: the card must render identically offline, and
+     nothing in this repo asks a third party for type. -->
+<link rel="stylesheet" href="../assets/fonts/fonts.css">
 <style>
   /* Same tokens as the light theme of index.html, so the card and the page
      it links to are visibly the same product. */
@@ -63,7 +66,7 @@
 <body>
   <div>
     <span class="eyebrow">Open source · MIT · one Web Component</span>
-    <h1>The email editor you <em>ship</em>, not subscribe to.</h1>
+    <h1>The email editor you <em>own</em>.</h1>
     <div class="install"><span class="ps1">$</span>npm install @seliseblocks/mailcraft</div>
   </div>
   <div class="foot">

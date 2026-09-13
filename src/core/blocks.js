@@ -167,7 +167,7 @@ export const GROUPS = {
       row.cols[0].blocks = [
         blk('divider', { py: 0 }),
         blk('social', { align: 'center', size: 18, shape: 'bare' }),
-        blk('text', { html: '<strong>MailCraft, Inc.</strong><br />220 Foundry Street, Suite 4, Portland OR 97209<br />You are receiving this because you signed up at mailcraft.co.', size: 11.5, align: 'center', py: 6 }),
+        blk('text', { html: '<strong>Selise Group</strong><br />You are receiving this because you signed up at selisegroup.com.', size: 11.5, align: 'center', py: 6 }),
         blk('text', { html: '<a href="{{ unsubscribe_url }}">Unsubscribe</a> · <a href="#">Update preferences</a>', size: 11.5, align: 'center', py: 0 }),
       ];
       return [row];

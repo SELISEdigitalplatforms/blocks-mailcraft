@@ -8,10 +8,15 @@
  * since a Web Component sizes to its host element, not the viewport.
  */
 export const STYLE = `
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap');
 :host { display: block; height: 100%; }
 #mc, #mc *, #mc *::before, #mc *::after { box-sizing: border-box; }
 #mc {
+  /* No webfont is fetched here. The component makes no network requests of
+     its own -- it has to work from a \`file://\` page with the network off --
+     so the chrome renders in whatever of these the machine already has.
+     'Manrope' stays at the head of the stack because a host that wants it
+     can load it itself; otherwise the platform UI face takes over. A host
+     that wants a different face sets \`ui-font\`. */
   --ed-font: 'Manrope', 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --ed-bg: #f5f7fa; --ed-panel: #ffffff; --ed-panel-2: #f8fafc; --ed-work: #f1f4f8;
   --ed-line: rgba(15,23,42,0.09); --ed-line-2: rgba(15,23,42,0.16);

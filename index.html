@@ -18,7 +18,7 @@
      tools/og-card.html; re-run `node tools/render-og.mjs` after any change to
      the headline or the three numbers, and keep both copies of each string
      below in sync with the hero. -->
-<meta property="og:title" content="Blocks MailCraft: the email editor you ship, not subscribe to">
+<meta property="og:title" content="Blocks MailCraft: the email editor you own">
 <meta property="og:description" content="One Web Component. Zero dependencies. 31 languages. MIT: everything included, nothing plan-gated.">
 <meta property="og:url" content="https://mailcraft.seliseblocks.com/">
 <meta property="og:type" content="website">
@@ -28,12 +28,12 @@
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Blocks MailCraft: the email editor you ship, not subscribe to. npm install @seliseblocks/mailcraft. Zero runtime dependencies, 31 languages, 19 block types.">
+<meta property="og:image:alt" content="Blocks MailCraft: the email editor you own. npm install @seliseblocks/mailcraft. Zero runtime dependencies, 31 languages, 19 block types.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Blocks MailCraft: the email editor you ship, not subscribe to">
+<meta name="twitter:title" content="Blocks MailCraft: the email editor you own">
 <meta name="twitter:description" content="One Web Component. Zero dependencies. 31 languages. MIT: everything included, nothing plan-gated.">
 <meta name="twitter:image" content="https://mailcraft.seliseblocks.com/assets/brand/og.png">
-<meta name="twitter:image:alt" content="Blocks MailCraft: the email editor you ship, not subscribe to. npm install @seliseblocks/mailcraft. Zero runtime dependencies, 31 languages, 19 block types.">
+<meta name="twitter:image:alt" content="Blocks MailCraft: the email editor you own. npm install @seliseblocks/mailcraft. Zero runtime dependencies, 31 languages, 19 block types.">
 
 <!-- For crawlers and answer engines that would rather have the source than
      the chrome: llms.txt indexes the site, and the .md.txt mirrors are the
@@ -151,19 +151,40 @@ a.wordmark:hover { text-decoration: none; color: var(--accent) !important; }
 }
 :root[data-theme="dark"] .icon-btn .i-sun { display: block; }
 :root[data-theme="dark"] .icon-btn .i-moon { display: none; }
-.hero-grid { display: grid; grid-template-columns: minmax(0,6fr) minmax(0,5fr); gap: 56px; align-items: center; }
-@media (max-width: 880px) { .hero-grid { grid-template-columns: 1fr; } }
-.hero h1 { font-size: clamp(40px, 5.6vw, 60px); font-weight: 800; letter-spacing: -0.024em; }
+/* Masthead: one full-measure column. No side-by-side mock, so the headline
+   gets the whole width and the numbers carry the proof instead of a picture. */
+.masthead { max-width: 1080px; }
+.masthead .eyebrow { margin-bottom: 18px; }
+.hero h1 { font-size: clamp(44px, 7.4vw, 88px); font-weight: 800; letter-spacing: -0.032em; max-width: 16ch; }
 .hero h1 em { font-style: normal; color: var(--accent); }
-.hero .lede { margin-top: 18px; font-size: 17px; color: var(--muted); }
+.hero .lede { margin-top: 20px; font-size: 17.5px; color: var(--muted); max-width: 52ch; }
+
+/* The three numbers, promoted out of the old floating card and set as a rule
+   under the headline -- a spec line, the way a datasheet states its figures. */
+.specline {
+  margin: 34px 0 0; padding: 16px 0;
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  display: flex; flex-wrap: wrap; gap: 14px 54px;
+}
+.specline > div { display: flex; align-items: baseline; gap: 10px; }
+.specline dt {
+  font-family: "Bricolage Grotesque", sans-serif; font-size: 30px; font-weight: 800;
+  font-variant-numeric: tabular-nums; color: var(--ink); line-height: 1;
+}
+.specline dd {
+  margin: 0; font-family: "IBM Plex Mono", monospace; font-size: 10.5px; font-weight: 600;
+  letter-spacing: .13em; text-transform: uppercase; color: var(--faint);
+}
+.hero-act { margin-top: 30px; display: flex; align-items: center; gap: 14px 22px; flex-wrap: wrap; }
+@media (max-width: 620px) { .hero-act { display: block; } }
 .install {
-  margin-top: 26px; display: inline-flex; align-items: center; gap: 14px;
+  margin-top: 0; display: inline-flex; align-items: center; gap: 14px;
   background: var(--code-bg); color: var(--code-ink);
   font-family: "IBM Plex Mono", monospace; font-size: 14px;
   padding: 13px 18px; border-radius: 9px; box-shadow: var(--sheet-shadow);
 }
 .install .ps1 { color: #5b708c; user-select: none; }
-.hero-ctas { margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap; }
+.hero-ctas { margin-top: 0; display: flex; gap: 12px; flex-wrap: wrap; }
 .btn { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; padding: 11px 20px; border-radius: 9px; border: 1px solid transparent; transition: transform .16s ease, filter .16s ease, border-color .16s ease, color .16s ease; }
 .btn:hover { transform: translateY(-1px); text-decoration: none; }
 .btn-primary { background: var(--accent); color: var(--accent-ink); }
@@ -177,42 +198,58 @@ a.wordmark:hover { text-decoration: none; color: var(--accent) !important; }
   .stagger > *:nth-child(1) { animation-delay: .05s; } .stagger > *:nth-child(2) { animation-delay: .14s; }
   .stagger > *:nth-child(3) { animation-delay: .23s; } .stagger > *:nth-child(4) { animation-delay: .32s; }
   @keyframes up { to { opacity: 1; transform: none; } }
-  .sheet { opacity: 0; transform: translateY(18px); animation: up .8s .2s cubic-bezier(.22,.61,.36,1) forwards; }
-  .sheet-body > * { opacity: 0; animation: fadein .5s forwards; }
-  .sheet-body > *:nth-child(1) { animation-delay: .55s; } .sheet-body > *:nth-child(2) { animation-delay: .68s; }
-  .sheet-body > *:nth-child(3) { animation-delay: .81s; } .sheet-body > *:nth-child(4) { animation-delay: .94s; }
-  .sheet-body > *:nth-child(5) { animation-delay: 1.07s; } .sheet-body > *:nth-child(6) { animation-delay: 1.2s; }
-  .sheet-body > *:nth-child(7) { animation-delay: 1.33s; } .sheet-body > *:nth-child(8) { animation-delay: 1.46s; }
+  .manifest { opacity: 0; transform: translateY(18px) rotate(-0.5deg); animation: mfup .8s .3s cubic-bezier(.22,.61,.36,1) forwards; }
+  @keyframes mfup { to { opacity: 1; transform: rotate(-0.5deg); } }
+  .manifest-rows > div { opacity: 0; animation: fadein .5s forwards; }
+  .manifest-rows > div:nth-child(1) { animation-delay: .60s; } .manifest-rows > div:nth-child(2) { animation-delay: .70s; }
+  .manifest-rows > div:nth-child(3) { animation-delay: .80s; } .manifest-rows > div:nth-child(4) { animation-delay: .90s; }
+  .manifest-rows > div:nth-child(5) { animation-delay: 1.0s; } .manifest-rows > div:nth-child(6) { animation-delay: 1.1s; }
+  .stagger > *:nth-child(5) { animation-delay: .41s; }
   @keyframes fadein { to { opacity: 1; } }
 }
 
-/* Faux editor sheet with a live countdown */
-.sheet-stack { position: relative; min-height: 400px; }
-.sheet { position: absolute; inset: 0 0 auto 0; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--sheet-shadow); overflow: hidden; }
-.sheet-head { background: var(--accent); height: 60px; display: flex; align-items: center; justify-content: center; }
-.sheet-head span { color: #fff; font-family: "IBM Plex Mono", monospace; font-size: 12.5px; letter-spacing: .08em; opacity: .95; }
-.sheet-body { padding: 25px 30px 28px; display: grid; gap: 13px; }
-.sk { border-radius: 4px; background: var(--line-soft); height: 12px; }
-.sk.title { height: 22px; width: 62%; background: var(--line); }
-.sk.w80 { width: 80%; } .sk.w70 { width: 70%; }
-.sk-btn { height: 38px; width: 190px; border-radius: 6px; background: var(--accent); margin-top: 4px; }
-.tag { display: inline-flex; width: max-content; font-family: "IBM Plex Mono", monospace; font-size: 11px; font-weight: 600; color: var(--accent); background: var(--accent-soft); border: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent); border-radius: 5px; padding: 3px 9px; }
-.count { display: flex; gap: 8px; margin-top: 2px; }
+/* The manifest: a printed docket, dashed and set on the mono face, sharing the
+   receipt grammar of .slip further down the page. Full-bleed, so it sits on the
+   hero's dotted ground as its own artefact rather than a column beside the text. */
+.manifest-bleed { margin-top: 74px; padding: 0 24px; display: flex; justify-content: center; }
+.manifest {
+  width: min(720px, 100%); background: var(--panel);
+  border: 1px dashed color-mix(in srgb, var(--ink) 34%, transparent);
+  box-shadow: var(--sheet-shadow); transform: rotate(-0.5deg);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (max-width: 620px) { .manifest { transform: none; } }
+.manifest-head {
+  display: flex; justify-content: space-between; gap: 12px;
+  padding: 13px 22px; background: var(--accent); color: #fff;
+  font-size: 11px; font-weight: 600; letter-spacing: .18em;
+}
+.manifest-rows { margin: 0; padding: 20px 22px 6px; display: grid; gap: 9px; }
+.manifest-rows > div { display: flex; align-items: baseline; gap: 10px; font-size: 12.5px; }
+.manifest-rows dt { color: var(--faint); letter-spacing: .06em; white-space: nowrap; }
+/* The leader dots do the work a table border would, without a table. */
+.manifest-rows > div::after {
+  content: ""; order: 1; flex: 1 1 auto; min-width: 18px; align-self: center;
+  border-bottom: 1px dotted var(--line-2, var(--line));
+}
+.manifest-rows dd { order: 2; margin: 0; color: var(--ink); font-weight: 600; text-align: end; }
+.manifest-live {
+  margin: 14px 22px 0; padding: 15px 0 17px;
+  border-top: 1px dashed color-mix(in srgb, var(--ink) 20%, transparent);
+  display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+}
+.manifest-live-label { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
+.manifest-foot {
+  display: flex; justify-content: space-between; gap: 12px; padding: 11px 22px;
+  background: var(--panel-2); border-top: 1px dashed color-mix(in srgb, var(--ink) 20%, transparent);
+  font-size: 10.5px; letter-spacing: .06em; color: var(--faint);
+}
+.manifest-foot span:first-child { color: var(--accent); }
+.count { display: flex; gap: 8px; }
 .count .cell { min-width: 46px; text-align: center; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 5px 6px 6px; }
-.count .cell b { display: block; font-family: "IBM Plex Mono", monospace; font-size: 16px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.count .cell b { display: block; font-size: 16px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
 .count .cell i { font-style: normal; font-size: 8.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
 
-/* Spec card — bridges the hero into the story */
-.spec {
-  position: relative; z-index: 2; margin-top: -52px;
-  background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
-  box-shadow: var(--sheet-shadow); overflow: hidden;
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-}
-.stat { padding: 20px 22px; border-inline-start: 1px solid var(--line-soft); }
-.stat:first-child { border-inline-start: 0; }
-.stat .n { font-family: "Bricolage Grotesque", sans-serif; font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; }
-.stat .l { font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); margin-top: 2px; }
 
 /* Sections */
 section { padding: 30px 0 0; }
@@ -451,47 +488,55 @@ footer {
         </button>
       </div>
     </div>
-    <div class="hero-grid">
-      <div class="stagger">
-        <span class="eyebrow" style="margin-bottom:14px">Open source &middot; from the SELISE Blocks platform</span>
-        <h1>The email editor you <em>ship</em>, not subscribe to.</h1>
+    <div class="masthead stagger">
+        <span class="eyebrow">Open source &middot; from the SELISE Blocks platform</span>
+        <h1>The email editor you <em>own</em>.</h1>
         <p class="lede">Drag-and-drop email templates in one Web Component. HTML in, send-ready HTML out. Open source from the team behind <a href="#platform" style="font-weight:700">SELISE Blocks</a>.</p>
-        <div class="install"><span class="ps1">$</span>npm install @seliseblocks/mailcraft</div>
-        <div class="hero-ctas">
-          <a class="btn btn-primary" href="examples/vanilla.html">Open the live demo</a>
-          <a class="btn btn-ghost" href="DOCS.html">Read the docs</a>
-        </div>
-      </div>
-      <div class="sheet-stack" aria-hidden="true">
-        <div class="sheet">
-          <div class="sheet-head"><span>{{ company }}</span></div>
-          <div class="sheet-body">
-            <div class="sk title"></div>
-            <div class="sk w80"></div>
-            <div class="sk w70"></div>
-            <div class="count" id="cd">
-              <span class="cell"><b data-u="d">02</b><i>days</i></span>
-              <span class="cell"><b data-u="h">11</b><i>hrs</i></span>
-              <span class="cell"><b data-u="m">47</b><i>min</i></span>
-              <span class="cell"><b data-u="s">05</b><i>sec</i></span>
-            </div>
-            <div class="sk-btn"></div>
-            <span class="tag">{{#if is_premium}}</span>
-            <div class="sk w70"></div>
-            <span class="tag">{{/if}}</span>
+        <dl class="specline" aria-label="Blocks MailCraft in three numbers">
+          <div><dt>0</dt><dd>Runtime deps</dd></div>
+          <div><dt>31</dt><dd>Languages, RTL auto</dd></div>
+          <div><dt>19</dt><dd>Block types</dd></div>
+        </dl>
+        <div class="hero-act">
+          <div class="install"><span class="ps1">$</span>npm install @seliseblocks/mailcraft</div>
+          <div class="hero-ctas">
+            <a class="btn btn-primary" href="examples/vanilla.html">Open the live demo</a>
+            <a class="btn btn-ghost" href="DOCS.html">Read the docs</a>
           </div>
         </div>
       </div>
     </div>
-  </div>
+
+    <!-- The manifest: the package as a printed docket, not a faux app window.
+         Full-bleed so it breaks the masthead's measure and reads as a separate
+         artefact. #cd stays put -- the countdown script binds to it. -->
+    <div class="manifest-bleed" aria-hidden="true">
+      <div class="manifest">
+        <div class="manifest-head"><span>MAILCRAFT</span><span>BUILD MANIFEST</span></div>
+        <dl class="manifest-rows">
+          <div><dt>package</dt><dd>@seliseblocks/mailcraft</dd></div>
+          <div><dt>version</dt><dd>0.2.18 &middot; MIT</dd></div>
+          <div><dt>blocks</dt><dd>19 types</dd></div>
+          <div><dt>i18n</dt><dd>31 locales, RTL auto</dd></div>
+          <div><dt>runtime deps</dt><dd>none</dd></div>
+          <div><dt>delivery</dt><dd>1 Web Component</dd></div>
+        </dl>
+        <div class="manifest-live">
+          <span class="manifest-live-label">countdown block, running</span>
+          <div class="count" id="cd">
+            <span class="cell"><b data-u="d">02</b><i>days</i></span>
+            <span class="cell"><b data-u="h">11</b><i>hrs</i></span>
+            <span class="cell"><b data-u="m">47</b><i>min</i></span>
+            <span class="cell"><b data-u="s">05</b><i>sec</i></span>
+          </div>
+        </div>
+        <div class="manifest-foot"><span>{{#if is_premium}}</span><span>HTML in, send-ready HTML out</span></div>
+      </div>
+    </div>
 </header>
 
 <main class="wrap">
-  <!-- The spec card: the promise, measured. Hands the hero to chapter 01. -->
-  <div class="spec" role="list" aria-label="Blocks MailCraft in three numbers">
-    <div class="stat" role="listitem"><div class="n">0</div><div class="l">Runtime deps</div></div>
-    <div class="stat" role="listitem"><div class="n">31</div><div class="l">Languages, RTL auto</div></div>
-    <div class="stat" role="listitem"><div class="n">19</div><div class="l">Block types</div></div>
+div class="l">Block types</div></div>
   </div>
 
   <div class="bridge rv"><p>Three numbers make the pitch. Now, <em>what's in the box</em>.</p></div>

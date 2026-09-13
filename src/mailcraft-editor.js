@@ -89,7 +89,9 @@ function tip(node, label, dir, align) {
  * chrome; while present the built-in toggle is hidden), `footer` ("none" to
  * remove the attribution strip, or any string to replace its text).
  * Properties: `.variables`, `.toolbar` (which parts of the top bar are shown),
- * `.aiProvider` (optional async fn, replaces the original's `window.claude.complete`),
+ * `.aiProvider` (optional async fn -- the host's own model call; the AI
+ * features stay hidden until one is set, since the package ships no client
+ * and talks to no model service of its own),
  * `.iconProvider` (optional social-icon override), `.storageProvider` (host-supplied
  * file storage -- see `core/storage.js`), `.storageLimits` (host-set upload ceilings,
  * required whenever a provider is set), `.messages` (UI string overrides --
