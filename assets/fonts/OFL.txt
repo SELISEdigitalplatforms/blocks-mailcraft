@@ -10,9 +10,9 @@ CDN in September 2026. Each family is licensed under the SIL Open Font
 Licence, Version 1.1, which permits this redistribution provided the licence
 travels with the files. The full licence text follows.
 
-  Bricolage Grotesque
-    Copyright 2022 The Bricolage Grotesque Project Authors
-    https://github.com/ateliertriay/bricolage
+  Archivo
+    Copyright 2017 The Archivo Project Authors
+    https://github.com/Omnibus-Type/Archivo
 
   Public Sans
     Copyright 2015 The Public Sans Project Authors

@@ -92,7 +92,7 @@
 html { scroll-behavior: smooth; }
 body { background: var(--ground); color: var(--ink); font-family: "Public Sans", system-ui, sans-serif; font-size: 16px; line-height: 1.6; margin: 0; }
 .wrap { max-width: 1060px; margin: 0 auto; padding: 0 24px; }
-h1, h2, h3 { font-family: "Bricolage Grotesque", "Public Sans", sans-serif; text-wrap: balance; line-height: 1.1; margin: 0; }
+h1, h2, h3 { font-family: "Archivo", "Public Sans", sans-serif; text-wrap: balance; line-height: 1.1; margin: 0; }
 p { margin: 0; max-width: 66ch; }
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
@@ -112,7 +112,7 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
 /* Narrative bridges — the thread between chapters */
 .bridge { display: grid; justify-items: center; gap: 14px; padding: 58px 24px 0; text-align: center; }
 .bridge::before { content: ""; width: 1px; height: 34px; background: linear-gradient(var(--line), var(--accent)); }
-.bridge p { font-family: "Bricolage Grotesque", sans-serif; font-size: 19px; font-weight: 700; letter-spacing: -0.01em; color: var(--ink); max-width: 44ch; text-wrap: balance; }
+.bridge p { font-family: "Archivo", sans-serif; font-size: 19px; font-weight: 700; letter-spacing: -0.01em; color: var(--ink); max-width: 44ch; text-wrap: balance; }
 .bridge p em { font-style: normal; color: var(--accent); }
 
 /* ————— Hero ————— */
@@ -356,7 +356,7 @@ td code, .features code { font-family: "IBM Plex Mono", monospace; font-size: 12
 .modules { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-top: 28px; }
 .module { background: rgba(255,255,255,.045); border: 1px solid rgba(160,190,225,.18); border-radius: 11px; padding: 16px 17px; transition: border-color .16s ease, background .16s ease; }
 .module:hover { border-color: rgba(160,190,225,.45); background: rgba(255,255,255,.07); }
-.module b { display: block; color: #e8f1fb; font-family: "Bricolage Grotesque", sans-serif; font-size: 15px; font-weight: 700; }
+.module b { display: block; color: #e8f1fb; font-family: "Archivo", sans-serif; font-size: 15px; font-weight: 700; }
 .module.this b { color: #8ec8f5; }
 .module span { display: block; font-size: 12.5px; color: #93a8c4; margin-top: 4px; line-height: 1.5; }
 .module .mono-chip { display: inline-block; font-family: "IBM Plex Mono", monospace; font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: #7db8e8; border: 1px solid rgba(125,184,232,.4); border-radius: 99px; padding: 2px 8px; margin-bottom: 8px; }
@@ -391,7 +391,7 @@ td code, .features code { font-family: "IBM Plex Mono", monospace; font-size: 12
   font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; font-weight: 600;
   letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent);
 }
-.car-slide b { font-family: "Bricolage Grotesque", sans-serif; font-size: 17.5px; font-weight: 700; letter-spacing: -0.014em; }
+.car-slide b { font-family: "Archivo", sans-serif; font-size: 17.5px; font-weight: 700; letter-spacing: -0.014em; }
 .car-slide span:not(.n) { font-size: 13.2px; color: var(--muted); }
 .car-nav { display: flex; align-items: center; gap: 9px; margin-top: 16px; }
 .car-btn {
@@ -533,7 +533,7 @@ footer {
          artefact. #cd stays put -- the countdown script binds to it. -->
     <div class="manifest-bleed" aria-hidden="true">
       <div class="manifest">
-        <div class="manifest-head"><span>MAILCRAFT</span><span>BUILD MANIFEST</span></div>
+        <div class="manifest-head"><span>BLOCKS MAILCRAFT</span><span>BUILD MANIFEST</span></div>
         <dl class="manifest-rows">
           <div><dt>package</dt><dd>@seliseblocks/mailcraft</dd></div>
           <div><dt>version</dt><dd>0.2.18 &middot; MIT</dd></div>
@@ -557,8 +557,6 @@ footer {
 </header>
 
 <main class="wrap">
-div class="l">Block types</div></div>
-  </div>
 
   <div class="bridge rv"><p>Three numbers make the pitch. Now, <em>what's in the box</em>.</p></div>
 
