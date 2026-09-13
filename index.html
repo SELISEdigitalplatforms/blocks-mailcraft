@@ -151,32 +151,55 @@ a.wordmark:hover { text-decoration: none; color: var(--accent) !important; }
 }
 :root[data-theme="dark"] .icon-btn .i-sun { display: block; }
 :root[data-theme="dark"] .icon-btn .i-moon { display: none; }
-/* Masthead: one full-measure column. No side-by-side mock, so the headline
-   gets the whole width and the numbers carry the proof instead of a picture. */
-.masthead { max-width: 1080px; }
-.masthead .eyebrow { margin-bottom: 18px; }
-.hero h1 { font-size: clamp(44px, 7.4vw, 88px); font-weight: 800; letter-spacing: -0.032em; max-width: 16ch; }
-.hero h1 em { font-style: normal; color: var(--accent); }
-.hero .lede { margin-top: 20px; font-size: 17.5px; color: var(--muted); max-width: 52ch; }
+/* Terminal-first hero. No kicker / headline / lede / button-pair stack: the
+   install command IS the pitch, at display size, and the description sits
+   above it as shell comments. Nothing here uses the display grotesque --
+   the whole hero is set on the mono face. */
+.hero-term { max-width: 1000px; }
+.term-note {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: clamp(13px, 1.5vw, 16px); font-weight: 400; line-height: 1.85;
+  letter-spacing: -0.005em; color: var(--muted); max-width: none; margin: 0;
+}
+.term-note span[aria-hidden] { color: var(--faint); user-select: none; }
+.term-note a { font-weight: 600; }
+.term-cmd {
+  margin: 26px 0 0; max-width: none;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: clamp(23px, 4.4vw, 52px); font-weight: 600;
+  letter-spacing: -0.05em; line-height: 1.16; color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.term-cmd .ps1 { color: var(--accent); user-select: none; }
+.term-links {
+  margin-top: 30px; display: flex; flex-wrap: wrap; gap: 10px 26px;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 12px; font-weight: 600; letter-spacing: .07em;
+}
+.term-links a { display: inline-flex; align-items: baseline; gap: 7px; color: var(--ink); }
+.term-links a::before { content: "->"; color: var(--accent); }
+.term-links a:hover { color: var(--accent); text-decoration: none; }
+.term-links a:hover::before { transform: translateX(2px); }
+.term-links a::before { transition: transform .16s ease; }
+@media (prefers-reduced-motion: reduce) { .term-links a::before { transition: none; } }
+
 
 /* The three numbers, promoted out of the old floating card and set as a rule
    under the headline -- a spec line, the way a datasheet states its figures. */
 .specline {
-  margin: 34px 0 0; padding: 16px 0;
-  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  margin: 32px 0 0; padding: 20px 0 0;
+  border-top: 1px solid var(--line);
   display: flex; flex-wrap: wrap; gap: 14px 54px;
 }
 .specline > div { display: flex; align-items: baseline; gap: 10px; }
 .specline dt {
-  font-family: "Bricolage Grotesque", sans-serif; font-size: 30px; font-weight: 800;
-  font-variant-numeric: tabular-nums; color: var(--ink); line-height: 1;
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 26px; font-weight: 600;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.04em; color: var(--ink); line-height: 1;
 }
 .specline dd {
   margin: 0; font-family: "IBM Plex Mono", monospace; font-size: 10.5px; font-weight: 600;
   letter-spacing: .13em; text-transform: uppercase; color: var(--faint);
 }
-.hero-act { margin-top: 30px; display: flex; align-items: center; gap: 14px 22px; flex-wrap: wrap; }
-@media (max-width: 620px) { .hero-act { display: block; } }
 .install {
   margin-top: 0; display: inline-flex; align-items: center; gap: 14px;
   background: var(--code-bg); color: var(--code-ink);
@@ -184,7 +207,6 @@ a.wordmark:hover { text-decoration: none; color: var(--accent) !important; }
   padding: 13px 18px; border-radius: 9px; box-shadow: var(--sheet-shadow);
 }
 .install .ps1 { color: #5b708c; user-select: none; }
-.hero-ctas { margin-top: 0; display: flex; gap: 12px; flex-wrap: wrap; }
 .btn { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; padding: 11px 20px; border-radius: 9px; border: 1px solid transparent; transition: transform .16s ease, filter .16s ease, border-color .16s ease, color .16s ease; }
 .btn:hover { transform: translateY(-1px); text-decoration: none; }
 .btn-primary { background: var(--accent); color: var(--accent-ink); }
@@ -488,22 +510,21 @@ footer {
         </button>
       </div>
     </div>
-    <div class="masthead stagger">
-        <span class="eyebrow">Open source &middot; from the SELISE Blocks platform</span>
-        <h1>The email editor you <em>own</em>.</h1>
-        <p class="lede">Drag-and-drop email templates in one Web Component. HTML in, send-ready HTML out. Open source from the team behind <a href="#platform" style="font-weight:700">SELISE Blocks</a>.</p>
+    <div class="hero-term stagger">
+        <h1 class="term-note"><span aria-hidden="true">#</span> Drag-and-drop email templates in one Web&nbsp;Component.<br>
+          <span aria-hidden="true">#</span> HTML in, send-ready HTML out. Open source, from <a href="#platform">SELISE&nbsp;Blocks</a>.</h1>
+        <p class="term-cmd"><span class="ps1" aria-hidden="true">$</span> npm install @seliseblocks/mailcraft</p>
         <dl class="specline" aria-label="Blocks MailCraft in three numbers">
           <div><dt>0</dt><dd>Runtime deps</dd></div>
           <div><dt>31</dt><dd>Languages, RTL auto</dd></div>
           <div><dt>19</dt><dd>Block types</dd></div>
         </dl>
-        <div class="hero-act">
-          <div class="install"><span class="ps1">$</span>npm install @seliseblocks/mailcraft</div>
-          <div class="hero-ctas">
-            <a class="btn btn-primary" href="examples/vanilla.html">Open the live demo</a>
-            <a class="btn btn-ghost" href="DOCS.html">Read the docs</a>
-          </div>
-        </div>
+        <nav class="term-links" aria-label="Get started">
+          <a href="examples/vanilla.html">live demo</a>
+          <a href="DOCS.html">documentation</a>
+          <a href="README.html">quick start</a>
+          <a href="https://github.com/SELISEdigitalplatforms/blocks-mailcraft" rel="noopener">source</a>
+        </nav>
       </div>
     </div>
 
