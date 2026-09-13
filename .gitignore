@@ -22,3 +22,6 @@ Thumbs.db
 
 coverage
 .cov
+
+# Never commit registry credentials -- npm writes a token here.
+.npmrc
