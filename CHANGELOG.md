@@ -4,6 +4,20 @@ All notable changes to `@seliseblocks/mailcraft` are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.19] — 2026-09-13
+
+A housekeeping release with one theme: the package stops shipping other people's marks, and stops reaching the network on its own.
+
+### Changed
+- **Social icons are drawn here now, not borrowed.** The social block rendered eleven platforms as official filled brand glyphs lifted from Simple Icons. Registered logo artwork is not ours to redistribute inside a template builder, whatever the icon set's own licence says about the SVG — the mark underneath belongs to the platform, and every downstream host was inheriting that call from us. Every social key resolves into the same in-house thin-stroke set as the rest of the chrome: geometric marks that say where a link goes without reproducing anyone's logo. `brandIcon()` keeps its signature and its `currentColor` behaviour, so the palette and contrast logic and the export round-trip are untouched; a host that wants the real logos has always been able to supply them through `iconProvider`, and that is now the only way they get there.
+- **The editor fetches no webfont.** `render/style.js` opened with an `@import` of Manrope from the Google Fonts CDN, which meant dropping the component into a page made a third-party request and disclosed the visitor's IP to a font host — and left the chrome unstyled on a `file://` page with the network off, which is a setting this component is explicitly meant to survive. The import is gone. `'Manrope'` stays at the head of `--ed-font` so a host that loads it still gets it, with the platform UI face behind it; `ui-font` overrides the stack as before.
+- **The default footer and the shipped templates lost their borrowed details.** The footer group's placeholder carried a fictional company at a real-looking Portland street address; the order-shipped template named a specific courier and carried a tracking number in that courier's live format, which is the kind of thing that gets pasted into a real tracking form. Both are now plainly generic.
+
+### Notes for hosts
+- **Upgrading changes how existing templates look.** Any document with a social block will render its icons in the stroke set after this release — same positions, same colours, same links, different glyphs. Nothing needs migrating and no export breaks; it is a visual change, and worth a look before you ship it to your own users. Pass `iconProvider` to keep the previous artwork.
+- `window.claude.complete` no longer appears in the `aiProvider` documentation. Nothing changed in behaviour — the AI features have always stayed hidden until a host sets a provider, and the package ships no model client and talks to no model service of its own — but the old wording implied a specific host environment that was never a requirement.
+- The published sourcemap now matches the bundle it describes. `dist/mailcraft-editor.bundle.js` is byte-identical to 0.2.18's; only the stale `sourcesContent` embedded in the `.map` is corrected.
+
 ## [0.2.18] — 2026-09-10
 
 ### Added
