@@ -4,6 +4,12 @@ All notable changes to `@seliseblocks/mailcraft` are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.20] — 2026-09-13
+
+### Fixed
+- **Merge tags ship tight — `{{first_name}}`, never `{{ first_name }}`.** The padded spelling is valid Handlebars, Mustache and Liquid, but plenty of sending engines substitute with a literal string match, or with a regex that forgets `\s*` — and there a padded tag simply never resolves, so the recipient reads raw braces in the middle of a sentence. Tags inserted from the Data tab and the inline toolbar are now written tight, legacy `[[token]]` drafts migrate to the tight form, and — the part that matters for templates that already exist — the exporter repairs the finished document on the way out, whatever the tag's origin: an old draft, a hand-typed tag, a pasted foreign template. Only padding *inside* the braces goes; whitespace that separates keeps its job, so `{{#if is_premium }}` tightens to `{{#if is_premium}}` and the helper still applies to its expression. A `{{{triple stash}}}`, a `{{! comment }}`, a `{{> partial }}` and CSS (minified or nested, which never puts two opening braces side by side) are all left intact.
+- **A hand-written `{{/if }}` is recognised as a block end again.** The importer's logic-tag patterns were asymmetric: the open tag already tolerated `{{#if x }}`, while the close tag accepted `{{/if}}` and nothing else — so a foreign or hand-edited close tag imported as an ordinary text block and silently left the condition open, swallowing everything after it into the branch. Both ends now tolerate padding. This could not be left to the export-time repair above, because nothing tightens what arrives through import.
+
 ## [0.2.19] — 2026-09-13
 
 A housekeeping release with one theme: the package stops shipping other people's marks, and stops reaching the network on its own.
