@@ -111,8 +111,15 @@ const outFile = path.join(root, 'dist', 'mailcraft-editor.bundle.js');
  * node_modules still produces a working `dist/` with `node build.js`, exactly
  * as it did before, so the build is never blocked on a toolchain.
  *
- * The sourcemap is what makes minifying safe to do by default -- a stack trace
- * from a host's console still points at a line in src/.
+ * No sourcemap ships. It would be the single heaviest thing in the package
+ * -- 1.7 MB, more of the tarball than everything else together -- and this
+ * package is the unusual case where it buys nothing: `main` and `module`
+ * both point at `./src/index.js`, so a bundler consumer never loads this
+ * file at all, and the complete, unminified source ships alongside it for
+ * anyone reading a stack trace from the CDN build. Emitting the map but
+ * excluding it from `files` was the other option and is worse: the
+ * `sourceMappingURL` comment would stay in the bundle and 404 in the
+ * DevTools of every CDN user.
  */
 let output = bundle;
 let note = 'not minified (esbuild not installed)';
@@ -128,12 +135,13 @@ try {
     // ~130 KB of pure padding. The output is UTF-8 -- what a <script> in a
     // charset=utf-8 page, and every server default, already assumes.
     charset: 'utf8',
-    sourcemap: true,
     sourcefile: 'mailcraft-editor.bundle.js',
   });
-  output = res.code + '\n//# sourceMappingURL=mailcraft-editor.bundle.js.map\n';
-  fs.writeFileSync(outFile + '.map', res.map);
-  note = `minified, ${(100 - (Buffer.byteLength(output) / Buffer.byteLength(bundle)) * 100).toFixed(0)}% smaller, sourcemap alongside`;
+  output = res.code + '\n';
+  // Clear a map left behind by a build from before this changed, so a stale
+  // 1.7 MB file cannot linger in dist/ or ride along into a publish.
+  try { fs.unlinkSync(outFile + '.map'); } catch { /* nothing to clear */ }
+  note = `minified, ${(100 - (Buffer.byteLength(output) / Buffer.byteLength(bundle)) * 100).toFixed(0)}% smaller, no sourcemap`;
 } catch (e) {
   if (e && e.code !== 'MODULE_NOT_FOUND') throw e;
   try { fs.unlinkSync(outFile + '.map'); } catch { /* nothing to clear */ }

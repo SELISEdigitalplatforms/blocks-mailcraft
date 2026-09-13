@@ -643,4 +643,3 @@ unsubscribe_url`,te=x=>"{{"+x+"}}";function ue(x){return(Array.isArray(x)?x:Stri
 #mc[data-chrome="dark"] .mc-preview-body .mc-page.is-padded [data-mc-sheet="1"] { box-shadow: 0 1px 4px rgba(0,0,0,.35) !important; }
 `})},window.MailCraftEditorBundle=ut("index.js")})();
 
-//# sourceMappingURL=mailcraft-editor.bundle.js.map
