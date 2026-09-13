@@ -4,6 +4,11 @@ All notable changes to `@seliseblocks/mailcraft` are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.21] — 2026-09-13
+
+### Changed
+- **The package is 42% smaller: no sourcemap.** At 1.7 MB unpacked the map was the single heaviest thing shipped — more than everything else in the package together — and every `npm install` paid for it. It also bought nothing here: `main` and `module` both point at `./src/index.js`, so a bundler consumer never loads the prebuilt bundle at all, and the complete unminified source ships beside it for anyone reading a stack trace from the CDN build. It is removed at the source rather than filtered out of `files`, because that would have left esbuild's `//# sourceMappingURL=` comment in the bundle to 404 in the DevTools of every CDN user; a map left behind by an older build is now cleared on each run too, so a stale file cannot linger in `dist/` or ride along into a publish. Packed 1.1 MB → 634 kB, unpacked 4.0 MB → 2.3 MB. The bundle itself is untouched — 67 modules, 733 kB minified, 202 kB gzipped — and nothing changes for what reaches a recipient.
+
 ## [0.2.20] — 2026-09-13
 
 ### Fixed
