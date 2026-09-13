@@ -27,7 +27,7 @@ export const scopeCss = (css, root) => {
   return out;
 };
 
-export const migrateTokens = (json) => String(json).replace(/\[\[\s*([\w.]+)\s*\]\]/g, '{' + '{ $1 }' + '}');
+export const migrateTokens = (json) => String(json).replace(/\[\[\s*([\w.]+)\s*\]\]/g, '{' + '{$1}' + '}');
 
 /** Paste sanitizer -- Word/Docs/Notion drop class soup, mso- properties and nested spans into the document; keep a small tag whitelist and drop attributes (href/target/rel on links survive). */
 const PASTE_OK = { A: 1, B: 1, STRONG: 1, I: 1, EM: 1, U: 1, S: 1, STRIKE: 1, BR: 1, P: 1, UL: 1, OL: 1, LI: 1, H1: 1, H2: 1, H3: 1, H4: 1, H5: 1, H6: 1, BLOCKQUOTE: 1, CODE: 1, SUP: 1, SUB: 1 };

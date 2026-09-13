@@ -1043,9 +1043,15 @@ function logicMarkersOf(text) {
   if (!lines.length) return null;
   const out = [];
   for (const line of lines) {
-    let m = line.match(/^\{\{#(if|each)\s+([^{}]+?)\s*\}\}$/);
+    // Both tolerate padding, and symmetrically. The close tag used to accept
+    // `{{/if}}` and nothing else, while the open one already allowed
+    // `{{#if x }}` -- so a hand-written or foreign `{{/if }}` silently
+    // stopped being a block end and imported as a text block instead,
+    // leaving the condition open. The exporter's own output is tight
+    // (`tightenTokens`), but nothing tightens what arrives through import.
+    let m = line.match(/^\{\{\s*#(if|each)\s+([^{}]+?)\s*\}\}$/);
     if (m) { out.push(blk(m[1] === 'if' ? 'condition' : 'loop', { expr: m[2], end: false })); continue; }
-    m = line.match(/^\{\{\/(if|each)\}\}$/);
+    m = line.match(/^\{\{\s*\/(if|each)\s*\}\}$/);
     if (m) { out.push(blk(m[1] === 'if' ? 'condition' : 'loop', { expr: '', end: true })); continue; }
     return null;
   }

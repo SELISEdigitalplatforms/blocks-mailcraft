@@ -3,7 +3,7 @@ import { PH } from './placeholder.js';
 import { THEME } from './theme.js';
 
 export const BLOCKS = [
-  { type: 'text', code: 'TXT', label: 'Text', hint: 'Rich text — edit inline', make: () => ({ html: 'Hi {{ first_name }} — we cut three things from the fall line and kept the two that mattered. Here they are.', size: 16, lh: 1.6, color: '', align: 'left', weight: '400', py: 10, px: 0 }) },
+  { type: 'text', code: 'TXT', label: 'Text', hint: 'Rich text — edit inline', make: () => ({ html: 'Hi {{first_name}} — we cut three things from the fall line and kept the two that mattered. Here they are.', size: 16, lh: 1.6, color: '', align: 'left', weight: '400', py: 10, px: 0 }) },
   { type: 'image', code: 'IMG', label: 'Image', hint: 'Image from the library', make: () => ({ src: PH('hero image 600 × 320', 600, 320), alt: 'Hero image', width: 100, align: 'center', href: '', radius: 10, py: 0, px: 0 }) },
   { type: 'button', code: 'BTN', label: 'Button', hint: 'Call to action', make: () => ({ label: 'Shop the drop', href: 'https://example.com', bg: '#0065b3', color: '#ffffff', radius: 8, py: 13, px: 26, align: 'left', size: 15, full: false, borderW: 0, borderStyle: 'solid', borderColor: '' }) },
   { type: 'divider', code: 'DIV', label: 'Divider', hint: 'Horizontal rule', make: () => ({ thickness: 1, lineStyle: 'solid', color: '#e2e8f0', width: 100, py: 14 }) },
@@ -168,7 +168,7 @@ export const GROUPS = {
         blk('divider', { py: 0 }),
         blk('social', { align: 'center', size: 18, shape: 'bare' }),
         blk('text', { html: '<strong>Selise Group</strong><br />You are receiving this because you signed up at selisegroup.com.', size: 11.5, align: 'center', py: 6 }),
-        blk('text', { html: '<a href="{{ unsubscribe_url }}">Unsubscribe</a> · <a href="#">Update preferences</a>', size: 11.5, align: 'center', py: 0 }),
+        blk('text', { html: '<a href="{{unsubscribe_url}}">Unsubscribe</a> · <a href="#">Update preferences</a>', size: 11.5, align: 'center', py: 0 }),
       ];
       return [row];
     },

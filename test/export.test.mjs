@@ -428,7 +428,7 @@ await it('decorateLogicTags turns between-row tags into slim band rows and in-ce
   const out = decorateLogicTags(src);
   assert.equal(/\{\{#|\{\{\//.test(out), false, 'no raw tags remain');
   assert.match(out, /<tr><td colspan="99"[^>]*>[\s\S]*SHOW IF/, 'row-level tag became a band row');
-  assert.match(out, /REPEAT EACH[\s\S]*\{\{ order\.items \}\}/, 'in-cell tag became a labeled chip');
+  assert.match(out, /REPEAT EACH[\s\S]*\{\{order\.items\}\}/, 'in-cell tag became a labeled chip, spelled the way the document spells a tag');
   assert.match(out, /END LOOP/); assert.match(out, /END IF/);
 });
 
@@ -609,6 +609,17 @@ await it('a column with no image emits exactly the markup it always did', async 
   const html = buildHtml({ doc: { theme: THEME, rows: [row] } }, stubRoot({}), boxCss);
   assert.match(html, /<div style="background:#ffeedd;border-radius:0px;padding:10px 8px">/, 'the colour-only shorthand shape is untouched');
   assert.equal(/v:rect/.test(html), false);
+});
+
+await it('merge tags ship tight -- padding inside the braces is stripped, separators are not', async () => {
+  const t = mk('text');
+  const html = render(docOf([t]), { content: { [t.id]: '<div data-mc-content="' + t.id + '">Hi {{ first_name }}, {{  order_id  }}, {{#if is_premium }}yes{{/if }}, {{already}}</div>' } });
+  assert.match(html, /\{\{first_name\}\}/, 'a padded tag from an older template is repaired');
+  assert.match(html, /\{\{order_id\}\}/, 'however much padding it had');
+  assert.match(html, /\{\{#if is_premium\}\}/, 'the space that SEPARATES the tag from its expression stays');
+  assert.match(html, /\{\{\/if\}\}/);
+  assert.match(html, /\{\{already\}\}/, 'an already-tight tag is untouched');
+  assert.equal(/\{\{ | \}\}/.test(html), false, 'no padded tag survives anywhere in the document');
 });
 
 /*

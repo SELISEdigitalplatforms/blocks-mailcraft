@@ -535,7 +535,7 @@ export function blockBody(b, theme, live, ctx, colPx) {
         padding: '6px 12px', margin: '2px 0', color,
       }, attr);
       band.appendChild(el('span', { fontFamily: 'ui-monospace,monospace', fontSize: '9.5px', fontWeight: '700', letterSpacing: '0.12em', textTransform: 'uppercase', flex: 'none' }, { text: (p.end ? '⏶ ' : '⏷ ') + word }));
-      if (!p.end) band.appendChild(el('span', { fontFamily: 'ui-monospace,monospace', fontSize: '11.5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }, { text: '{{ ' + (p.expr || '…') + ' }}' }));
+      if (!p.end) band.appendChild(el('span', { fontFamily: 'ui-monospace,monospace', fontSize: '11.5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }, { text: '{' + '{' + (p.expr || '…') + '}' + '}' }));
       return band;
     }
     // `pre-wrap`, not `pre`: `overflow-x:auto` gives the canvas a scrollbar

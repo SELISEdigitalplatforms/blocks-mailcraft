@@ -452,16 +452,16 @@ await it('scopeCss scopes selectors to the root, leaves at-rule heads alone', as
   assert.match(out, /\.mc\{margin:0\}/, 'html/body/:root collapse onto the root');
 });
 
-await it('migrateTokens moves old [[token]] drafts to the {{ token }} spelling', async () => {
-  assert.equal(migrateTokens('[[first_name]] and [[ order_id ]]'), '{{ first_name }} and {{ order_id }}');
-  assert.equal(migrateTokens('{{ already }} new'), '{{ already }} new');
+await it('migrateTokens moves old [[token]] drafts to the {{token}} spelling', async () => {
+  assert.equal(migrateTokens('[[first_name]] and [[ order_id ]]'), '{{first_name}} and {{order_id}}');
+  assert.equal(migrateTokens('{{ already }} new'), '{{ already }} new', 'an existing tag is left for the exporter to tighten');
 });
 
 await it('vars parses host input in every accepted shape and strips stray braces', async () => {
   assert.deepEqual(vars(null), DEFAULT_VARS.split('\n'), 'null host input means the default set');
   assert.deepEqual(vars(['a', 'b']), ['a', 'b']);
   assert.deepEqual(vars('a,b\n c ,{{ d }}'), ['a', 'b', 'c', 'd']);
-  assert.equal(TOKEN('email'), '{{ email }}');
+  assert.equal(TOKEN('email'), '{{email}}', 'tight: a padded tag does not resolve in every sending engine');
   assert.equal(INSERT_KEYS.text, 'html', 'merge tags know which prop they land in');
 });
 

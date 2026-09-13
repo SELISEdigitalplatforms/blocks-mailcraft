@@ -149,7 +149,7 @@ export function decorateLogicTags(html) {
     // preview document, never in the source string being mapped).
     return '<span data-mc-deco="" style="display:inline-flex;align-items:center;gap:7px;box-sizing:border-box;border:1.5px dashed ' + color + ';border-radius:7px;background:' + color + '14;padding:4px 10px;margin:2px 0;color:' + color + ';font-family:ui-monospace,monospace;font-size:9.5px;font-weight:700;letter-spacing:0.12em;">'
       + (end ? '⏶ ' : '⏷ ') + word
-      + (expr ? ' <span style="font-weight:400;font-size:11px;letter-spacing:0;">{{ ' + esc(expr) + ' }}</span>' : '')
+      + (expr ? ' <span style="font-weight:400;font-size:11px;letter-spacing:0;">{' + '{' + esc(expr) + '}' + '}</span>' : '')
       + '</span>';
   };
   const bandRow = (kind, expr, end) => '<tr><td colspan="99" data-mc-deco="" style="padding:2px 8px;">' + chip(kind, expr, end) + '</td></tr>';
@@ -168,6 +168,24 @@ export function decorateLogicTags(html) {
   s = s.replace(/\{\{\/(if|each)\s*\}\}/gi, (m, kind) => chip(kind.toLowerCase(), '', true));
   return s;
 }
+
+/**
+ * Merge tags ship tight: `{{first_name}}`, never `{{ first_name }}`.
+ *
+ * The padded spelling is valid Handlebars/Mustache/Liquid, but plenty of
+ * sending engines substitute with a literal string match, or a regex that
+ * forgets `\s*` -- and there a padded tag simply never resolves, so the
+ * recipient gets raw braces in the middle of a sentence. The editor writes
+ * the tight form now; this pass repairs everything that predates it: a
+ * template authored earlier, a hand-typed tag, a legacy `[[token]]` draft.
+ *
+ * Only padding inside the braces goes. Whitespace that SEPARATES keeps its
+ * job, so `{{#if is_premium }}` tightens to `{{#if is_premium}}` -- tag and
+ * expression still two words. One caveat by design: a code block quoting
+ * handlebars as sample text is tightened too, since this runs over the
+ * finished document.
+ */
+const tightenTokens = (html) => String(html).replace(/\{\{\s*([^{}]*?)\s*\}\}/g, '{' + '{$1}' + '}');
 
 export function buildHtml(state, root, boxCss, opts) {
   const d = state.doc; const t = d.theme;
@@ -719,5 +737,5 @@ export function buildHtml(state, root, boxCss, opts) {
       + (pageBg && pageBg !== 'transparent' && !/^rgba\(/.test(pageBg) ? ' color="' + pageBg + '"' : '') + ' /></v:background><![endif]-->';
   }
   const bodyStyle = 'margin:0;padding:0;' + pagePaint + 'font-family:' + t.font.replace(/"/g, "'") + ';color:' + t.text + ';-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;text-size-adjust:100%;';
-  return msoHarden(stampLinks('<!doctype html>\n<html lang="en"' + docDir + ' xmlns:o="urn:schemas-microsoft-com:office:office"' + (usedVml ? ' xmlns:v="urn:schemas-microsoft-com:vml"' : '') + '>\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<meta name="color-scheme" content="light">\n<meta name="supported-color-schemes" content="light">\n<title>' + 'Email' + '</title>' + msoHead + stackCss + '\n</head>\n<body' + pageAttr + ' style="' + bodyStyle + '">' + pageVml + preheader + '\n<table role="presentation"' + pageAttr + ' width="100%" cellpadding="0" cellspacing="0" border="0" style="' + pagePaint + '">\n  <tr><td align="center" style="padding:' + pagePad + ';">\n    ' + ghostOpen + '\n    ' + shell + '\n    ' + ghostClose + '\n  </td></tr>\n</table>\n</body>\n</html>'));
+  return tightenTokens(msoHarden(stampLinks('<!doctype html>\n<html lang="en"' + docDir + ' xmlns:o="urn:schemas-microsoft-com:office:office"' + (usedVml ? ' xmlns:v="urn:schemas-microsoft-com:vml"' : '') + '>\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<meta name="color-scheme" content="light">\n<meta name="supported-color-schemes" content="light">\n<title>' + 'Email' + '</title>' + msoHead + stackCss + '\n</head>\n<body' + pageAttr + ' style="' + bodyStyle + '">' + pageVml + preheader + '\n<table role="presentation"' + pageAttr + ' width="100%" cellpadding="0" cellspacing="0" border="0" style="' + pagePaint + '">\n  <tr><td align="center" style="padding:' + pagePad + ';">\n    ' + ghostOpen + '\n    ' + shell + '\n    ' + ghostClose + '\n  </td></tr>\n</table>\n</body>\n</html>')));
 }

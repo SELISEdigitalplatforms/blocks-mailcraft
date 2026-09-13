@@ -1,5 +1,5 @@
 export const DEFAULT_VARS = 'first_name\nlast_name\nemail\ncompany\ncity\norder_id\nplan\ndiscount\nunsubscribe_url';
-export const TOKEN = (t) => '{' + '{ ' + t + ' }' + '}';
+export const TOKEN = (t) => '{' + '{' + t + '}' + '}';
 
 /** Variables are supplied by the host application -- the editor only ever shows the tokens, never a substituted value. */
 export function vars(raw) {

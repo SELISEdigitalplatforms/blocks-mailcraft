@@ -102,6 +102,17 @@ await it('a column background image is read onto the column, not the row', async
   assert.ok(!r.props.bgImage, 'and it is not promoted to the whole section');
 });
 
+await it('a hand-written logic tag is read whether or not it is padded, open and close alike', async () => {
+  // The exporter's own output is tight, but nothing tightens what arrives
+  // through import -- and the close tag used to accept `{{/if}}` only, so a
+  // foreign `{{/if }}` imported as a text block and left the block open.
+  const build = (open, close) => email('<tr><td>' + open + '</td></tr><tr><td><p>x</p></td></tr><tr><td>' + close + '</td></tr>');
+  for (const [open, close] of [['{{#if vip}}', '{{/if}}'], ['{{#if vip }}', '{{/if }}'], ['{{ #if vip }}', '{{ /if }}']]) {
+    const t = typesOf(build(open, close));
+    assert.equal(t.filter((x) => x === 'condition').length, 2, open + ' … ' + close + ' -> ' + t.join(','));
+  }
+});
+
 await it('a padded anchor becomes a button, not a text link', async () => {
   const b = firstOf(email('<tr><td><a href="https://example.com" style="background-color:#0065b3;color:#ffffff;padding:14px 28px;display:inline-block;border-radius:6px">Shop</a></td></tr>'), 'button');
   assert.ok(b, 'classified as a button');

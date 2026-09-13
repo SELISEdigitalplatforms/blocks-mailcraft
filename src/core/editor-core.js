@@ -1609,7 +1609,7 @@ export class EditorCore {
     const { aiGoal, aiTone, aiBrief } = this.state;
     this.setState({ aiBusy: true, aiResults: [] });
     const prompt = 'You write marketing email copy. Goal: ' + aiGoal + '. Tone: ' + aiTone + '. Brief: ' + aiBrief +
-      '. Return ONLY JSON: {"headline":"...","body":"...","cta":"..."} — body max 55 words, plain sentences, no emoji, may use {{ first_name }}.';
+      '. Return ONLY JSON: {"headline":"...","body":"...","cta":"..."} — body max 55 words, plain sentences, no emoji, may use {{first_name}}.';
     let out = null;
     try {
       if (this.aiProvider) {
@@ -1622,7 +1622,7 @@ export class EditorCore {
       const s = (aiBrief || 'the new drop').replace(/\.$/, '');
       out = {
         headline: s.split(/[,.]/)[0].slice(0, 58),
-        body: 'Hi {{ first_name }} — ' + s + '. We kept it short: one link, one decision, no pressure.',
+        body: 'Hi {{first_name}} — ' + s + '. We kept it short: one link, one decision, no pressure.',
         cta: 'See it',
       };
     }
