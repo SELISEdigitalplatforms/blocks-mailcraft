@@ -5,6 +5,7 @@ import { ALL_FOLDER_ID, normalizeAsset, resolveLimits, providerProblems } from '
 import { validateFiles, limitsProblem } from './storage-limits.js';
 import { migrateTokens, cleanHtml, escHtml, linkHref, scaleInlineSizes, stripInlineStyle } from './sanitize.js';
 import { buildHtml as buildHtmlFn } from './export.js';
+import { parseSocialItems, socialItemsString, socialIconSrc } from './parse.js';
 import { htmlToDoc } from './import-html.js';
 import { boxCss } from './layout-style.js';
 import { vars as varsFn, TOKEN, INSERT_KEYS } from './variables.js';
@@ -566,8 +567,23 @@ export class EditorCore {
     this.rteActive = true;
     if (elNode && this.exportRoot && this.exportRoot.activeElement === elNode) elNode.blur();
     this.rteActive = false;
-    if (val !== null && val !== this.editOriginal) this.setProp(id, this.editKey, val);
+    if (val !== null && val !== this.editOriginal && !this.untouchedRaw(id, val)) this.setProp(id, this.editKey, val);
     if (this.state.editing === id) this.setState({ editing: null, linkDraft: null });
+  }
+
+  /**
+   * True when an HTML block leaves the canvas exactly as it was rendered on
+   * focus. The live node's innerHTML is the browser's serialization of the
+   * author's code, not the code (`<br/>` -> `<br>`, entities, quoting,
+   * repaired nesting), so the usual `!== editOriginal` check read a plain
+   * click-in, click-out as an edit and overwrote the source with it. The
+   * in-place fold `syncLiveEdit` may have done meanwhile is put back too.
+   */
+  untouchedRaw(id, val) {
+    const b = this.find(this.state.doc, id).block;
+    if (!b || b.type !== 'html' || this.editKey !== 'code' || val !== this.editPristine) return false;
+    if (typeof this.editOriginal === 'string' && b.props.code !== this.editOriginal) b.props.code = this.editOriginal;
+    return true;
   }
 
   exec(cmd, arg) {
@@ -1498,6 +1514,21 @@ export class EditorCore {
       // area's background image); `{ id, ci, key }` one column of a row;
       // everything else is a block or row id.
       if (t.theme) this.setTheme(t.key, a.url);
+      else if (t.socialItem !== undefined) {
+        // Resolved again at pick time, never trusted from when the library
+        // opened: the block can be deleted or its networks edited meanwhile
+        // (undo, a host setContent), and a stale index would put the icon on
+        // the wrong network -- or append a phantom one.
+        const blk0 = this.find(this.state.doc, t.id).block;
+        const items = blk0 && blk0.type === 'social' ? parseSocialItems(blk0.props.items) : null;
+        const icon = socialIconSrc(a.url);
+        if (!items || !items[t.socialItem] || !icon) {
+          this.setState({ libraryOpen: false, assetTarget: null });
+          return;
+        }
+        items[t.socialItem] = { ...items[t.socialItem], icon };
+        this.setProp(t.id, 'items', socialItemsString(items));
+      }
       else if (t.ci !== undefined) this.setColProp(t.id, t.ci, t.key || 'bgImage', a.url);
       // Artwork picked from the library knows its own dimensions, so the
       // aspect ratio comes with it -- that is what lets the export write a
@@ -1759,7 +1790,10 @@ export class EditorCore {
           // Custom kind (render/fields.js `renderSocialItems`): a per-network
           // card list with an add-dropdown, replacing the raw Name|URL
           // textarea. Same `items` string underneath.
-          { kind: 'social', label: 'Networks', value: b.props.items || '', onChange: (v) => this.setProp(b.id, 'items', v) },
+          { kind: 'social', label: 'Networks', value: b.props.items || '', onChange: (v) => this.setProp(b.id, 'items', v), onPickIcon: (i) => this.openLibrary({ id: b.id, socialItem: i }) },
+          // The same inbox check an image block gets: an icon uploaded with
+          // no storage provider is a data: URI, which Gmail and Outlook block.
+          ...[...new Set(parseSocialItems(b.props.items).flatMap((it) => imageSourceNotes(it.icon)))].map((n) => B.note(n)),
           B.seg('Icon palette', 'palette', [{ value: 'custom', label: 'Custom' }, { value: 'brand', label: 'Brand' }]),
           B.seg('Icon shape', 'shape', [{ value: 'outline', label: 'Outline' }, { value: 'bare', label: 'Bare' }, { value: 'circle', label: 'Circle' }, { value: 'square', label: 'Square' }]),
           B.tog('Show network names', 'showLabel'),

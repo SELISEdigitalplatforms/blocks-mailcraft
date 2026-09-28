@@ -140,6 +140,7 @@ function blockCtx(core, editingBlockId) {
       // against the true pre-edit value captured here instead of the
       // continuously-synced prop is what makes onBlur's change check correct.
       core.editOriginal = block.props[key];
+      core.editPristine = core.editRendered;
       core.setState({ editing: block.id, sel: { type: 'block', id: block.id }, tab: 'design' });
     },
     onBlur: (block, key, value) => {
@@ -153,7 +154,7 @@ function blockCtx(core, editingBlockId) {
       // blur apart from that artifact.
       if (core.rendering) return;
       if (core.rteActive) return;
-      if (value !== core.editOriginal) core.setProp(block.id, key, value);
+      if (value !== core.editOriginal && !core.untouchedRaw(block.id, value)) core.setProp(block.id, key, value);
       if (core.state.editing === block.id) core.setState({ editing: null, linkDraft: null });
     },
     onPaste: (e, plainOnly) => core.pasteClean(plainOnly)(e),

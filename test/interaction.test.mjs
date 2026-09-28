@@ -549,6 +549,159 @@ await it('a pointerup with no matching pointerdown is ignored', async () => {
   el.story.close();
 });
 
+/*
+ * An HTML block's live innerHTML is the browser's serialization of the
+ * author's code, never the code itself -- so the blur check must not read a
+ * click-in, click-out as an edit, or the source is rewritten by merely
+ * touching the block.
+ */
+const RAW_SRC = '<p style="margin:0">Hand-written<br/>card</p>';
+async function rawBlockEl() {
+  const el = await mountEditor();
+  el.core.insertBlock('html');
+  await settle(2);
+  const b = blocksOf(el).find((x) => x.type === 'html');
+  el.core.setProp(b.id, 'code', RAW_SRC);
+  await settle(2);
+  return { el, id: b.id };
+}
+const rawNode = (el, id) => q(el, '[data-mc-content="' + id + '"]');
+const fire = (node, type) => node.dispatchEvent(new (win().FocusEvent)(type));
+
+await it('html block: focusing and leaving it without typing keeps the source byte-for-byte', async () => {
+  const { el, id } = await rawBlockEl();
+  assert.notEqual(rawNode(el, id).innerHTML, RAW_SRC, 'precondition: the DOM serializes the code differently');
+  fire(rawNode(el, id), 'focus');
+  await settle(3);
+  fire(rawNode(el, id), 'blur');
+  await settle(2);
+  assert.equal(blocksOf(el).find((x) => x.id === id).props.code, RAW_SRC);
+  el.remove();
+});
+
+await it('html block: an in-place sync that ends back where it started is undone too', async () => {
+  const { el, id } = await rawBlockEl();
+  fire(rawNode(el, id), 'focus');
+  await settle(3);
+  // What syncLiveEdit leaves behind mid-edit: the prop overwritten in place
+  // with the serialized DOM, and a user who typed and then took it back.
+  const node = rawNode(el, id);
+  blocksOf(el).find((x) => x.id === id).props.code = node.innerHTML;
+  fire(node, 'blur');
+  await settle(2);
+  assert.equal(blocksOf(el).find((x) => x.id === id).props.code, RAW_SRC);
+  el.remove();
+});
+
+await it('html block: a real canvas edit still commits', async () => {
+  const { el, id } = await rawBlockEl();
+  fire(rawNode(el, id), 'focus');
+  await settle(3);
+  const node = rawNode(el, id);
+  node.innerHTML = '<p style="margin:0">Edited on canvas</p>';
+  fire(node, 'blur');
+  await settle(2);
+  assert.match(blocksOf(el).find((x) => x.id === id).props.code, /Edited on canvas/);
+  el.remove();
+});
+
+await it('html block: closing the edit by clicking outside does not rewrite the source either', async () => {
+  const { el, id } = await rawBlockEl();
+  fire(rawNode(el, id), 'focus');
+  await settle(3);
+  // A re-render replaces the node onFocus recorded; point at the live one,
+  // as the focus restoration does in a browser.
+  el.core.editEl = rawNode(el, id);
+  el.core.closeEditing();
+  await settle(2);
+  assert.equal(blocksOf(el).find((x) => x.id === id).props.code, RAW_SRC);
+  el.remove();
+});
+
+/*
+ * Social icons from the library: the pick lands on the network the picker
+ * was opened for, re-resolved at pick time so a stale target cannot write
+ * onto the wrong item or conjure a new one.
+ */
+async function socialEl() {
+  const el = await mountEditor();
+  el.core.insertBlock('social');
+  await settle(2);
+  const b = blocksOf(el).find((x) => x.type === 'social');
+  el.core.setProp(b.id, 'items', 'Instagram|https://instagram.com\nX|https://x.com');
+  await settle(2);
+  return { el, id: b.id };
+}
+const socialItems = (el, id) => blocksOf(el).find((x) => x.id === id).props.items;
+
+await it('social: choosing a library image sets that network\'s icon only', async () => {
+  const { el, id } = await socialEl();
+  el.core.openLibrary({ id, socialItem: 1 });
+  el.core.useAsset({ id: 'a1', name: 'x.png', url: 'https://cdn.e.com/x.png', w: 64, ht: 64 });
+  await settle(2);
+  assert.equal(socialItems(el, id), 'Instagram|https://instagram.com\nX|https://x.com|https://cdn.e.com/x.png');
+  assert.equal(el.core.state.libraryOpen, false);
+  const img = q(el, '[data-mc-content="' + id + '"] img[data-mcicon]');
+  assert.ok(img, 'the canvas draws it');
+  assert.equal(img.getAttribute('alt'), 'X');
+  el.remove();
+});
+
+await it('social: a pick for a network that no longer exists changes nothing', async () => {
+  const { el, id } = await socialEl();
+  el.core.openLibrary({ id, socialItem: 5 });
+  el.core.useAsset({ id: 'a1', name: 'x.png', url: 'https://cdn.e.com/x.png' });
+  await settle(2);
+  assert.equal(socialItems(el, id), 'Instagram|https://instagram.com\nX|https://x.com');
+  assert.equal(el.core.state.libraryOpen, false, 'the library still closes');
+  el.core.openLibrary({ id: 'gone', socialItem: 0 });
+  el.core.useAsset({ id: 'a1', name: 'x.png', url: 'https://cdn.e.com/x.png' });
+  await settle(2);
+  assert.equal(socialItems(el, id), 'Instagram|https://instagram.com\nX|https://x.com');
+  el.remove();
+});
+
+await it('social: the inspector edits and resets an icon, and keeps it through name/URL edits', async () => {
+  const { el, id } = await socialEl();
+  el.core.setState({ sel: { type: 'block', id }, tab: 'design' });
+  await settle(2);
+  const iconInput = () => q(el, '[aria-label="Icon image URL for Instagram"]');
+  const input = iconInput();
+  assert.ok(input, 'an icon field per network');
+  input.value = 'htt';
+  input.dispatchEvent(new (win().Event)('input', { bubbles: true }));
+  input.dispatchEvent(new (win().FocusEvent)('blur'));
+  await settle(2);
+  assert.equal(socialItems(el, id), 'Instagram|https://instagram.com\nX|https://x.com', 'a half-typed value is not committed');
+  input.value = 'https://cdn.e.com/ig.png';
+  input.dispatchEvent(new (win().Event)('input', { bubbles: true }));
+  input.dispatchEvent(new (win().FocusEvent)('blur'));
+  await settle(2);
+  assert.equal(socialItems(el, id), 'Instagram|https://instagram.com|https://cdn.e.com/ig.png\nX|https://x.com');
+  // Editing the link must not drop the icon.
+  const url = q(el, '[title="https://instagram.com"]');
+  url.value = 'https://instagram.com/me';
+  url.dispatchEvent(new (win().Event)('input', { bubbles: true }));
+  url.dispatchEvent(new (win().FocusEvent)('blur'));
+  await settle(2);
+  assert.equal(socialItems(el, id), 'Instagram|https://instagram.com/me|https://cdn.e.com/ig.png\nX|https://x.com');
+  const reset = Array.from(el.shadowRoot.querySelectorAll('button')).find((b) => b.textContent === 'Default');
+  assert.ok(reset, 'a way back to the built-in icon');
+  reset.click();
+  await settle(2);
+  assert.equal(socialItems(el, id), 'Instagram|https://instagram.com/me\nX|https://x.com');
+  el.remove();
+});
+
+await it('social: a data: icon gets the same inbox warning an image does', async () => {
+  const { el, id } = await socialEl();
+  el.core.setProp(id, 'items', 'X|https://x.com|data:image/png;base64,AAAA');
+  el.core.setState({ sel: { type: 'block', id }, tab: 'design' });
+  await settle(2);
+  assert.ok(Array.from(el.shadowRoot.querySelectorAll('.mc-field-note')).some((n) => /data: image/.test(n.textContent)));
+  el.remove();
+});
+
 console.log(`\n${passed} passed, ${failed} failed.`);
 closeDom();
 process.exit(failed ? 1 : 0);

@@ -1,6 +1,6 @@
 import { icon, brandIcon, socialKey, SOCIAL_BRAND, contrastInk } from '../core/icons.js';
 import { pad } from '../core/layout-style.js';
-import { parseItems, cellsOf } from '../core/parse.js';
+import { parseItems, parseSocialItems, cellsOf } from '../core/parse.js';
 import { linkHref, cssUrl } from '../core/sanitize.js';
 
 function el(tag, style, attrs) {
@@ -300,7 +300,7 @@ export function blockBody(b, theme, live, ctx, colPx) {
       const badge = shape === 'circle' || shape === 'square';
       const box = Math.round((p.size || 20) * 1.9);
       const wrap = el('div', { textAlign: p.align, padding: '8px 0' }, attr);
-      parseItems(p.items).forEach((it) => {
+      parseSocialItems(p.items).forEach((it) => {
         const key = socialKey(it.label);
         const source = palette === 'brand' ? (SOCIAL_BRAND[key] || p.color) : p.color;
         const iconColor = badge ? contrastInk(source) : source;
@@ -313,8 +313,18 @@ export function blockBody(b, theme, live, ctx, colPx) {
           border: shape === 'outline' ? '1px solid ' + source : '0',
         }, { href: linkHref(it.href), title: it.label });
         a.addEventListener('click', (e) => e.preventDefault());
+        // The author's own artwork for this network wins over the host's
+        // iconProvider and the built-in glyph: it is the one choice made for
+        // this item specifically. An <img>, not the inline SVG the glyphs
+        // are -- which is also what Gmail and Outlook actually display.
+        // `data-mcicon` tells the importer this image IS the item's icon
+        // (core/import-html.js classifySocial); a foreign strip's images, and
+        // anything an iconProvider returns, carry no such claim.
         let provided = null;
-        if (ctx && ctx.iconProvider) { try { provided = ctx.iconProvider(key, { label: it.label, size: p.size, color: iconColor }); } catch { provided = null; } }
+        if (it.icon) {
+          const sz = p.size || 20;
+          provided = el('img', { display: 'block', width: sz + 'px', height: sz + 'px', border: '0', objectFit: 'contain' }, { src: it.icon, width: String(sz), height: String(sz), alt: it.label, 'data-mcicon': '' });
+        } else if (ctx && ctx.iconProvider) { try { provided = ctx.iconProvider(key, { label: it.label, size: p.size, color: iconColor }); } catch { provided = null; } }
         a.appendChild(provided instanceof Node ? provided : brandIcon(key, p.size));
         if (p.showLabel) {
           const span = el('span', { fontFamily: p.fontFamily || t.font, fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase' }, { text: it.label });

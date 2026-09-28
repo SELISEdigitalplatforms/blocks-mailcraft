@@ -514,7 +514,7 @@ template, not to your app.
 
 | `.storageLimits` | `{ accept?, maxBytes, maxWidth?, maxHeight?, maxFilesPerDrop?, allowSvg? }`, merged over `provider.limits` per key |
 | `.aiProvider` | `async (prompt) => text` |
-| `.iconProvider` | `(platformKey, { label, size, color }) => Node`: social-icon override; falls back to the built-in icon when it is unset, throws, or returns a non-node |
+| `.iconProvider` | `(platformKey, { label, size, color }) => Node`: social-icon override; falls back to the built-in icon when it is unset, throws, or returns a non-node. A network the author gave its own icon in the inspector keeps that icon — the author's per-item choice wins |
 
 ### Package exports
 
@@ -539,7 +539,7 @@ template, not to your app.
 
 | method | returns |
 |---|---|
-| `exportHtml(options?)` | send-ready email HTML. `{ markers: false }` omits the `data-mc*` fidelity markers for pristine output: countdown, video, section box, code and raw-CSS blocks, flex/grid rows and “Keep columns” then reload lossily (content always survives) |
+| `exportHtml(options?)` | send-ready email HTML. `{ markers: false }` omits the `data-mc*` fidelity markers and the `<!--mc:html-->` comments for pristine output: countdown, video, section box, code, raw-HTML and raw-CSS blocks, flex/grid rows and “Keep columns” then reload lossily (content always survives) |
 | `importHtml(html)` | number of rows produced |
 | `loadTemplate({ name, html })` | — |
 | `undo()` / `redo()` | — |
@@ -783,7 +783,7 @@ Useful when debugging an integration, or before changing the source.
 
 **Import.** Real-world email HTML (inline and class styles, builder scaffolding, per-side borders, card columns, social strips) becomes native blocks wherever the shape is recognizable. Nested grids and `rowspan`/`colspan` survive as raw-HTML blocks: rendered and exported, not block-editable.
 
-**Export** reads back the rendered DOM, so what the user sees is what ships. Import and export stay round-trip compatible: re-importing an export restores every inspector setting, and exporting again reproduces the same bytes. A few blocks render into markup that cannot be read back (a countdown bakes its digits, a video is a linked image), so the export stamps a compact `data-mc*` attribute layer that the importer trusts and mail clients ignore; `exportHtml({ markers: false })` omits it for hosts that want pristine HTML, trading a lossy (but content-preserving) reload.
+**Export** reads back the rendered DOM, so what the user sees is what ships. Import and export stay round-trip compatible: re-importing an export restores every inspector setting, and exporting again reproduces the same bytes. A few blocks render into markup that cannot be read back (a countdown bakes its digits, a video is a linked image), so the export stamps a compact `data-mc*` attribute layer that the importer trusts and mail clients ignore. A raw HTML block is bracketed in a pair of `<!--mc:html-->` comments instead, so a reload gives the author back the exact source they wrote rather than whatever the importer can read out of it (the mail itself still gets the Outlook and link-color treatment everything else gets; the closing comment carries the small patch that undoes it for the editor). `exportHtml({ markers: false })` omits it for hosts that want pristine HTML, trading a lossy (but content-preserving) reload.
 
 **Build.** `build.js` is a zero-dependency bundler that turns the ESM sources into one plain `<script>`, then minifies through esbuild with a sourcemap alongside. esbuild is a dev dependency only: consumers install nothing transitive, and a clone with no `node_modules` still produces a working bundle.
 

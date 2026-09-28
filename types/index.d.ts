@@ -207,7 +207,7 @@ export type FooterOption =
 /** One `async (prompt) => text` function — the whole AI seam. */
 export type AiProvider = (prompt: string) => string | Promise<string>;
 
-/** Social-icon override. Falls back to the built-in icon when unset, throwing, or returning a non-node. */
+/** Social-icon override. Falls back to the built-in icon when unset, throwing, or returning a non-node. Not called for a network the author gave its own icon image in the inspector. */
 export type IconProvider = (
   platformKey: string,
   ctx: { label: string; size: number; color: string },

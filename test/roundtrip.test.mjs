@@ -285,10 +285,8 @@ await it('svg: the block survives with its drawing, width, align and spacing', a
   assert.equal(b.props.py, 4);
 });
 
-await it('html block: its content passes through', async () => {
-  // A simple fragment legitimately reads back as the text block it looks
-  // like; the floor is that the content itself always survives.
-  assert.match(JSON.stringify(got), /raw-html-probe/);
+await it('html block: comes back as an html block, source byte-for-byte', async () => {
+  assert.equal(one('html').props.code, '<p style="margin:0">raw-html-probe</p>');
 });
 
 await it('dynamic-content markers: expr and end survive in order', async () => {
@@ -604,6 +602,244 @@ await it('convergence: the export of a reloaded document is byte-identical', asy
   await settle(3);
   const html3 = el.exportHtml();
   assert.equal(html3 === html2, true, 'byte-stable from the first reload on');
+});
+
+console.log();
+console.log('Round trip — raw HTML blocks keep the author\'s source');
+
+const { rawPatchFor, rawSourceOf } = await import(new URL('../src/core/raw-html.js', import.meta.url).href);
+
+// What an author pastes: a comment, a card table, self-closing tags, a bare
+// merge tag with padding, a logic pair, a line-height ratio and a colorless
+// link -- every thing the classifiers used to split up or the export passes
+// rewrite.
+const CARD = `<!-- promo card -->
+<table role="presentation" width="100%" style="border-collapse:collapse">
+  <tr>
+    <td style="padding:12px"><img src="https://e.com/a.png" width="120" alt="Logo"/><br/></td>
+    <td style="padding:12px"><h2 style="margin:0;color:#c00">Sale ends Friday</h2>{{#if vip}}<p style="margin:0;font-size:16px;line-height:1.6">Hi {{ first_name }}, 30% off.</p>{{/if}}<a href="https://e.com/p">Details</a> <a href="https://e.com" style="background:#c00;color:#fff;padding:10px 18px;display:inline-block">Shop now</a></td>
+  </tr>
+</table>`;
+const rawOf = (e) => e.getContent().rows.flatMap((r) => r.cols.flatMap((c) => c.blocks));
+async function rawDoc(rows) {
+  const e = await mountEditor();
+  const doc = e.getContent();
+  doc.rows = rows;
+  e.setContent(doc);
+  await settle(3);
+  return e;
+}
+const segmentsOf = (h) => (h.match(/<!--mc:html:[\s\S]*?<!--\/mc:html:[^>]*-->/g) || []);
+
+await it('a pasted card reloads as ONE html block holding exactly what was pasted', async () => {
+  const e = await rawDoc([row(blk('html', { code: CARD }))]);
+  e.importHtml(e.exportHtml());
+  await settle(3);
+  const bs = rawOf(e);
+  assert.deepEqual(bs.map((b) => b.type), ['html'], 'not split into image/heading/text/button');
+  assert.equal(bs[0].props.code, CARD);
+  e.remove();
+});
+
+await it('the sent mail still gets every export pass on the raw code', async () => {
+  const e = await rawDoc([row(blk('html', { code: CARD }))]);
+  const seg = segmentsOf(e.exportHtml())[0];
+  assert.ok(seg, 'the block is bracketed');
+  assert.match(seg, /mso-table-lspace:0pt/, 'Outlook table spacing');
+  assert.match(seg, /-ms-interpolation-mode:bicubic/, 'Outlook image scaling');
+  assert.match(seg, /line-height:26px;mso-line-height-rule:exactly/, 'Outlook line-height');
+  assert.match(seg, /\{\{first_name\}\}/, 'tight merge tag');
+  assert.match(seg, /href="https:\/\/e\.com\/p" style="color:/, 'document link color');
+  assert.match(seg, /<!-- promo card -->/, 'the author\'s own comment ships as written');
+  e.remove();
+});
+
+await it('Code modal Apply keeps html blocks intact', async () => {
+  const e = await rawDoc([row(blk('html', { code: CARD }))]);
+  e.core.setState({ codeSrc: e.exportHtml() });
+  e.core.applyCode();
+  await settle(3);
+  const bs = rawOf(e);
+  assert.deepEqual(bs.map((b) => b.type), ['html']);
+  assert.equal(bs[0].props.code, CARD);
+  e.remove();
+});
+
+await it('the raw segment is byte-stable across save -> reload -> save', async () => {
+  const e = await rawDoc([row(blk('text', { html: 'Intro' })), row(blk('html', { code: CARD }))]);
+  const h1 = e.exportHtml();
+  e.importHtml(h1);
+  await settle(3);
+  const h2 = e.exportHtml();
+  e.importHtml(h2);
+  await settle(3);
+  assert.deepEqual(segmentsOf(h2), segmentsOf(h1), 'deterministic brackets and patch');
+  assert.equal(e.exportHtml(), h2, 'and the whole export is a fixed point');
+  e.remove();
+});
+
+await it('several html blocks across columns keep their order, place and source', async () => {
+  const bad = '<tr><td>bare row</td></tr><div>unclosed';
+  const r = row([blk('text', { html: 'left' }), blk('html', { code: bad })], null, [50, 50]);
+  r.cols[1].blocks = [blk('html', { code: '<p>right</p>' })];
+  const e = await rawDoc([r, row(blk('text', { html: 'After the unclosed div' }))]);
+  e.importHtml(e.exportHtml());
+  await settle(3);
+  const g = e.getContent();
+  assert.deepEqual(g.rows[0].cols.map((c) => c.blocks.map((b) => b.type)), [['text', 'html'], ['html']]);
+  assert.equal(g.rows[0].cols[0].blocks[1].props.code, bad, 'unbalanced markup verbatim');
+  assert.equal(g.rows[0].cols[1].blocks[0].props.code, '<p>right</p>');
+  assert.match(JSON.stringify(g.rows[1]), /After the unclosed div/, 'and it swallowed nothing after it');
+  e.remove();
+});
+
+await it('logic tags inside an html block stay inside it', async () => {
+  const code = '{{#if vip}}<p>VIP</p>{{/if}}';
+  const e = await rawDoc([row(blk('html', { code }))]);
+  e.importHtml(e.exportHtml());
+  await settle(3);
+  const bs = rawOf(e);
+  assert.deepEqual(bs.map((b) => b.type), ['html'], 'no condition markers were made from it');
+  assert.equal(bs[0].props.code, code);
+  e.remove();
+});
+
+await it('an exported email pasted into an html block is one block, brackets and all', async () => {
+  const inner = await rawDoc([row(blk('html', { code: '<p>inner</p>' }))]);
+  const pasted = inner.exportHtml();
+  inner.remove();
+  const e = await rawDoc([row(blk('html', { code: pasted }))]);
+  e.importHtml(e.exportHtml());
+  await settle(3);
+  const bs = rawOf(e);
+  assert.equal(bs.length, 1);
+  assert.equal(bs[0].props.code, pasted);
+  e.remove();
+});
+
+await it('a hand edit inside the block voids the patch, never the block', async () => {
+  const e = await rawDoc([row(blk('html', { code: CARD }))]);
+  const edited = e.exportHtml().replace('Sale ends Friday', 'Sale ends Monday');
+  e.importHtml(edited);
+  await settle(3);
+  const bs = rawOf(e);
+  assert.deepEqual(bs.map((b) => b.type), ['html']);
+  assert.match(bs[0].props.code, /Sale ends Monday/, 'the edit is kept');
+  assert.match(bs[0].props.code, /<!-- promo card -->/, 'and so is the structure');
+  e.remove();
+});
+
+await it('comments stripped by an ESP: the old behavior, content intact', async () => {
+  const e = await rawDoc([row(blk('html', { code: CARD }))]);
+  const stripped = e.exportHtml().replace(/<!--(?!\[if|<!\[endif)[\s\S]*?-->/g, '');
+  assert.equal(/mc:html/.test(stripped), false);
+  e.importHtml(stripped);
+  await settle(3);
+  const json = JSON.stringify(e.getContent());
+  assert.match(json, /Sale ends Friday/);
+  assert.match(json, /Shop now/);
+  e.remove();
+});
+
+await it('brackets in the wrong place fall back to the old import instead of losing content', async () => {
+  const e = await mountEditor();
+  e.importHtml('<table><tr><td><a title="<!--mc:html:h1-->x<!--/mc:html:h1-->" href="https://e.com">Link text</a></td></tr></table>');
+  await settle(3);
+  assert.match(JSON.stringify(e.getContent()), /Link text/, 'inside an attribute');
+  e.importHtml('<table><tr><td><!--mc:html:h1--><p>Opened, never closed</p></td></tr></table>');
+  await settle(3);
+  assert.match(JSON.stringify(e.getContent()), /Opened, never closed/, 'unpaired');
+  e.importHtml('<table><tr><td><div data-mc="html" data-mch="0"></div><p>Forged slot</p></td></tr></table>');
+  await settle(3);
+  assert.match(JSON.stringify(e.getContent()), /Forged slot/, 'a forged placeholder is not trusted');
+  e.remove();
+});
+
+await it('markers:false and empty html blocks export exactly as before', async () => {
+  const e = await rawDoc([row(blk('html', { code: CARD })), row(blk('html', { code: '' }))]);
+  const pristine = e.exportHtml({ markers: false });
+  assert.equal(/mc:html/.test(pristine), false, 'no brackets');
+  assert.equal(segmentsOf(e.exportHtml()).length, 1, 'an empty block ships nothing, bracketed or not');
+  e.remove();
+});
+
+await it('raw patch: malformed or foreign payloads leave the shipped code alone', async () => {
+  const src = '<a href="x">go</a> {{ name }}';
+  const shipped = '<a href="x" style="color:#0065b3;">go</a> {{name}}';
+  const patch = rawPatchFor(src, shipped);
+  assert.ok(patch, 'a patch is made');
+  assert.equal(/[<>-]/.test(patch), false, 'and is comment-safe');
+  assert.equal(rawSourceOf(shipped, patch), src, 'and reverses the passes');
+  assert.equal(rawSourceOf(shipped + ' ', patch), shipped + ' ', 'wrong checksum');
+  assert.equal(rawSourceOf(shipped, patch.replace(/p=.*/, 'p=%5B%5B999%2C1%2C%22%22%5D%5D')), shipped, 'op out of range');
+  assert.equal(rawSourceOf(shipped, patch.replace(/p=.*/, 'p=%E0%A4%A')), shipped, 'undecodable');
+  assert.equal(rawSourceOf(shipped, 'junk'), shipped, 'junk');
+  assert.equal(rawPatchFor(src, src), '', 'nothing to reverse, nothing shipped');
+  assert.equal(rawPatchFor('a'.repeat(40), 'b'.repeat(4000)), '', 'no patch bigger than the code is worth');
+});
+
+console.log();
+console.log('Round trip — social: a network\'s own icon');
+
+const { parseSocialItems, socialItemsString } = await import(new URL('../src/core/parse.js', import.meta.url).href);
+const ICON = 'https://cdn.example.com/icons/insta.png';
+const OWN = 'Instagram|https://instagram.com/me|' + ICON + '\nX|https://x.com/me\nLinkedIn|https://linkedin.com/in/me';
+
+await it('an item\'s own icon ships as an <img> and reloads onto the same network', async () => {
+  const e = await rawDoc([row(blk('social', { items: OWN, size: 24 }))]);
+  const html = e.exportHtml();
+  assert.match(html, new RegExp('<img[^>]*src="' + ICON.replace(/[.\/]/g, '\\$&') + '"[^>]*alt="Instagram"'), 'real image, named');
+  assert.match(html, /<img[^>]*width="24"/, 'sized for Outlook');
+  e.importHtml(html);
+  await settle(3);
+  const b = rawOf(e).find((x) => x.type === 'social');
+  assert.ok(b, 'still a social block');
+  assert.equal(b.props.items, OWN, 'icon on Instagram only, the others still built-in');
+  assert.equal(b.props.size, 24);
+  e.remove();
+});
+
+await it('markers:false drops the icon mark; the strip still reloads, on built-in glyphs', async () => {
+  const e = await rawDoc([row(blk('social', { items: OWN }))]);
+  const pristine = e.exportHtml({ markers: false });
+  assert.equal(/data-mc/.test(pristine), false);
+  assert.match(pristine, /insta\.png/, 'the mail still shows the icon');
+  e.importHtml(pristine);
+  await settle(3);
+  const b = rawOf(e).find((x) => x.type === 'social');
+  assert.ok(b);
+  assert.equal(b.props.items, OWN.replace('|' + ICON, ''), 'lossy by contract, links intact');
+  e.remove();
+});
+
+await it('a foreign image-icon strip imports exactly as before (no icons claimed)', async () => {
+  const e = await mountEditor();
+  e.importHtml('<table><tr><td align="center"><a href="https://facebook.com/acme"><img src="https://acme.com/fb.png" width="24" alt="Facebook"></a> <a href="https://instagram.com/acme"><img src="https://acme.com/ig.png" width="24" alt="Instagram"></a></td></tr></table>');
+  await settle(3);
+  const b = rawOf(e).find((x) => x.type === 'social');
+  assert.ok(b);
+  assert.equal(b.props.items, 'Facebook|https://facebook.com/acme\nInstagram|https://instagram.com/acme');
+  e.remove();
+});
+
+await it('a forged or unsafe icon is not taken', async () => {
+  const e = await mountEditor();
+  e.importHtml('<table><tr><td align="center"><a href="https://facebook.com/a"><img data-mcicon="" src="javascript:alert(1)" width="24" alt="Facebook"></a> <a href="https://x.com/a"><img data-mcicon="" src="https://ok.com/x.png" width="24" alt="X"></a></td></tr></table>');
+  await settle(3);
+  const b = rawOf(e).find((x) => x.type === 'social');
+  assert.equal(b.props.items, 'Facebook|https://facebook.com/a\nX|https://x.com/a|https://ok.com/x.png');
+  e.remove();
+});
+
+await it('item strings: old lines parse as before, icons only when they are image sources', async () => {
+  assert.deepEqual(parseSocialItems('X|https://x.com'), [{ label: 'X', href: 'https://x.com', icon: '' }]);
+  assert.deepEqual(parseSocialItems('Odd|https://e.com/a|b'), [{ label: 'Odd', href: 'https://e.com/a|b', icon: '' }], 'a | inside a URL is not an icon');
+  assert.deepEqual(parseSocialItems('Bad|https://e.com|javascript:alert(1)'), [{ label: 'Bad', href: 'https://e.com|javascript:alert(1)', icon: '' }]);
+  assert.deepEqual(parseSocialItems('Me||https://e.com/i.png'), [{ label: 'Me', href: '', icon: 'https://e.com/i.png' }]);
+  assert.deepEqual(parseSocialItems('Me|#|{{cdn}}/i.png')[0].icon, '{{cdn}}/i.png', 'a merge-tag host');
+  assert.equal(socialItemsString([{ label: 'X', href: 'https://x.com' }]), 'X|https://x.com', 'no icon, old shape');
+  assert.equal(socialItemsString([{ label: 'X', href: 'https://x.com', icon: 'nope' }]), 'X|https://x.com', 'an invalid icon is never written');
+  assert.equal(socialItemsString(parseSocialItems(OWN)), OWN, 'lossless');
 });
 
 console.log();

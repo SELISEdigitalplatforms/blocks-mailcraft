@@ -4,6 +4,15 @@ All notable changes to `@seliseblocks/mailcraft` are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Your own social icons.** Every network in a Social block now takes an icon image of its own — paste a URL, or pick or upload one from the asset library with **Choose…** — and **Default** puts the built-in icon back. Networks without one keep the built-in glyph, so a strip can mix both. The icon ships as a real `<img>` sized for Outlook, which also means it displays in Gmail and Outlook, where the built-in inline-SVG glyphs are stripped. It survives save and reload on the same network; a `data:` or `cid:` icon gets the same "will not display when sent" note an image block does, and a pick for a network deleted while the library was open changes nothing. A host `iconProvider` still draws every network the author did not give an icon. Existing documents are untouched (a network without an icon is stored exactly as before), and a foreign email's image-icon strip still imports onto built-in glyphs — only an icon this editor exported is read back as one.
+
+### Fixed
+- **An HTML block comes back as the HTML the author pasted.** The HTML block is where an author pastes markup they intend to come back to, but it was the one content block exported with no fidelity marker — so every save and reload (and every Code-modal Apply) ran that markup through the importer like a foreign email, and a pasted card returned as a two-column row of image, heading, text and button, its comments and formatting gone. The block is now bracketed in a pair of `<!--mc:html-->` comments that the importer lifts out of the source *before* anything parses it, so the code comes back byte-for-byte: comments, indentation, `<br/>`, unbalanced tags, bare `<tr>`s and `{{#if}}` inside the block included. What reaches a recipient is unchanged, byte for byte once the comments are set aside — the code still gets the Outlook fixes, the tight merge tags and the document link color on the way out; the closing comment carries the small checksummed patch that undoes exactly those for the editor. Anything that does not add up (comments stripped by an ESP, a hand edit inside the block, brackets in an attribute) falls back to the shipped code or to the previous import, never to less content. `exportHtml({ markers: false })` ships no comments, as before. Templates saved before this release were exported without the brackets and cannot be restored; they are protected from their next save on.
+- **Clicking into an HTML block on the canvas and out again no longer rewrites its source.** The blur check compared the browser's serialization of the code against the code itself, which differ for ordinary markup (`<br/>` against `<br>`), so an untouched block was committed as edited — with an undo entry — and the author's formatting replaced. A real edit on the canvas still commits.
+
 ## [0.2.21] — 2026-09-13
 
 ### Changed

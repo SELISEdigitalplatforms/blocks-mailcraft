@@ -10,6 +10,7 @@
 
 import { cssUrl } from './sanitize.js';
 import { rowBorderCss, rowMargin, rowPad } from './layout-style.js';
+import { rawPatchFor } from './raw-html.js';
 
 const LOGIC_OPEN = { condition: '{{#if ', loop: '{{#each ' };
 const LOGIC_CLOSE = { condition: '{{/if}}', loop: '{{/each}}' };
@@ -187,6 +188,18 @@ export function decorateLogicTags(html) {
  */
 const tightenTokens = (html) => String(html).replace(/\{\{\s*([^{}]*?)\s*\}\}/g, '{' + '{$1}' + '}');
 
+/** Every colorless anchor gets the document link color inline -- mail clients paint their own blue otherwise. A module-level function (not a closure) because raw HTML blocks run the same passes on their own code (`rawHtml` in buildHtml). */
+function stampLinkColor(html, link) {
+  if (!link) return html;
+  return html.replace(/<a\b([^>]*)>/g, (m0, attrs) => {
+    if (/(?:[;"\s])color\s*:/.test(attrs)) return m0;
+    if (/style="/.test(attrs)) {
+      return '<a' + attrs.replace(/style="([^"]*)"/, (s0, css) => 'style="' + css + (!css.trim() || css.trim().endsWith(';') ? '' : ';') + 'color:' + link + ';"') + '>';
+    }
+    return '<a' + attrs + ' style="color:' + link + ';">';
+  });
+}
+
 export function buildHtml(state, root, boxCss, opts) {
   const d = state.doc; const t = d.theme;
   const logic = logicPlan(d);
@@ -219,10 +232,35 @@ export function buildHtml(state, root, boxCss, opts) {
     if (b.type === 'codeblock') delete payload.code;
     return ' data-mc="' + b.type + '" data-mcp="' + attrEsc(JSON.stringify(payload)) + '"';
   };
+  /*
+   * A raw HTML block is the author's own source, and the one thing they need
+   * back from a save is that source, not whatever the importer can read out
+   * of it. Comments render nowhere and keep the sent mail byte-for-byte what
+   * it was, so the block is bracketed in a comment pair the importer lifts
+   * verbatim (core/import-html.js RAW_PAIR). The mail still gets the code
+   * through the same whole-document passes as everything else (run here on
+   * the code alone -- each is per-tag, so the result is identical in
+   * place), and the closing comment carries the reverse patch back to what
+   * the author typed (core/raw-html.js). Ids count up per export rather than
+   * reuse block ids, which are fresh on every import and would stop a
+   * reloaded draft from exporting byte-for-byte what it was loaded from;
+   * they only have to be unique against the code they wrap, since an
+   * exported email pasted into the block carries brackets of its own.
+   */
+  let rawSeq = 0;
+  const rawHtml = (b) => {
+    const code = b.props.code || '';
+    if (!markers || !code) return code;
+    const shipped = tightenTokens(msoHarden(stampLinkColor(code, t.link)));
+    let id = 'h' + (++rawSeq);
+    for (let n = 1; shipped.indexOf('mc:html:' + id) >= 0; n++) id = 'h' + rawSeq + '_' + n;
+    const patch = rawPatchFor(code, shipped);
+    return '<!--mc:html:' + id + '-->' + shipped + '<!--/mc:html:' + id + (patch ? ' ' + patch : '') + '-->';
+  };
   const grab = (id) => {
     const el = root.querySelector('[data-mc-content="' + id + '"]');
     if (!el) return '';
-    return el.outerHTML
+    const out = el.outerHTML
       .replace(/\scontenteditable="[^"]*"/g, '')
       // Editor bookkeeping (caret restoration): a fresh random id every
       // import, so leaving it in shipped mail also made export -> import ->
@@ -232,6 +270,9 @@ export function buildHtml(state, root, boxCss, opts) {
       .replace(/\sspellcheck="[^"]*"/g, '')
       .replace(/\sdata-(?:gramm|gramm_editor|enable-grammarly|lt-active)="[^"]*"/g, '')
       .replace(/\sdraggable="[^"]*"/g, '');
+    // A social item's own icon is marked for the importer (block-body.js);
+    // pristine output drops the mark with the rest of the fidelity layer.
+    return markers ? out : out.replace(/\sdata-mcicon="[^"]*"/g, '');
   };
   /*
    * Which mobile rules this document actually needs. Only the ones a row (or
@@ -296,7 +337,7 @@ export function buildHtml(state, root, boxCss, opts) {
     }
     const colInner = (c) => c.blocks.map((b) => {
       if (b.type === 'css') return '<style' + (markers ? ' data-mc="css"' + (b.props.note ? ' data-mcn="' + attrEsc(b.props.note) + '"' : '') : '') + '>' + (b.props.code || '') + '</style>';
-      if (b.type === 'html') return b.props.code || '';
+      if (b.type === 'html') return rawHtml(b);
       // The same width-carrying span the canvas draws (block-body.js), so the
       // Width slider reaches the sent mail and the importer can read it back
       // -- exported bare, the drawing shipped at its intrinsic size and the
@@ -679,16 +720,7 @@ export function buildHtml(state, root, boxCss, opts) {
    * render time (overrideLinkColor), which is what keeps a reloaded document
    * inheriting: export -> import -> export re-stamps the same bytes.
    */
-  const stampLinks = (html) => {
-    if (!t.link) return html;
-    return html.replace(/<a\b([^>]*)>/g, (m0, attrs) => {
-      if (/(?:[;"\s])color\s*:/.test(attrs)) return m0;
-      if (/style="/.test(attrs)) {
-        return '<a' + attrs.replace(/style="([^"]*)"/, (s0, css) => 'style="' + css + (!css.trim() || css.trim().endsWith(';') ? '' : ';') + 'color:' + t.link + ';"') + '>';
-      }
-      return '<a' + attrs + ' style="color:' + t.link + ';">';
-    });
-  };
+  const stampLinks = (html) => stampLinkColor(html, t.link);
   /*
    * The preview line. Hidden by every trick the clients between them need
    * (display:none for most, mso-hide for Word, zero size/opacity for the ones

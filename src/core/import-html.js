@@ -1,6 +1,8 @@
 import { mkRow, blk } from './blocks.js';
 import { cleanImportHtml } from './sanitize.js';
 import { inlineStylesheets } from './css-cascade.js';
+import { rawSourceOf } from './raw-html.js';
+import { socialIconSrc } from './parse.js';
 
 /**
  * HTML -> doc importer. Mirrors the canonical shapes `render/block-body.js`
@@ -694,7 +696,13 @@ function classifySocial(el) {
   if (social.length < Math.ceil(anchors.length / 2)) return null;
   const a0 = anchors[0];
   const over = {
-    items: anchors.map((a, i) => names[i] + '|' + (a.getAttribute('href') || '#')).join('\n'),
+    // A per-item icon comes back only from an image the exporter vouched for
+    // (`data-mcicon`, render/block-body.js). A foreign strip's own images keep
+    // importing as built-in glyphs, exactly as they did before icons existed.
+    items: anchors.map((a, i) => {
+      const own = imgs[i].tagName === 'IMG' && imgs[i].hasAttribute('data-mcicon') ? socialIconSrc(imgs[i].getAttribute('src')) : '';
+      return names[i] + '|' + (a.getAttribute('href') || '#') + (own ? '|' + own : '');
+    }).join('\n'),
     // From the first anchor's ancestry, not `el`: the alignment usually sits
     // on an inner td between the icons and the table this classifier sees.
     align: textAlignOf(a0),
@@ -959,6 +967,7 @@ const MARKER_TYPES = { countdown: 1, video: 1, box: 1, codeblock: 1 };
 function markerBlock(el) {
   if (!el.getAttribute) return null;
   const type = el.getAttribute('data-mc') || '';
+  if (type === 'html') return rawSlotBlock(el);
   if (type === 'css' && el.tagName === 'STYLE') {
     const over = { code: el.textContent || '' };
     const note = el.getAttribute('data-mcn');
@@ -2477,10 +2486,72 @@ function foldThemeInherits(rows, theme) {
   });
 }
 
+/*
+ * Raw HTML blocks, verbatim. The exporter (core/export.js) brackets each one
+ * in `<!--mc:html:ID-->...<!--/mc:html:ID-->`. Without that, a pasted card
+ * came back from every save as whatever the classifiers saw in it -- an
+ * image, a heading, a button, split across columns -- and the author's own
+ * markup was gone. The code is lifted out of the *source string* before
+ * anything parses it, because DOMParser (and foldLogicWrappers) normalize
+ * exactly what the author expects to find again: comments, formatting,
+ * `<br/>`, unbalanced tags, bare `<tr>`s, `{{#if}}` inside the block. A slot
+ * comment holds its place through the parse and becomes a `data-mc="html"`
+ * placeholder the walker hands to `markerBlock`. The closing comment may
+ * carry a reverse patch from the shipped code (which the export passes
+ * rewrote for the mail) back to the author's source; `rawSourceOf`
+ * (core/raw-html.js) applies it only when the shipped text is still the
+ * text it was made for, and keeps the shipped code otherwise.
+ *
+ * Never worse than no markers: if any slot fails to land as a block (a
+ * bracket pair that ended up inside an attribute or a <textarea>, a slot the
+ * walker never reached), the whole import is redone from the untouched
+ * source, which is exactly the behavior before markers existed. Pairs match
+ * by id, so a sentinel-looking comment inside the author's code (an exported
+ * email pasted into an HTML block) is part of that code, and an unpaired one
+ * is an ordinary comment.
+ */
+const RAW_PAIR = /<!--mc:html:([A-Za-z0-9_-]{1,40})-->([\s\S]*?)<!--\/mc:html:\1(?: ([^<>]*?))?-->/g;
+let rawSlots = null;
+
+function rawSlotBlock(el) {
+  const i = el.getAttribute('data-mch');
+  if (!rawSlots || i == null || !(i in rawSlots.codes) || rawSlots.used.has(i)) return null;
+  rawSlots.used.add(i);
+  return blk('html', { code: rawSlots.codes[i] });
+}
+
+function plantRawSlots(doc) {
+  const found = [];
+  const walk = doc.createTreeWalker(doc, 128 /* NodeFilter.SHOW_COMMENT */);
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+    const m = /^mc:raw:(\d+)$/.exec(n.data);
+    if (m) found.push([n, m[1]]);
+  }
+  found.forEach(([n, i]) => {
+    const slot = doc.createElement('div');
+    slot.setAttribute('data-mc', 'html');
+    slot.setAttribute('data-mch', i);
+    n.parentNode.replaceChild(slot, n);
+  });
+  return found.length;
+}
+
 /** Full import entry point: the rows plus the theme patch read from the same source. `theme` only carries keys the source actually declared -- the caller merges it over the current theme so unspecified fields keep their values. */
 export function htmlToDoc(src) {
+  const text = String(src || '');
+  const codes = [];
+  const lifted = text.replace(RAW_PAIR, (m, id, code, patch) => '<!--mc:raw:' + (codes.push(rawSourceOf(code, patch)) - 1) + '-->');
+  if (codes.length) {
+    const got = parseSource(lifted, codes);
+    if (got) return got;
+  }
+  return parseSource(text, null);
+}
+
+function parseSource(src, codes) {
   let doc;
-  try { doc = new DOMParser().parseFromString(foldLogicWrappers(src || ''), 'text/html'); } catch { return { rows: [], theme: {} }; }
+  try { doc = new DOMParser().parseFromString(foldLogicWrappers(src), 'text/html'); } catch { return codes ? null : { rows: [], theme: {} }; }
+  if (codes && plantRawSlots(doc) !== codes.length) return null;
   // Fold <style> rules into inline styles first, so class-styled templates
   // (never-inlined exports, hand-written emails) classify like inlined ones.
   // Best-effort: a pathological stylesheet must never block the import.
@@ -2492,7 +2563,10 @@ export function htmlToDoc(src) {
   // Theme first: themeFromParsedDoc consumes the styles it claims off the
   // scaffold nodes, and the row walker must see the cleaned DOM.
   const theme = themeFromParsedDoc(doc);
-  const rows = collectRows(Array.from(doc.body.childNodes));
+  rawSlots = codes ? { codes, used: new Set() } : null;
+  let rows;
+  try { rows = collectRows(Array.from(doc.body.childNodes)); } catch (e) { if (!codes) throw e; } finally { if (codes && rawSlots.used.size !== codes.length) rows = null; rawSlots = null; }
+  if (!rows) return null;
   foldThemeInherits(rows, theme);
   return { rows, theme };
 }

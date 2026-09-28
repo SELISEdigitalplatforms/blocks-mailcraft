@@ -1,5 +1,5 @@
 import { icon, brandIcon, socialKey, SOCIAL_BRAND, contrastInk } from '../core/icons.js';
-import { parseItems } from '../core/parse.js';
+import { parseSocialItems, socialItemsString, socialIconSrc } from '../core/parse.js';
 import { linkHref } from '../core/sanitize.js';
 
 function el(tag, style, attrs) {
@@ -150,29 +150,31 @@ const NETWORKS = [
 function renderSocialItems(f) {
   const box = el('div');
   box.appendChild(fieldLabel(f.label));
-  const items = parseItems(f.value || '');
+  const items = parseSocialItems(f.value || '');
   // No coercion here: commits land while the user is still typing (debounced,
   // see typeCommit) and the panel re-renders from the committed string, so
   // padding an empty field with a fallback would snap "cleared to retype"
   // inputs back mid-edit.
-  const commit = (next) => f.onChange(next.map((it) => (it.label || '') + '|' + (it.href || '')).join('\n'));
+  const commit = (next) => f.onChange(socialItemsString(next));
   const list = el('div', { display: 'flex', flexDirection: 'column', gap: '6px' });
 
   items.forEach((it, i) => {
-    const row = el('div', { display: 'flex', alignItems: 'center', gap: '7px', padding: '6px 7px', border: '1px solid var(--ed-line)', borderRadius: '9px', background: 'var(--ed-panel-2)' });
+    const card = el('div', { display: 'flex', flexDirection: 'column', gap: '5px', padding: '6px 7px', border: '1px solid var(--ed-line)', borderRadius: '9px', background: 'var(--ed-panel-2)' });
+    const row = el('div', { display: 'flex', alignItems: 'center', gap: '7px' });
     const key = socialKey(it.label);
     const brand = SOCIAL_BRAND[key] || '';
-    const chip = el('span', { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', flex: 'none', borderRadius: '7px', background: brand || 'var(--ed-soft)', color: brand ? contrastInk(brand) : 'var(--ed-accent)' });
-    chip.appendChild(brandIcon(key, 13));
+    const chip = el('span', { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', flex: 'none', borderRadius: '7px', overflow: 'hidden', background: it.icon ? 'var(--ed-panel)' : (brand || 'var(--ed-soft)'), color: brand ? contrastInk(brand) : 'var(--ed-accent)' });
+    if (it.icon) chip.appendChild(el('img', { width: '20px', height: '20px', objectFit: 'contain', display: 'block' }, { src: it.icon, alt: '' }));
+    else chip.appendChild(brandIcon(key, 13));
     const name = el('input', { width: '70px', flex: 'none', boxSizing: 'border-box', background: 'transparent', border: '1px solid transparent', borderRadius: '5px', color: 'var(--ed-text)', font: 'inherit', fontSize: '11.5px', fontWeight: '600', padding: '3px 4px' }, { 'data-focus-key': `f${f.key}-n${i}`, title: 'Network name', dir: 'auto' });
     name.value = it.label;
-    const nameCommit = typeCommit((v) => { const next = items.slice(); next[i] = { label: v, href: it.href }; commit(next); });
+    const nameCommit = typeCommit((v) => { const next = items.slice(); next[i] = { ...it, label: v }; commit(next); });
     name.addEventListener('input', (e) => nameCommit.call(e.target.value));
     name.addEventListener('focus', () => { name.style.borderColor = 'var(--ed-accent)'; name.style.background = 'var(--ed-panel)'; name.style.outline = 'none'; });
     name.addEventListener('blur', () => { name.style.borderColor = 'transparent'; name.style.background = 'transparent'; nameCommit.flush(); });
     const url = el('input', { flex: '1', minWidth: '0', boxSizing: 'border-box', background: 'var(--ed-panel)', border: '1px solid var(--ed-line)', borderRadius: '6px', color: 'var(--ed-text)', fontFamily: 'ui-monospace, monospace', fontSize: '10.5px', padding: '4px 6px' }, { placeholder: 'https://', 'data-focus-key': `f${f.key}-u${i}`, title: it.href, dir: 'ltr' });
     url.value = it.href;
-    const urlCommit = typeCommit((v) => { const next = items.slice(); next[i] = { label: it.label, href: v }; commit(next); });
+    const urlCommit = typeCommit((v) => { const next = items.slice(); next[i] = { ...it, href: v }; commit(next); });
     url.addEventListener('input', (e) => urlCommit.call(e.target.value));
     url.addEventListener('focus', () => { url.style.borderColor = 'var(--ed-accent)'; url.style.outline = 'none'; });
     url.addEventListener('blur', () => { url.style.borderColor = 'var(--ed-line)'; urlCommit.flush(); });
@@ -181,7 +183,8 @@ function renderSocialItems(f) {
     del.addEventListener('mouseleave', () => { del.style.background = 'transparent'; del.style.color = 'var(--ed-faint)'; });
     del.addEventListener('click', () => commit(items.filter((x, xi) => xi !== i)));
     row.append(chip, name, url, del);
-    list.appendChild(row);
+    card.append(row, renderSocialIcon(f, items, i, commit));
+    list.appendChild(card);
   });
 
   if (!items.length) {
@@ -206,6 +209,41 @@ function renderSocialItems(f) {
 
   box.appendChild(list);
   return box;
+}
+
+/**
+ * One network's own icon: a URL field, the library picker, and a way back to
+ * the built-in glyph. Only a value that reads as an image source is
+ * committed -- the item string drops anything else (core/parse.js), so
+ * committing a half-typed "htt" would round-trip to empty and wipe the field
+ * mid-typing; an invalid value just stays in the input, flagged.
+ */
+function renderSocialIcon(f, items, i, commit) {
+  const it = items[i];
+  const line = el('div', { display: 'flex', alignItems: 'center', gap: '5px', paddingLeft: '31px' });
+  const input = el('input', { flex: '1', minWidth: '0', boxSizing: 'border-box', background: 'var(--ed-panel)', border: '1px solid var(--ed-line)', borderRadius: '6px', color: 'var(--ed-text)', fontFamily: 'ui-monospace, monospace', fontSize: '10.5px', padding: '4px 6px' }, { placeholder: 'Own icon URL', 'data-focus-key': `f${f.key}-i${i}`, title: 'Icon image URL — replaces the built-in icon', dir: 'ltr', 'aria-label': 'Icon image URL for ' + (it.label || 'network') });
+  input.value = it.icon || '';
+  const valid = (v) => !String(v).trim() || !!socialIconSrc(v);
+  const iconCommit = typeCommit((v) => {
+    if (!valid(v)) return;
+    const next = items.slice(); next[i] = { ...it, icon: String(v).trim() }; commit(next);
+  });
+  input.addEventListener('input', (e) => {
+    input.style.borderColor = valid(e.target.value) ? 'var(--ed-accent)' : 'var(--ed-danger)';
+    iconCommit.call(e.target.value);
+  });
+  input.addEventListener('focus', () => { input.style.borderColor = valid(input.value) ? 'var(--ed-accent)' : 'var(--ed-danger)'; input.style.outline = 'none'; });
+  input.addEventListener('blur', () => { input.style.borderColor = valid(input.value) ? 'var(--ed-line)' : 'var(--ed-danger)'; iconCommit.flush(); });
+  const small = { flex: 'none', border: '1px solid var(--ed-line)', borderRadius: '6px', background: 'var(--ed-panel)', color: 'var(--ed-muted)', cursor: 'pointer', fontFamily: 'var(--ed-font)', fontSize: '10.5px', fontWeight: '600', padding: '3px 7px' };
+  const pick = el('button', small, { type: 'button', text: it.icon ? 'Change…' : 'Choose…', title: 'Pick or upload an icon image', 'data-focus-key': `f${f.key}-ip${i}` });
+  pick.addEventListener('click', () => { if (f.onPickIcon) f.onPickIcon(i); });
+  line.append(input, pick);
+  if (it.icon) {
+    const reset = el('button', small, { type: 'button', text: 'Default', title: 'Use the built-in icon again', 'data-focus-key': `f${f.key}-ir${i}` });
+    reset.addEventListener('click', () => { const next = items.slice(); next[i] = { ...it, icon: '' }; commit(next); });
+    line.appendChild(reset);
+  }
+  return line;
 }
 
 /**
