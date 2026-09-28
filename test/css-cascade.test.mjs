@@ -28,6 +28,11 @@ function fold(css, body) {
   return doc;
 }
 const styleOf = (doc, sel) => doc.querySelector(sel).getAttribute('style') || '';
+/** Same as `fold`, but returns what the cascade could NOT inline. */
+function kept(css, body) {
+  const html = '<!doctype html><html><head><style>' + css + '</style></head><body>' + (body || '<p>x</p>') + '</body></html>';
+  return inlineStylesheets(new (win().DOMParser)().parseFromString(html, 'text/html')) || '';
+}
 
 console.log();
 console.log('CSS cascade (import-time inlining)');
@@ -179,6 +184,55 @@ await it('multiple stylesheets are concatenated in document order', async () => 
   const doc = new (win().DOMParser)().parseFromString(html, 'text/html');
   inlineStylesheets(doc);
   assert.match(styleOf(doc, '#a'), /2px/);
+});
+
+/*
+ * What cannot be inlined used to be thrown away: `stripAtRules` dropped every
+ * at-rule and the selector filter dropped every pseudo-class. A document's
+ * webfonts, breakpoints and hover states are design, not noise, so they are
+ * handed back for the importer to keep on the theme.
+ */
+await it('a :hover rule is kept rather than dropped -- there is no attribute to inline it onto', async () => {
+  assert.match(kept('a.cta:hover { background:#252627 !important; }'), /a\.cta:hover/);
+});
+
+await it('@font-face and @media survive, with their contents', async () => {
+  const out = kept('@font-face { font-family:Poppins; src:url(p.woff2); }\n@media only screen and (max-width:600px) { .gap { padding-top:16px !important; } }');
+  assert.match(out, /@font-face/);
+  assert.match(out, /Poppins/);
+  assert.match(out, /@media only screen/);
+  assert.match(out, /\.gap/);
+});
+
+await it('a statement at-rule keeps its semicolon form', async () => {
+  assert.match(kept('@import url("x.css");'), /@import url\("x\.css"\);/);
+});
+
+await it('what CAN be inlined is still inlined, and is not also kept', async () => {
+  const doc = fold('.hero { color: rgb(1, 2, 3) }', '<p id="a" class="hero">x</p>');
+  assert.match(styleOf(doc, '#a'), /rgb\(1,\s*2,\s*3\)/);
+  assert.equal(kept('.hero { color: rgb(1, 2, 3) }', '<p id="a" class="hero">x</p>'), '', 'inlined rules are not duplicated into the kept sheet');
+});
+
+/*
+ * The round-trip trap: MailCraft's own head <style> is unmarked and is
+ * regenerated on every export, so keeping it as author CSS would add another
+ * copy of it to the document on every save.
+ */
+await it("MailCraft's own generated rules are not taken back as author CSS", async () => {
+  assert.equal(kept('a[x-apple-data-detectors] { color:inherit !important; text-decoration:none !important; }'), '');
+  assert.equal(kept('@media only screen and (max-width:600px) {\n  .mc-col { display:block !important; }\n  .mc-stack { display:block !important; }\n  img { max-width:100% !important; height:auto !important; }\n}'), '');
+});
+
+await it('a media query holding both keeps the author half and drops ours', async () => {
+  const out = kept('@media only screen and (max-width:600px) {\n  .mc-col { display:block !important; }\n  .stack-gap { padding-top:16px !important; }\n  img { max-width:100% !important; height:auto !important; }\n}');
+  assert.match(out, /\.stack-gap/, "the author's rule survives");
+  assert.equal(/\.mc-col/.test(out), false, 'ours does not');
+  assert.equal(/max-width:100% !important/.test(out), false, 'nor the responsive image rule we regenerate');
+});
+
+await it('an author rule that merely mentions an image is not mistaken for ours', async () => {
+  assert.match(kept('@media only screen and (max-width:600px) { img.hero { border-radius:0 !important; } }'), /img\.hero/);
 });
 
 console.log(`\n${passed} passed, ${failed} failed.`);

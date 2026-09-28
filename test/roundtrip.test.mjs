@@ -799,7 +799,7 @@ await it('an item\'s own icon ships as an <img> and reloads onto the same networ
   e.remove();
 });
 
-await it('markers:false drops the icon mark; the strip still reloads, on built-in glyphs', async () => {
+await it('markers:false keeps the icon too -- the src is the evidence, not the mark', async () => {
   const e = await rawDoc([row(blk('social', { items: OWN }))]);
   const pristine = e.exportHtml({ markers: false });
   assert.equal(/data-mc/.test(pristine), false);
@@ -808,17 +808,37 @@ await it('markers:false drops the icon mark; the strip still reloads, on built-i
   await settle(3);
   const b = rawOf(e).find((x) => x.type === 'social');
   assert.ok(b);
-  assert.equal(b.props.items, OWN.replace('|' + ICON, ''), 'lossy by contract, links intact');
+  // Until the importer read unmarked images this round trip was lossy by
+  // contract: a pristine export came back on built-in glyphs. An <img> the
+  // block can re-render is now kept whoever wrote it, so markers:false costs
+  // the editing marks and nothing the reader sees.
+  assert.equal(b.props.items, OWN, 'the author icon survives a pristine export');
   e.remove();
 });
 
-await it('a foreign image-icon strip imports exactly as before (no icons claimed)', async () => {
+await it("a foreign image-icon strip keeps the sender's own icons", async () => {
   const e = await mountEditor();
   e.importHtml('<table><tr><td align="center"><a href="https://facebook.com/acme"><img src="https://acme.com/fb.png" width="24" alt="Facebook"></a> <a href="https://instagram.com/acme"><img src="https://acme.com/ig.png" width="24" alt="Instagram"></a></td></tr></table>');
   await settle(3);
   const b = rawOf(e).find((x) => x.type === 'social');
   assert.ok(b);
-  assert.equal(b.props.items, 'Facebook|https://facebook.com/acme\nInstagram|https://instagram.com/acme');
+  // The networks were always right; the drawings were not. Swapping a brand's
+  // own artwork for a built-in glyph is the kind of silent substitution an
+  // import is not allowed to make.
+  assert.equal(b.props.items, 'Facebook|https://facebook.com/acme|https://acme.com/fb.png\nInstagram|https://instagram.com/acme|https://acme.com/ig.png');
+  e.remove();
+});
+
+await it('an inline <svg> icon has no src to keep, so it still falls back to a glyph', async () => {
+  const e = await mountEditor();
+  e.importHtml('<table><tr><td align="center"><a href="https://facebook.com/acme"><svg width="24" height="24"><title>Facebook</title></svg></a> <a href="https://instagram.com/acme"><svg width="24" height="24"><title>Instagram</title></svg></a></td></tr></table>');
+  await settle(3);
+  const b = rawOf(e).find((x) => x.type === 'social');
+  assert.ok(b, 'still a social strip');
+  // No third field: an inline <svg> is markup, not a source the block could
+  // point an <img> at. The labels come from the hrefs because a <title> child
+  // is not one of the naming attributes (alt/title/aria-label) the strip reads.
+  assert.equal(b.props.items, 'facebook|https://facebook.com/acme\ninstagram|https://instagram.com/acme');
   e.remove();
 });
 
@@ -881,6 +901,75 @@ await it('markers:false — pristine HTML, and the degradation floor still holds
   assert.match(legacy, /e\.com\/legacy/, 'its iframe survives as content');
   el3.remove();
   el2.remove();
+});
+
+/*
+ * The complaint this work started from: put HTML in, save, come back, and the
+ * editor had rewritten it. Everything the importer now keeps has to survive
+ * not just the first import but every cycle after it -- a second pass that
+ * adds, drops or restyles anything is the same bug one save later.
+ */
+console.log();
+console.log('Round trip -- a foreign document keeps saying what it said');
+
+const FOREIGN = '<!doctype html><html><head>'
+  + '<link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">'
+  + '<style>\n@font-face { font-family:Brand; src:url(https://cdn.example.com/b.woff2); }\n'
+  + 'a.cta:hover { background:#252627 !important; }\n'
+  + '@media only screen and (max-width:600px) {\n  .mc-col { display:block !important; }\n  .stack-gap { padding-top:16px !important; }\n  img { max-width:100% !important; height:auto !important; }\n}\n</style>'
+  + '</head><body style="background:#fbfbfb"><table role="presentation" width="100%"><tr><td align="center">'
+  + '<table role="presentation" width="600"><tr><td>'
+  + '<div style="text-align:right"><a href="https://e.com/p" style="display:block;text-decoration:underline;padding:0 4px 4px;color:#6d6d6d">Privacy</a>'
+  + '<a href="https://e.com/t" style="display:block;text-decoration:underline;padding:0 4px 4px;color:#6d6d6d">Terms</a></div>'
+  + '<table><tr><td><a href="https://instagram.com/acme"><img src="https://acme.com/ig.svg" width="20" alt="Instagram"></a>'
+  + '<a href="https://facebook.com/acme"><img src="https://acme.com/fb.svg" width="20" alt="Facebook"></a></td></tr></table>'
+  + '</td></tr></table></td></tr></table></body></html>';
+
+await it('what the source said is still there after the first import', async () => {
+  const e = await mountEditor();
+  e.importHtml(FOREIGN);
+  await settle(3);
+  const d = e.getContent();
+  assert.deepEqual(d.theme.fontLinks, ['https://fonts.googleapis.com/css2?family=Poppins&display=swap'], 'the webfont');
+  assert.match(d.theme.css, /@font-face/, 'the face declaration');
+  assert.match(d.theme.css, /a\.cta:hover/, 'the hover state');
+  assert.match(d.theme.css, /\.stack-gap/, "the author's breakpoint rule");
+  assert.equal(/\.mc-col/.test(d.theme.css), false, 'but not the layout rules we regenerate');
+  const menu = rawOf(e).find((b) => b.type === 'menu');
+  assert.equal(menu.props.stacked, true);
+  assert.equal(menu.props.transform, 'none', 'not shouted back in uppercase');
+  const social = rawOf(e).find((b) => b.type === 'social');
+  assert.match(social.props.items, /acme\.com\/ig\.svg/, "the sender's own icon, not a built-in glyph");
+  e.remove();
+});
+
+await it('saving and reopening changes nothing -- the cycle converges', async () => {
+  const e = await mountEditor();
+  e.importHtml(FOREIGN);
+  await settle(3);
+  const first = e.exportHtml();
+  e.importHtml(first);
+  await settle(3);
+  const second = e.exportHtml();
+  assert.equal(second, first, 'export -> import -> export is a fixed point');
+  e.importHtml(second);
+  await settle(3);
+  assert.equal(e.exportHtml(), first, 'and stays one on a third pass');
+  e.remove();
+});
+
+await it('the kept stylesheet is not duplicated on every save', async () => {
+  const e = await mountEditor();
+  e.importHtml(FOREIGN);
+  await settle(3);
+  let html = e.exportHtml();
+  const styles = (html.match(/<style/g) || []).length;
+  const links = (html.match(/<link/g) || []).length;
+  for (let i = 0; i < 3; i++) { e.importHtml(html); await settle(3); html = e.exportHtml(); }
+  assert.equal((html.match(/<style/g) || []).length, styles, 'style count is stable across saves');
+  assert.equal((html.match(/<link/g) || []).length, links, 'so is the font link');
+  assert.equal((html.match(/@font-face/g) || []).length, 1, 'and the face is declared exactly once');
+  e.remove();
 });
 
 console.log();

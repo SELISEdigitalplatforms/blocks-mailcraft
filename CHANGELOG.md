@@ -4,6 +4,17 @@ All notable changes to `@seliseblocks/mailcraft` are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.23] — 2026-09-28
+
+### Fixed
+- **An imported email keeps saying what it said.** Applying HTML in the Code modal, or reopening a saved template, rebuilt parts of the document from the editor's idea of a block rather than from the source — so a design changed on the way in and changed again on every save. Four losses are closed, and each survives an unlimited number of save/reload cycles rather than only the first import.
+  - **The sender's own social icons.** A strip of brand SVGs came back drawn in MailCraft's built-in glyphs: the right networks in the wrong hand. Any `<img>` the block can re-render now keeps its own source, whether this editor wrote it or the author did. An inline `<svg>` has no source to keep and still falls back to a glyph.
+  - **Footer link lists.** A column of underlined, sentence-case links returned uppercase, letter-spaced and side by side, because the Menu renderer hard-coded that look. Menu blocks gained **Stack items on separate lines**, **Capitalisation**, **Underline** and **Letter spacing**; the importer reads all four from the source, and a silent source now means "not set" rather than "use our default". The defaults are the values the renderer used to hard-code, so every menu made before this release exports the same bytes.
+  - **Author stylesheets.** `:hover` states, `@media` breakpoints and `@font-face` declarations were discarded outright — the cascade could not fold them into inline styles, so it dropped them. They are kept on the document and re-emitted in `<head>`. MailCraft's own generated rules are pruned out on the way in, per rule rather than per `<style>`, so a template whose author edited that sheet keeps their half and the document does not grow a fresh copy of ours on every save.
+  - **Webfont links.** Neither half of the pipeline handled `<link rel="stylesheet">`, so a template built on Poppins imported into Helvetica with its font stack intact and nothing to explain why. Font-provider stylesheets are kept and re-emitted; other hosts are not, since a stylesheet link is a request the reading client makes on the recipient's behalf.
+
+  One limit worth knowing: a kept rule that selects by **class** (`a.cta:hover`, `.promo-grid`) is preserved in the document but does not match anything yet, because class attributes are still stripped from the elements an import converts into blocks. Rules that select by element or declare a font face apply as written.
+
 ## [0.2.22] — 2026-09-28
 
 ### Added

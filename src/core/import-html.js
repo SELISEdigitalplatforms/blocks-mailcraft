@@ -3,6 +3,7 @@ import { cleanImportHtml } from './sanitize.js';
 import { inlineStylesheets } from './css-cascade.js';
 import { rawSourceOf } from './raw-html.js';
 import { socialIconSrc } from './parse.js';
+import { FONT_LINK_HOSTS } from './theme.js';
 
 /**
  * HTML -> doc importer. Mirrors the canonical shapes `render/block-body.js`
@@ -696,11 +697,14 @@ function classifySocial(el) {
   if (social.length < Math.ceil(anchors.length / 2)) return null;
   const a0 = anchors[0];
   const over = {
-    // A per-item icon comes back only from an image the exporter vouched for
-    // (`data-mcicon`, render/block-body.js). A foreign strip's own images keep
-    // importing as built-in glyphs, exactly as they did before icons existed.
+    // Any image the block can actually re-render keeps its own source, whether
+    // this exporter wrote it (`data-mcicon`, render/block-body.js) or the
+    // author did. 0.2.22 accepted only the marked ones, which meant a strip of
+    // the sender's own brand SVGs came back as MailCraft's built-in glyphs --
+    // the right networks drawn in the wrong hand. An inline <svg> has no src to
+    // keep, so it still falls back to a glyph.
     items: anchors.map((a, i) => {
-      const own = imgs[i].tagName === 'IMG' && imgs[i].hasAttribute('data-mcicon') ? socialIconSrc(imgs[i].getAttribute('src')) : '';
+      const own = imgs[i].tagName === 'IMG' ? socialIconSrc(imgs[i].getAttribute('src')) : '';
       return names[i] + '|' + (a.getAttribute('href') || '#') + (own ? '|' + own : '');
     }).join('\n'),
     // From the first anchor's ancestry, not `el`: the alignment usually sits
@@ -775,6 +779,30 @@ function classifyMenu(el) {
   // (`margin: 0 gap/2`); unread, a chosen gap snapped back to the default.
   const mg = PX(anchors[0].style.marginLeft) + PX(anchors[0].style.marginRight);
   if (mg) over.gap = mg;
+  // Look, read rather than assumed. The renderer used to hard-code uppercase,
+  // 0.12em and no underline, so a footer of stacked underlined sentence-case
+  // links came back as an uppercase row -- the same links, styled as something
+  // the source never said. Each is only written when the source differs from
+  // the default, so a menu this importer already understood is unchanged.
+  const a0m = anchors[0];
+  const stacked = anchors.every((a) => inheritedStyle(a, 'display') === 'block');
+  if (stacked) {
+    over.stacked = true;
+    // Vertical rhythm lives in the anchor's own bottom padding once the items
+    // are on separate lines; horizontal margin says nothing about it.
+    const vg = PX(a0m.style.paddingBottom) * 2;
+    if (vg) over.gap = vg;
+  }
+  // Absence means `none` here, not "keep our default". The uppercase default
+  // belongs to menus made in the editor; reading a silent source as uppercase
+  // is exactly how sentence-case footer links came back shouting.
+  const tf = inheritedStyle(a0m, 'textTransform') || 'none';
+  if (tf !== 'uppercase') over.transform = tf;
+  const dec = inheritedStyle(a0m, 'textDecoration');
+  if (dec && dec.indexOf('underline') > -1) over.decoration = 'underline';
+  const ls = a0m.style ? a0m.style.letterSpacing : '';
+  const em = ls && /em\s*$/.test(ls) ? parseFloat(ls) : (ls && PX(ls) ? PX(ls) / (size || 12) : 0);
+  if (em !== 0.12) over.spacing = em;
   return blk('menu', over);
 }
 
@@ -2202,6 +2230,17 @@ function partialFrame(st) {
 function themeFromParsedDoc(doc) {
   const theme = {};
   const body = doc.body;
+  /*
+   * Webfont stylesheets, kept so an imported template still renders in the
+   * face it was written in. Nothing read <link> before, so a Poppins template
+   * came back in Helvetica with its font stack intact and no way to tell why.
+   * Deduped because a re-import of our own export would otherwise add the
+   * same href again on every save.
+   */
+  const links = Array.from(doc.querySelectorAll('link[rel~="stylesheet" i]'))
+    .map((l) => String(l.getAttribute('href') || '').trim())
+    .filter((h) => FONT_LINK_HOSTS.test(h));
+  if (links.length) theme.fontLinks = links.filter((h, i) => links.indexOf(h) === i);
   // Reading direction and preview line, both document-level. The preheader
   // div is removed once read -- left in place it walked as a text row of
   // invisible copy, and re-exported as a second preheader on every save.
@@ -2555,7 +2594,16 @@ function parseSource(src, codes) {
   // Fold <style> rules into inline styles first, so class-styled templates
   // (never-inlined exports, hand-written emails) classify like inlined ones.
   // Best-effort: a pathological stylesheet must never block the import.
-  try { inlineStylesheets(doc); } catch { /* proceed with inline styles only */ }
+  /*
+   * What the cascade could not fold into inline styles -- @font-face, @media,
+   * :hover -- comes back here instead of being discarded. It becomes a `css`
+   * block so the document still carries the states and breakpoints its author
+   * wrote; the alternative was an import that silently flattened a designed
+   * hover into nothing. MailCraft's own generated rules are pruned out on the
+   * way, or a save would append a fresh copy of them on every cycle.
+   */
+  let keptCss = '';
+  try { keptCss = inlineStylesheets(doc) || ''; } catch { /* proceed with inline styles only */ }
   // Then fold the tint box back into a layered background, so the walk below
   // sees one shape for section images regardless of which exporter wrote them.
   try { readVmlBackgrounds(doc); } catch { /* VML is a bonus read, never a blocker */ }
@@ -2568,6 +2616,7 @@ function parseSource(src, codes) {
   try { rows = collectRows(Array.from(doc.body.childNodes)); } catch (e) { if (!codes) throw e; } finally { if (codes && rawSlots.used.size !== codes.length) rows = null; rawSlots = null; }
   if (!rows) return null;
   foldThemeInherits(rows, theme);
+  if (keptCss.trim()) theme.css = keptCss.trim();
   return { rows, theme };
 }
 

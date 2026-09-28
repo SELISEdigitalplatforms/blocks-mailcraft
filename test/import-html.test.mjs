@@ -200,6 +200,64 @@ await it('a row of social icon links becomes one social block', async () => {
   assert.ok(types.includes('social') || types.filter((t) => t === 'image').length >= 1, 'social strip handled: ' + types.join(','));
 });
 
+/*
+ * The renderer used to hard-code uppercase, 0.12em and inline-block, so a
+ * footer of stacked underlined sentence-case links came back as an uppercase
+ * row: the author's own links, restyled as something the source never said.
+ * Each look prop is read from the source, and absence means "not set" rather
+ * than "use our default".
+ */
+await it('a stacked underlined footer keeps all four of those things', async () => {
+  const menu = firstOf(email('<tr><td><div style="text-align:right"><a href="/p" style="display:block;text-decoration:underline;padding:0 4px 4px;color:#6d6d6d">Privacy Policy</a><a href="/t" style="display:block;text-decoration:underline;padding:0 4px 4px;color:#6d6d6d">Terms</a><a href="/c" style="display:block;text-decoration:underline;padding:0 4px;color:#6d6d6d">Contact</a></div></td></tr>'), 'menu');
+  assert.ok(menu, 'a menu block');
+  assert.equal(menu.props.stacked, true, 'display:block anchors are a stacked menu');
+  assert.equal(menu.props.decoration, 'underline');
+  assert.equal(menu.props.transform, 'none', 'a silent source is not uppercase');
+  assert.equal(menu.props.spacing, 0, 'nor letter-spaced');
+  assert.equal(menu.props.align, 'right');
+});
+
+await it('a menu this importer already understood keeps every default', async () => {
+  // MailCraft's own shape: inline-block, uppercase, 0.12em, no underline. None
+  // of the four props is written, so documents made before they existed are
+  // byte-identical on export.
+  const menu = firstOf(email('<tr><td><div style="text-align:center;padding:10px 0"><a href="/a" style="display:inline-block;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;margin:0 10px">One</a><a href="/b" style="display:inline-block;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;margin:0 10px">Two</a></div></td></tr>'), 'menu');
+  assert.ok(menu);
+  assert.equal(menu.props.stacked, undefined);
+  assert.equal(menu.props.transform, undefined);
+  assert.equal(menu.props.decoration, undefined);
+  assert.equal(menu.props.spacing, undefined);
+  assert.equal(menu.props.gap, 20, 'symmetric margins still read as the gap');
+});
+
+await it('a stacked menu reads its gap from vertical padding, not horizontal margin', async () => {
+  const menu = firstOf(email('<tr><td><div><a href="/a" style="display:block;padding:0 0 6px">One</a><a href="/b" style="display:block;padding:0 0 6px">Two</a></div></td></tr>'), 'menu');
+  assert.equal(menu.props.stacked, true);
+  assert.equal(menu.props.gap, 12, 'bottom padding is half the gap, as the renderer writes it');
+});
+
+/*
+ * Webfonts: neither half of the pipeline handled <link>, so a Poppins template
+ * imported into Helvetica with its font stack intact and nothing to explain it.
+ */
+await it('a font-provider stylesheet link is kept on the theme', async () => {
+  const doc = htmlToDoc('<!doctype html><html><head><link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet"></head><body><table><tr><td><p>x</p></td></tr></table></body></html>');
+  assert.deepEqual(doc.theme.fontLinks, ['https://fonts.googleapis.com/css2?family=Poppins&display=swap']);
+});
+
+await it('a link to anywhere else is not kept -- a stylesheet is a request made on the reader\'s behalf', async () => {
+  const doc = htmlToDoc('<!doctype html><html><head><link href="https://tracker.example.com/beacon.css" rel="stylesheet"><link href="http://fonts.googleapis.com/insecure.css" rel="stylesheet"></head><body><table><tr><td><p>x</p></td></tr></table></body></html>');
+  // Unset, not empty: themeFromParsedDoc returns only what it found, and the
+  // THEME() defaults supply `[]` when the document is normalized.
+  assert.equal(doc.theme.fontLinks, undefined, 'neither a foreign host nor a plain-http one');
+});
+
+await it('the same href twice is kept once, so a re-import cannot grow it', async () => {
+  const one = '<link href="https://fonts.googleapis.com/css2?family=Poppins" rel="stylesheet">';
+  const doc = htmlToDoc('<!doctype html><html><head>' + one + one + '</head><body><table><tr><td><p>x</p></td></tr></table></body></html>');
+  assert.equal(doc.theme.fontLinks.length, 1);
+});
+
 await it('a horizontal link strip becomes a menu', async () => {
   const html = email(`<tr><td align="center">
     <a href="https://example.com/a" style="padding:0 10px">Shop</a>

@@ -33,4 +33,26 @@
  * so the table is what makes it render there. Same fit/position/repeat
  * vocabulary as a row and the content area.
  */
-export const THEME = () => ({ preheader: '', dir: '', bg: '#eef2f7', bgImage: '', bgSize: 'cover', bgPos: 'center', bgRepeat: 'no-repeat', contentBg: '#ffffff', contentBgImage: '', contentBgSize: 'cover', contentBgPos: 'center', contentBgRepeat: 'no-repeat', width: 620, padY: 0, padX: 0, radius: 0, borderW: 0, borderStyle: 'solid', borderColor: '#e2e2e5', shadow: '', font: '"Helvetica Neue", Helvetica, Arial, sans-serif', text: '#172033', link: '#0065b3' });
+/*
+ * `fontLinks` carries the webfont stylesheets a source document declared in
+ * <head> (`<link rel="stylesheet" href="https://fonts.googleapis.com/...">`).
+ * Neither half of the pipeline used to handle <link> at all, so importing a
+ * template built on Poppins silently dropped the font and every glyph in the
+ * email changed -- the single most visible loss an import could produce, and
+ * the hardest to attribute, because the CSS font stack still named the face.
+ *
+ * Only font-provider hosts are kept (FONT_LINK_HOSTS, below):
+ * a stylesheet <link> is a request the reading client makes on the recipient's
+ * behalf, so an arbitrary URL here is a tracking pixel with better manners.
+ */
+export const FONT_LINK_HOSTS = /^https:\/\/(?:fonts\.googleapis\.com|fonts\.gstatic\.com|use\.typekit\.net|fonts\.bunny\.net)\//i;
+
+/*
+ * `css` holds the rules an imported document declared that cannot become
+ * inline styles -- `@media`, `@font-face`, `:hover`. It is document-level, not
+ * a block: a stylesheet applies to the whole email, and giving it a row of its
+ * own would change the row structure of every template that has one.
+ * MailCraft's own generated rules are pruned out before they land here, or a
+ * save would append a fresh copy of them on every cycle.
+ */
+export const THEME = () => ({ preheader: '', dir: '', fontLinks: [], css: '', bg: '#eef2f7', bgImage: '', bgSize: 'cover', bgPos: 'center', bgRepeat: 'no-repeat', contentBg: '#ffffff', contentBgImage: '', contentBgSize: 'cover', contentBgPos: 'center', contentBgRepeat: 'no-repeat', width: 620, padY: 0, padX: 0, radius: 0, borderW: 0, borderStyle: 'solid', borderColor: '#e2e2e5', shadow: '', font: '"Helvetica Neue", Helvetica, Arial, sans-serif', text: '#172033', link: '#0065b3' });

@@ -9,6 +9,7 @@
  */
 
 import { cssUrl } from './sanitize.js';
+import { FONT_LINK_HOSTS } from './theme.js';
 import { rowBorderCss, rowMargin, rowPad } from './layout-style.js';
 import { rawPatchFor } from './raw-html.js';
 
@@ -706,6 +707,24 @@ export function buildHtml(state, root, boxCss, opts) {
    * just that the markup now sometimes appears, so the namespace follows it
    * rather than being absent on principle or present on every send.
    */
+  /*
+   * Webfont stylesheets the document came in with. They precede `stackCss` for
+   * the same reason a hand-written email puts them first: a @font-face has to
+   * be declared before the rules that name the family. Filtered on the way out
+   * as well as in -- a document object can reach here from a host's own JSON,
+   * which never passed through the importer's allowlist.
+   */
+  const fontLinks = (Array.isArray(t.fontLinks) ? t.fontLinks : [])
+    .filter((h) => FONT_LINK_HOSTS.test(String(h || '')))
+    .map((h) => '\n<link href="' + attrEsc(h) + '" rel="stylesheet">').join('');
+  /*
+   * After `stackCss`, so a rule the author wrote wins a tie against the
+   * generated one it collides with. Emitted unmarked, exactly as it arrived:
+   * the importer recognises it by content (at-rules and pseudo-classes are
+   * never inlinable) rather than by a marker, so a pristine export re-imports
+   * to the same document.
+   */
+  const authorCss = String(t.css || '').trim() ? '\n<style>\n' + String(t.css).trim() + '\n</style>' : '';
   const msoHead = '\n<!--[if mso]>\n<xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml>\n<![endif]-->';
   // `text-size-adjust` at 100%, never `none`: both stop a mobile client
   // inflating the type, but `none` also blocks legitimate scaling and leaves
@@ -769,5 +788,5 @@ export function buildHtml(state, root, boxCss, opts) {
       + (pageBg && pageBg !== 'transparent' && !/^rgba\(/.test(pageBg) ? ' color="' + pageBg + '"' : '') + ' /></v:background><![endif]-->';
   }
   const bodyStyle = 'margin:0;padding:0;' + pagePaint + 'font-family:' + t.font.replace(/"/g, "'") + ';color:' + t.text + ';-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;text-size-adjust:100%;';
-  return tightenTokens(msoHarden(stampLinks('<!doctype html>\n<html lang="en"' + docDir + ' xmlns:o="urn:schemas-microsoft-com:office:office"' + (usedVml ? ' xmlns:v="urn:schemas-microsoft-com:vml"' : '') + '>\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<meta name="color-scheme" content="light">\n<meta name="supported-color-schemes" content="light">\n<title>' + 'Email' + '</title>' + msoHead + stackCss + '\n</head>\n<body' + pageAttr + ' style="' + bodyStyle + '">' + pageVml + preheader + '\n<table role="presentation"' + pageAttr + ' width="100%" cellpadding="0" cellspacing="0" border="0" style="' + pagePaint + '">\n  <tr><td align="center" style="padding:' + pagePad + ';">\n    ' + ghostOpen + '\n    ' + shell + '\n    ' + ghostClose + '\n  </td></tr>\n</table>\n</body>\n</html>')));
+  return tightenTokens(msoHarden(stampLinks('<!doctype html>\n<html lang="en"' + docDir + ' xmlns:o="urn:schemas-microsoft-com:office:office"' + (usedVml ? ' xmlns:v="urn:schemas-microsoft-com:vml"' : '') + '>\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<meta name="color-scheme" content="light">\n<meta name="supported-color-schemes" content="light">\n<title>' + 'Email' + '</title>' + msoHead + fontLinks + stackCss + authorCss + '\n</head>\n<body' + pageAttr + ' style="' + bodyStyle + '">' + pageVml + preheader + '\n<table role="presentation"' + pageAttr + ' width="100%" cellpadding="0" cellspacing="0" border="0" style="' + pagePaint + '">\n  <tr><td align="center" style="padding:' + pagePad + ';">\n    ' + ghostOpen + '\n    ' + shell + '\n    ' + ghostClose + '\n  </td></tr>\n</table>\n</body>\n</html>')));
 }

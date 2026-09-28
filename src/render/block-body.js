@@ -410,7 +410,26 @@ export function blockBody(b, theme, live, ctx, colPx) {
         // line (item 3 of a 3-item menu started 18px past a 148px column). An
         // inline-block is an atomic inline, which does get a break opportunity
         // either side of it, exactly as the social row already relied on.
-        const a = el('a', { display: 'inline-block', color: p.color, fontSize: p.size + 'px', fontFamily: p.fontFamily || t.font, textDecoration: 'none', margin: '0 ' + p.gap / 2 + 'px', letterSpacing: '0.12em', textTransform: 'uppercase' }, { href: linkHref(it.href), text: it.label });
+        // The four look props default to the values this renderer used to
+        // hard-code, so every document made before they existed exports the
+        // same bytes. Stacked menus are the reason `display` is a prop at all:
+        // a footer of underlined links on their own lines is a menu in every
+        // respect except that it is vertical, and forcing inline-block on it
+        // was what made an imported footer come back uppercase and side by side.
+        const look = {
+          display: p.stacked ? 'block' : 'inline-block',
+          color: p.color, fontSize: p.size + 'px', fontFamily: p.fontFamily || t.font,
+          textDecoration: p.decoration || 'none',
+          letterSpacing: (p.spacing == null ? 0.12 : p.spacing) + 'em',
+          textTransform: p.transform || 'uppercase',
+        };
+        // Horizontal margins separate inline items; stacked ones sit on their
+        // own lines, where the same gap has to be vertical padding instead.
+        // Only one of the two is ever written, so a menu made before these
+        // props existed exports the exact bytes it did then.
+        if (p.stacked) look.padding = '0 0 ' + p.gap / 2 + 'px';
+        else look.margin = '0 ' + p.gap / 2 + 'px';
+        const a = el('a', look, { href: linkHref(it.href), text: it.label });
         a.addEventListener('click', (e) => e.preventDefault());
         wrap.appendChild(a);
       });
